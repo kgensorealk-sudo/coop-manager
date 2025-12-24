@@ -95,6 +95,17 @@ const App: React.FC = () => {
   const [activeVolume, setActiveVolume] = useState(0);
   const [totalInterestGained, setTotalInterestGained] = useState(0);
 
+  // Dynamic Title Management
+  useEffect(() => {
+    if (!currentUser) {
+      document.title = "The 13th Page - Registry Access";
+    } else if (currentUser.role === 'admin') {
+      document.title = "The 13th Page - Admin Dashboard";
+    } else {
+      document.title = "The 13th Page - Member Ledger";
+    }
+  }, [currentUser]);
+
   useEffect(() => {
     if (currentUser) {
       refreshData();
