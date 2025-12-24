@@ -30,7 +30,7 @@ export const StatCard: React.FC<StatCardProps> = ({
 
       <div className="flex items-start justify-between mb-4 relative z-10">
         <div>
-          <h3 className="text-ink-500 text-[10px] font-bold uppercase tracking-[0.2em] font-sans mb-1">{title}</h3>
+          <h3 className="text-ink-500 text-xs font-bold uppercase tracking-[0.2em] font-sans mb-1">{title}</h3>
           <p className="text-3xl font-serif font-medium text-ink-900 tracking-tight">{value}</p>
         </div>
         
@@ -41,7 +41,7 @@ export const StatCard: React.FC<StatCardProps> = ({
       
       {trend && (
         <div className="flex items-center pt-3 border-t border-paper-200 border-dashed">
-           <span className={`text-xs font-serif italic ${trendUp ? 'text-emerald-700' : 'text-wax-600'}`}>
+           <span className={`text-sm font-serif italic ${trendUp ? 'text-emerald-700' : 'text-wax-600'}`}>
              {trend}
            </span>
         </div>

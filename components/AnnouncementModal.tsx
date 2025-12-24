@@ -1,50 +1,112 @@
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Announcement } from '../types';
-import { X, Megaphone, Calendar, AlertTriangle, AlertCircle, Info, CheckCircle2 } from 'lucide-react';
+import { X, Megaphone, Calendar, AlertTriangle, AlertCircle, Info, CheckCircle2, ChevronRight, ChevronLeft } from 'lucide-react';
 
 interface AnnouncementModalProps {
   isOpen: boolean;
   onClose: () => void;
-  announcement: Announcement | null;
+  announcements: Announcement[];
 }
 
-const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, announcement }) => {
-  if (!isOpen || !announcement) return null;
+const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, announcements }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const touchStartRef = useRef<number | null>(null);
+  const touchEndRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentIndex(0);
+    }
+  }, [isOpen]);
+
+  if (!isOpen || !announcements || announcements.length === 0) return null;
+
+  const announcement = announcements[currentIndex];
+  const hasNext = currentIndex < announcements.length - 1;
+  const hasPrev = currentIndex > 0;
+  const isLast = currentIndex === announcements.length - 1;
+
+  const handleNext = () => {
+    if (hasNext) setCurrentIndex(prev => prev + 1);
+  };
+
+  const handlePrev = () => {
+    if (hasPrev) setCurrentIndex(prev => prev - 1);
+  };
+
+  const handleMainAction = () => {
+    if (hasNext) {
+      handleNext();
+    } else {
+      onClose();
+    }
+  };
+
+  // Swipe Handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndRef.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartRef.current || !touchEndRef.current) return;
+    
+    const distance = touchStartRef.current - touchEndRef.current;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe && hasNext) {
+      handleNext();
+    }
+    if (isRightSwipe && hasPrev) {
+      handlePrev();
+    }
+
+    touchStartRef.current = null;
+    touchEndRef.current = null;
+  };
 
   const getTheme = (priority: string) => {
     switch (priority) {
       case 'urgent': 
         return { 
-          gradient: 'from-red-600 to-orange-600', 
-          icon: <AlertTriangle size={120} className="text-white transform rotate-6" />,
-          smallIcon: <AlertTriangle size={24} />,
-          badge: 'bg-red-100 text-red-600',
-          btn: 'bg-red-600 hover:bg-red-700 shadow-red-200'
+          headerBg: 'bg-wax-600',
+          headerText: 'text-paper-50',
+          iconColor: 'text-paper-50',
+          icon: <AlertTriangle size={90} className="opacity-10 transform rotate-12 absolute -right-4 -bottom-6" />,
+          smallIcon: <AlertTriangle size={16} />,
+          btnClass: 'bg-wax-600 hover:bg-wax-500 text-white'
         };
       case 'high': 
         return { 
-          gradient: 'from-orange-500 to-amber-500', 
-          icon: <AlertCircle size={120} className="text-white transform rotate-6" />,
-          smallIcon: <AlertCircle size={24} />,
-          badge: 'bg-orange-100 text-orange-600',
-          btn: 'bg-orange-600 hover:bg-orange-700 shadow-orange-200'
+          headerBg: 'bg-gold-500', 
+          headerText: 'text-ink-900',
+          iconColor: 'text-ink-900',
+          icon: <AlertCircle size={90} className="opacity-10 transform rotate-12 absolute -right-4 -bottom-6" />,
+          smallIcon: <AlertCircle size={16} />,
+          btnClass: 'bg-gold-500 hover:bg-gold-400 text-ink-900'
         };
       case 'low': 
         return { 
-          gradient: 'from-slate-600 to-slate-500', 
-          icon: <CheckCircle2 size={120} className="text-white transform rotate-6" />,
-          smallIcon: <CheckCircle2 size={24} />,
-          badge: 'bg-slate-100 text-slate-600',
-          btn: 'bg-slate-800 hover:bg-slate-900 shadow-slate-200'
+          headerBg: 'bg-paper-300', 
+          headerText: 'text-ink-800',
+          iconColor: 'text-ink-600',
+          icon: <CheckCircle2 size={90} className="opacity-10 transform rotate-12 absolute -right-4 -bottom-6" />,
+          smallIcon: <CheckCircle2 size={16} />,
+          btnClass: 'bg-ink-500 hover:bg-ink-400 text-white'
         };
-      default: 
+      default: // normal
         return { 
-          gradient: 'from-blue-600 to-indigo-600', 
-          icon: <Megaphone size={120} className="text-white transform -rotate-12" />,
-          smallIcon: <Info size={24} />,
-          badge: 'bg-blue-100 text-blue-600',
-          btn: 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+          headerBg: 'bg-ink-800', 
+          headerText: 'text-white',
+          iconColor: 'text-white',
+          icon: <Megaphone size={90} className="opacity-10 transform rotate-12 absolute -right-4 -bottom-6" />,
+          smallIcon: <Info size={16} />,
+          btnClass: 'bg-ink-800 hover:bg-ink-700 text-white'
         };
     }
   };
@@ -52,51 +114,99 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
   const theme = getTheme(announcement.priority || 'normal');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col relative animate-slide-up">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-leather-900/80 backdrop-blur-sm p-4 animate-fade-in">
+      <div 
+        className="bg-paper-50 w-full max-w-md overflow-hidden flex flex-col relative animate-slide-up shadow-2xl rounded-3xl border-2 border-paper-300"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         
-        {/* Decorative Header Background */}
-        <div className={`bg-gradient-to-r ${theme.gradient} h-32 relative overflow-hidden transition-colors`}>
-          <div className="absolute top-0 right-0 p-4 opacity-15">
-            {theme.icon}
-          </div>
-          <button 
-            onClick={onClose}
-            className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors bg-black/10 hover:bg-black/20 rounded-full p-1"
-          >
-            <X size={20} />
-          </button>
+        {/* Paper texture overlay */}
+        <div className="absolute inset-0 pointer-events-none opacity-50 mix-blend-multiply" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'4\' height=\'4\' viewBox=\'0 0 4 4\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M1 3h1v1H1V3zm2-2h1v1H3V1z\' fill=\'%23000000\' fill-opacity=\'0.02\' fill-rule=\'evenodd\'/%3E%3C/svg%3E")' }}></div>
+
+        {/* Carousel Navigation (Desktop Arrows) */}
+        {hasPrev && (
+           <button 
+             onClick={handlePrev}
+             className="absolute left-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 hover:bg-white/40 text-ink-900 backdrop-blur-md border border-white/30 hidden md:flex transition-all hover:scale-110"
+           >
+              <ChevronLeft size={24} />
+           </button>
+        )}
+        {hasNext && (
+           <button 
+             onClick={handleNext}
+             className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 hover:bg-white/40 text-ink-900 backdrop-blur-md border border-white/30 hidden md:flex transition-all hover:scale-110"
+           >
+              <ChevronRight size={24} />
+           </button>
+        )}
+
+        {/* Header Block */}
+        <div className={`${theme.headerBg} p-8 relative overflow-hidden transition-colors duration-500`}>
+           <div className={`transition-colors duration-500 ${theme.iconColor}`}>
+             {theme.icon}
+           </div>
+           
+           <div className="relative z-10 flex justify-between items-start">
+              <div className="flex flex-col pr-8">
+                 <div className={`flex items-center gap-2 text-xs uppercase tracking-[0.2em] font-bold opacity-80 mb-2 transition-colors duration-500 ${theme.headerText}`}>
+                    {theme.smallIcon}
+                    <span>{announcement.priority || 'NOTICE'}</span>
+                    {announcements.length > 1 && (
+                      <span className="opacity-70 ml-2 border-l pl-2 border-current">
+                        {currentIndex + 1} / {announcements.length}
+                      </span>
+                    )}
+                 </div>
+                 <h2 className={`text-2xl font-serif font-bold ${theme.headerText} leading-tight transition-colors duration-500`}>
+                    {announcement.title}
+                 </h2>
+              </div>
+              <button 
+                onClick={onClose}
+                className={`bg-black/10 hover:bg-black/20 p-2 rounded-full transition-colors ${theme.headerText}`}
+              >
+                <X size={20} />
+              </button>
+           </div>
         </div>
 
-        {/* Content */}
-        <div className="px-8 pb-8 pt-0 -mt-12 relative">
-          <div className="bg-white rounded-xl shadow-lg p-4 border border-slate-100 flex items-center gap-4 mb-6">
-             <div className={`${theme.badge} p-3 rounded-full shrink-0 transition-colors`}>
-               {theme.smallIcon}
-             </div>
-             <div>
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  {announcement.priority === 'urgent' ? 'Important Announcement' : 'New Update'}
-                </h3>
-                <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                   <Calendar size={10} />
-                   <span>{new Date(announcement.created_at).toLocaleDateString()}</span>
-                </div>
-             </div>
-          </div>
+        {/* Body */}
+        <div className="p-8 relative bg-paper-50 flex-1 flex flex-col">
+           {/* Date Badge */}
+           <div className="flex items-center gap-2 mb-6 text-ink-400 text-sm font-mono border-b border-paper-200 pb-3 border-dashed">
+               <Calendar size={14} />
+               <span className="uppercase tracking-widest">
+                 {new Date(announcement.created_at).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+               </span>
+           </div>
 
-          <h2 className="text-2xl font-bold text-slate-900 mb-3">{announcement.title}</h2>
-          
-          <div className="prose prose-sm text-slate-600 leading-relaxed mb-8 max-h-60 overflow-y-auto custom-scrollbar">
-            <p className="whitespace-pre-line">{announcement.message}</p>
-          </div>
+           <div className="prose prose-sm text-ink-800 font-serif text-lg leading-relaxed mb-8 max-h-[40vh] overflow-y-auto custom-scrollbar flex-1">
+             <p className="whitespace-pre-line">{announcement.message}</p>
+           </div>
 
-          <button 
-            onClick={onClose}
-            className={`w-full py-3 text-white rounded-xl font-medium transition-all shadow-lg ${theme.btn}`}
-          >
-            Got it
-          </button>
+           {/* Progress Dots */}
+           {announcements.length > 1 && (
+             <div className="flex justify-center gap-2 mb-6">
+                {announcements.map((_, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`h-2 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-8 bg-ink-800' : 'w-2 bg-paper-300'}`}
+                  />
+                ))}
+             </div>
+           )}
+
+           <div className="pt-2">
+              <button 
+                onClick={handleMainAction}
+                className={`w-full py-4 rounded-xl font-bold uppercase tracking-[0.2em] text-sm shadow-lg transition-all transform active:scale-[0.98] ${theme.btnClass}`}
+              >
+                {isLast ? 'Acknowledge Receipt' : 'Next Announcement'}
+              </button>
+           </div>
         </div>
       </div>
     </div>

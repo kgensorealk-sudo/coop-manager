@@ -475,35 +475,40 @@ class DataService {
     return data as Announcement[];
   }
 
-  async getActiveAnnouncement(): Promise<Announcement | null> {
+  async getActiveAnnouncements(): Promise<Announcement[]> {
     const db = this.checkConnection();
     try {
       const { data: announcements, error } = await db
         .from('announcements')
         .select('*')
         .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }); // Newest first
       
       if (error) {
          console.warn("Announcement fetch warning:", error.message);
-         return null;
+         return [];
       }
       
       const now = new Date();
-      const active = announcements?.find(a => {
+      const activeList = announcements?.filter(a => {
          const start = a.scheduled_start ? new Date(a.scheduled_start) : null;
          const end = a.scheduled_end ? new Date(a.scheduled_end) : null;
          
          if (start && start > now) return false;
          if (end && end < now) return false;
          return true;
-      });
+      }) || [];
 
-      return active || null;
+      return activeList;
     } catch (e) {
       console.warn("Unexpected error fetching announcement:", e);
-      return null;
+      return [];
     }
+  }
+
+  async getActiveAnnouncement(): Promise<Announcement | null> {
+    const all = await this.getActiveAnnouncements();
+    return all.length > 0 ? all[0] : null;
   }
 
   async createAnnouncement(

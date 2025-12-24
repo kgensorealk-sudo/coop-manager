@@ -134,7 +134,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
     return (
       <div className="relative pt-1 group">
          <div 
-           className={`flex justify-between items-center mb-1 text-sm font-serif ${items ? 'cursor-pointer hover:bg-paper-100 p-1.5 -mx-1.5 rounded-sm transition-colors' : ''}`}
+           className={`flex justify-between items-center mb-1 text-base font-serif ${items ? 'cursor-pointer hover:bg-paper-100 p-1.5 -mx-1.5 rounded-sm transition-colors' : ''}`}
            onClick={() => items && toggleSection(id)}
          >
             <span className="text-ink-700 flex items-center gap-2 font-bold">
@@ -155,7 +155,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
          
          {/* Collapsible Content */}
          {isExpanded && items && (
-           <div className="mb-4 pl-3 border-l-2 border-paper-300 text-xs text-ink-500 space-y-2 animate-fade-in max-h-60 overflow-y-auto pr-2 custom-scrollbar bg-paper-100/50 p-2 rounded-r-sm">
+           <div className="mb-4 pl-3 border-l-2 border-paper-300 text-sm text-ink-500 space-y-2 animate-fade-in max-h-60 overflow-y-auto pr-2 custom-scrollbar bg-paper-100/50 p-2 rounded-r-sm">
               {items}
            </div>
          )}
@@ -187,8 +187,8 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                      />
                   </div>
                   <div className="flex justify-end gap-2">
-                     <button type="button" onClick={() => setIsEditingGoal(false)} className="px-4 py-2 text-ink-500 hover:text-ink-900 font-bold uppercase text-[10px] tracking-widest">Cancel</button>
-                     <button type="submit" className="px-6 py-2 bg-ink-900 text-white rounded-sm hover:bg-black font-bold uppercase text-[10px] tracking-widest shadow-sm">Save Goal</button>
+                     <button type="button" onClick={() => setIsEditingGoal(false)} className="px-4 py-2 text-ink-500 hover:text-ink-900 font-bold uppercase text-xs tracking-widest">Cancel</button>
+                     <button type="submit" className="px-6 py-2 bg-ink-900 text-white rounded-sm hover:bg-black font-bold uppercase text-xs tracking-widest shadow-sm">Save Goal</button>
                   </div>
                </form>
             </div>
@@ -207,14 +207,14 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                  setNewGoalInput(monthlyGoal.toString());
                  setIsEditingGoal(true);
               }}
-              className="bg-paper-50 border border-paper-300 text-ink-600 hover:bg-paper-100 px-4 py-2.5 rounded-sm font-bold uppercase tracking-widest text-xs transition-colors flex items-center space-x-2 shadow-sm"
+              className="bg-paper-50 border border-paper-300 text-ink-600 hover:bg-paper-100 px-4 py-2.5 rounded-sm font-bold uppercase tracking-widest text-sm transition-colors flex items-center space-x-2 shadow-sm"
            >
               <Target size={16} />
               <span>Set Target</span>
            </button>
            <button 
              onClick={onAddContribution}
-             className="bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-sm font-bold uppercase tracking-widest text-xs shadow-md transition-transform active:scale-95 flex items-center space-x-2 border-b-2 border-emerald-900"
+             className="bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-2.5 rounded-sm font-bold uppercase tracking-widest text-sm shadow-md transition-transform active:scale-95 flex items-center space-x-2 border-b-2 border-emerald-900"
            >
               <Plus size={16} />
               <span>Log Entry</span>
@@ -260,13 +260,13 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
             </div>
             <div>
                <h2 className="text-lg font-serif font-bold text-paper-50">Statement of Financial Position</h2>
-               <p className="text-gold-600/70 text-[10px] uppercase tracking-[0.2em] font-bold">Balance Sheet</p>
+               <p className="text-gold-600/70 text-xs uppercase tracking-[0.2em] font-bold">Balance Sheet</p>
             </div>
          </div>
          <div className="grid grid-cols-1 md:grid-cols-2">
             {/* ASSETS */}
             <div className="p-8 border-b md:border-b-0 md:border-r border-white/10">
-               <h3 className="text-xs font-bold text-ink-400 uppercase tracking-[0.2em] mb-6 font-sans">Assets</h3>
+               <h3 className="text-sm font-bold text-ink-400 uppercase tracking-[0.2em] mb-6 font-sans">Assets</h3>
                <div className="space-y-5 font-mono text-sm">
                   <div className="flex justify-between items-center group border-b border-white/5 pb-3">
                      <span className="text-paper-400 group-hover:text-paper-100 transition-colors">Cash (Treasury)</span>
@@ -284,7 +284,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
             </div>
             {/* EQUITY */}
             <div className="p-8">
-               <h3 className="text-xs font-bold text-ink-400 uppercase tracking-[0.2em] mb-6 font-sans">Equity</h3>
+               <h3 className="text-sm font-bold text-ink-400 uppercase tracking-[0.2em] mb-6 font-sans">Equity</h3>
                <div className="space-y-5 font-mono text-sm">
                   <div className="flex justify-between items-center group border-b border-white/5 pb-3">
                      <span className="text-paper-400 group-hover:text-paper-100 transition-colors">Member Capital</span>
@@ -312,11 +312,11 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
               </div>
               <div>
                 <h2 className="text-lg font-serif font-bold text-ink-900">Cash Flow Statement</h2>
-                <p className="text-xs text-ink-500 font-mono">Detailed breakdown</p>
+                <p className="text-sm text-ink-500 font-mono">Detailed breakdown</p>
               </div>
            </div>
            <div className="text-right">
-              <div className="text-[10px] text-ink-400 uppercase font-bold tracking-widest">Net Flow</div>
+              <div className="text-xs text-ink-400 uppercase font-bold tracking-widest">Net Flow</div>
               <div className={`text-xl font-bold font-mono ${treasuryStats.balance >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                  ₱{treasuryStats.balance.toLocaleString()}
               </div>
@@ -329,12 +329,12 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
            <div className="p-8 space-y-8">
               <div className="flex items-center space-x-2 mb-4">
                  <div className="p-1 bg-green-50 rounded-sm text-green-700 border border-green-200"><ArrowUpRight size={14} /></div>
-                 <h3 className="text-xs font-bold text-ink-900 uppercase tracking-[0.2em]">Inflows</h3>
+                 <h3 className="text-sm font-bold text-ink-900 uppercase tracking-[0.2em]">Inflows</h3>
               </div>
 
               {/* 1. Member Capital */}
               <div className="space-y-4">
-                 <h4 className="text-xs font-bold text-ink-400 uppercase border-b border-paper-200 pb-1 font-serif italic">Financing Activities</h4>
+                 <h4 className="text-sm font-bold text-ink-400 uppercase border-b border-paper-200 pb-1 font-serif italic">Financing Activities</h4>
                  
                  <BreakdownRow 
                     title="Monthly Deposits"
@@ -347,7 +347,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                             <div key={c.id} className="flex justify-between items-center p-2 rounded-sm hover:bg-white transition-colors border border-transparent hover:border-paper-200">
                                 <div>
                                     <div className="font-serif font-bold text-ink-700">{c.member.full_name}</div>
-                                    <div className="text-[10px] text-ink-400 flex items-center gap-1 font-mono">
+                                    <div className="text-xs text-ink-400 flex items-center gap-1 font-mono">
                                         <Calendar size={10} />
                                         {new Date(c.date).toLocaleDateString()}
                                     </div>
@@ -369,7 +369,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                             <div key={c.id} className="flex justify-between items-center p-2 rounded-sm hover:bg-white transition-colors border border-transparent hover:border-paper-200">
                                 <div>
                                     <div className="font-serif font-bold text-ink-700">{c.member.full_name}</div>
-                                    <div className="text-[10px] text-ink-400 flex items-center gap-1 font-mono">
+                                    <div className="text-xs text-ink-400 flex items-center gap-1 font-mono">
                                         <Calendar size={10} />
                                         {new Date(c.date).toLocaleDateString()}
                                     </div>
@@ -383,7 +383,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
 
               {/* 2. Operations & Investing */}
               <div className="space-y-4 pt-4">
-                 <h4 className="text-xs font-bold text-ink-400 uppercase border-b border-paper-200 pb-1 font-serif italic">Operating Activities</h4>
+                 <h4 className="text-sm font-bold text-ink-400 uppercase border-b border-paper-200 pb-1 font-serif italic">Operating Activities</h4>
                  
                  <BreakdownRow 
                     title="Loan Repayments"
@@ -421,11 +421,11 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
            <div className="p-8 space-y-8 bg-paper-100/30">
               <div className="flex items-center space-x-2 mb-4">
                  <div className="p-1 bg-red-50 rounded-sm text-red-700 border border-red-200"><ArrowDownRight size={14} /></div>
-                 <h3 className="text-xs font-bold text-ink-900 uppercase tracking-[0.2em]">Outflows</h3>
+                 <h3 className="text-sm font-bold text-ink-900 uppercase tracking-[0.2em]">Outflows</h3>
               </div>
 
               <div className="space-y-4">
-                 <h4 className="text-xs font-bold text-ink-400 uppercase border-b border-paper-200 pb-1 font-serif italic">Investing Activities</h4>
+                 <h4 className="text-sm font-bold text-ink-400 uppercase border-b border-paper-200 pb-1 font-serif italic">Investing Activities</h4>
                  
                  <BreakdownRow 
                     title="Loans Disbursed"
@@ -438,7 +438,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                             <div key={l.id} className="flex justify-between items-center p-2 rounded-sm hover:bg-white transition-colors border-b border-paper-200 last:border-0 border-dashed">
                                 <div>
                                     <div className="font-serif font-bold text-ink-700">{l.borrower.full_name}</div>
-                                    <div className="text-[10px] text-ink-400 flex items-center gap-1 font-mono">
+                                    <div className="text-xs text-ink-400 flex items-center gap-1 font-mono">
                                         <Calendar size={10} />
                                         {l.start_date ? new Date(l.start_date).toLocaleDateString() : 'Pending'}
                                     </div>
@@ -452,7 +452,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
 
               {/* Placeholder for Expenses */}
               <div className="space-y-4 opacity-60">
-                 <h4 className="text-xs font-bold text-ink-400 uppercase border-b border-paper-200 pb-1 font-serif italic">Operating Expenses</h4>
+                 <h4 className="text-sm font-bold text-ink-400 uppercase border-b border-paper-200 pb-1 font-serif italic">Operating Expenses</h4>
                  <div className="p-3 bg-paper-100 border border-paper-200 rounded-sm border-dashed">
                     <div className="flex justify-between items-center text-sm font-serif">
                        <span className="text-ink-500 italic">Administrative Costs</span>
@@ -479,7 +479,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
             </div>
             <h2 className="text-lg font-serif font-bold text-ink-900">Pending Verification</h2>
           </div>
-          <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-3 py-1 rounded-full border border-amber-200 uppercase tracking-widest">
+          <span className="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full border border-amber-200 uppercase tracking-widest">
             {pendingContributions.length} Pending
           </span>
         </div>
@@ -494,11 +494,11 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
             <table className="w-full text-left">
               <thead className="bg-paper-100 border-b border-paper-200">
                 <tr>
-                  <th className="px-6 py-4 text-xs font-bold text-ink-400 uppercase tracking-[0.2em] font-sans">Member</th>
-                  <th className="px-6 py-4 text-xs font-bold text-ink-400 uppercase tracking-[0.2em] font-sans">Date</th>
-                  <th className="px-6 py-4 text-xs font-bold text-ink-400 uppercase tracking-[0.2em] font-sans">Type</th>
-                  <th className="px-6 py-4 text-xs font-bold text-ink-400 uppercase tracking-[0.2em] font-sans">Amount</th>
-                  <th className="px-6 py-4 text-xs font-bold text-ink-400 uppercase tracking-[0.2em] font-sans text-right">Actions</th>
+                  <th className="px-6 py-4 text-sm font-bold text-ink-400 uppercase tracking-[0.2em] font-sans">Member</th>
+                  <th className="px-6 py-4 text-sm font-bold text-ink-400 uppercase tracking-[0.2em] font-sans">Date</th>
+                  <th className="px-6 py-4 text-sm font-bold text-ink-400 uppercase tracking-[0.2em] font-sans">Type</th>
+                  <th className="px-6 py-4 text-sm font-bold text-ink-400 uppercase tracking-[0.2em] font-sans">Amount</th>
+                  <th className="px-6 py-4 text-sm font-bold text-ink-400 uppercase tracking-[0.2em] font-sans text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-paper-100">
@@ -506,7 +506,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                   <tr key={contribution.id} className="hover:bg-paper-100 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-serif font-bold text-xs border border-blue-200">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-serif font-bold text-sm border border-blue-200">
                           {contribution.member.full_name.charAt(0)}
                         </div>
                         <div>

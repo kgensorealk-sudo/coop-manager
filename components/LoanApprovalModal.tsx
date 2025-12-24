@@ -45,7 +45,7 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
         {/* Header */}
         <div className="bg-paper-100 border-b border-paper-200 p-8 flex justify-between items-start">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-ink-500 mb-1">Confidential</div>
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-ink-500 mb-1">Confidential</div>
             <h2 className="text-2xl font-serif font-bold text-ink-900">Loan Review Assessment</h2>
             <p className="text-sm text-ink-500 mt-1 font-serif italic">Ref: {loan.id.substring(0,8).toUpperCase()}</p>
           </div>
@@ -78,18 +78,20 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
 
           {/* Borrower Profile */}
           <div className="flex items-center space-x-4 border-b border-dashed border-paper-300 pb-6">
-            <img 
-              src={loan.borrower.avatar_url} 
-              alt={loan.borrower.full_name} 
-              className="w-16 h-16 rounded-full object-cover border-2 border-paper-200 grayscale"
-            />
+            <div className="relative w-16 h-16 rounded-sm bg-white p-1 shadow-sm border border-paper-200 rotate-2">
+               <img 
+                 src={loan.borrower.avatar_url} 
+                 alt={loan.borrower.full_name} 
+                 className="w-full h-full object-cover grayscale"
+               />
+            </div>
             <div>
               <h3 className="font-serif font-bold text-ink-900 text-xl">{loan.borrower.full_name}</h3>
               <div className="flex items-center space-x-2 text-sm mt-1">
-                <span className={`px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-widest border ${isNonMember ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                <span className={`px-2 py-0.5 rounded-sm text-xs font-bold uppercase tracking-widest border ${isNonMember ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
                   {isNonMember ? 'External' : 'Member'}
                 </span>
-                <span className="text-ink-500 font-mono text-xs">• Equity: ₱{loan.borrower.equity.toLocaleString()}</span>
+                <span className="text-ink-500 font-mono text-sm">• Equity: ₱{loan.borrower.equity.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -97,15 +99,15 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
           {/* Loan Details Grid */}
           <div className="grid grid-cols-2 gap-6">
             <div className="relative p-2 border-l-2 border-ink-900 pl-4">
-              <label className="text-[10px] font-bold text-ink-400 uppercase tracking-widest block mb-1">Principal</label>
+              <label className="text-xs font-bold text-ink-400 uppercase tracking-widest block mb-1">Principal</label>
               <div className="text-xl font-bold text-ink-900 font-mono">₱{loan.principal.toLocaleString()}</div>
             </div>
             <div className="relative p-2 border-l-2 border-ink-900 pl-4">
-              <label className="text-[10px] font-bold text-ink-400 uppercase tracking-widest block mb-1">Term</label>
+              <label className="text-xs font-bold text-ink-400 uppercase tracking-widest block mb-1">Term</label>
               <div className="text-xl font-bold text-ink-900 font-mono">{loan.duration_months} Months</div>
             </div>
             <div className="col-span-2 bg-paper-100 p-4 rounded-sm border border-paper-200">
-              <label className="text-[10px] font-bold text-ink-400 uppercase tracking-widest block mb-2">Purpose of Request</label>
+              <label className="text-xs font-bold text-ink-400 uppercase tracking-widest block mb-2">Purpose of Request</label>
               <div className="text-base text-ink-800 font-serif italic leading-relaxed">"{loan.purpose}"</div>
             </div>
           </div>
@@ -159,14 +161,14 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
         <div className="bg-paper-100 p-6 border-t border-paper-200 flex items-center justify-end space-x-4">
           <button
             onClick={() => onReject(loan.id)}
-            className="px-6 py-2.5 text-ink-600 font-bold uppercase text-[10px] tracking-widest hover:text-wax-600 transition-colors"
+            className="px-6 py-2.5 text-ink-600 font-bold uppercase text-xs tracking-widest hover:text-wax-600 transition-colors"
           >
             Reject Application
           </button>
           <button
             onClick={() => onApprove(loan.id, interestRate)}
             disabled={hasInsufficientFunds}
-            className={`flex items-center space-x-2 px-8 py-3 font-bold uppercase text-[10px] tracking-widest rounded-sm shadow-md transition-all active:translate-y-0.5 border-b-2 ${
+            className={`flex items-center space-x-2 px-8 py-3 font-bold uppercase text-xs tracking-widest rounded-sm shadow-md transition-all active:translate-y-0.5 border-b-2 ${
                hasInsufficientFunds 
                ? 'bg-paper-300 text-ink-400 border-paper-400 cursor-not-allowed shadow-none' 
                : 'bg-ink-900 hover:bg-black text-white border-ink-700'

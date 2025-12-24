@@ -40,7 +40,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
         <div className="flex gap-3">
            <button 
              onClick={onAddContribution}
-             className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-sm font-bold uppercase tracking-wide shadow-sm flex items-center justify-center space-x-2 border-b-4 border-emerald-800 active:translate-y-0.5 active:border-b-0 transition-all"
+             className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-sm font-bold uppercase tracking-wide shadow-sm flex items-center justify-center space-x-2 border-b-4 border-emerald-800 active:translate-y-0.5 active:border-b-0 transition-all text-sm"
            >
               <Plus size={18} />
               <span>Deposit</span>
@@ -48,7 +48,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
            <button 
              onClick={hasPendingLoan ? undefined : onApplyLoan}
              disabled={hasPendingLoan}
-             className={`px-6 py-3 rounded-sm font-bold uppercase tracking-wide shadow-sm flex items-center justify-center space-x-2 border-b-4 active:translate-y-0.5 active:border-b-0 transition-all ${
+             className={`px-6 py-3 rounded-sm font-bold uppercase tracking-wide shadow-sm flex items-center justify-center space-x-2 border-b-4 active:translate-y-0.5 active:border-b-0 transition-all text-sm ${
                hasPendingLoan 
                 ? 'bg-slate-300 text-slate-500 border-slate-400 cursor-not-allowed shadow-none' 
                 : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-800'
@@ -98,7 +98,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                  <div key={loan.id} className="bg-white p-4 rounded-sm shadow-sm border border-amber-200">
                     <div className="flex justify-between items-start mb-3">
                        <span className="font-serif font-bold text-slate-900 truncate pr-2 text-lg">{loan.purpose}</span>
-                       <span className="shrink-0 text-[10px] uppercase font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-sm border border-amber-200">Loan Request</span>
+                       <span className="shrink-0 text-xs uppercase font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-sm border border-amber-200">Loan Request</span>
                     </div>
                     <div className="space-y-1 text-sm text-slate-600 font-mono">
                        <div className="flex justify-between">
@@ -112,7 +112,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                  <div key={c.id} className="bg-white p-4 rounded-sm shadow-sm border border-amber-200">
                     <div className="flex justify-between items-start mb-3">
                        <span className="font-serif font-bold text-slate-900 truncate pr-2 text-lg capitalize">{c.type.replace('_', ' ')}</span>
-                       <span className="shrink-0 text-[10px] uppercase font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-sm border border-amber-200">Deposit Review</span>
+                       <span className="shrink-0 text-xs uppercase font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-sm border border-amber-200">Deposit Review</span>
                     </div>
                     <div className="space-y-1 text-sm text-slate-600 font-mono">
                        <div className="flex justify-between">
@@ -146,11 +146,11 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
             <table className="w-full text-left border-collapse">
               <thead className="bg-slate-100 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest font-serif">Start Date</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest font-serif">Purpose</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest font-serif">Principal</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest font-serif">Balance</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest font-serif">Status</th>
+                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Start Date</th>
+                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Purpose</th>
+                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Principal</th>
+                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Balance</th>
+                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -206,10 +206,10 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
             <table className="w-full text-left">
               <thead className="bg-slate-100 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest font-serif">Date</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest font-serif">Type</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest font-serif">Amount</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest font-serif">Status</th>
+                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Date</th>
+                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Type</th>
+                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Amount</th>
+                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

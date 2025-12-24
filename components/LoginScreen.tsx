@@ -70,7 +70,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading, erro
             <Feather size={28} className="text-paper-50 -rotate-45" strokeWidth={1.5} />
           </div>
           <h1 className="text-4xl font-serif font-bold text-ink-900 tracking-tight">The 13th <span className="text-gold-600 italic">Page</span></h1>
-          <p className="text-ink-500 text-xs mt-3 font-bold uppercase tracking-[0.2em] font-sans">Cooperative Ledger</p>
+          <p className="text-ink-500 text-sm mt-3 font-bold uppercase tracking-[0.2em] font-sans">Cooperative Ledger</p>
         </div>
 
         {/* Form Section */}
@@ -80,7 +80,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading, erro
           <div className="absolute inset-0 opacity-40 pointer-events-none" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'6\' height=\'6\' viewBox=\'0 0 6 6\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'0.03\' fill-rule=\'evenodd\'%3E%3Cpath d=\'M5 0h1L0 6V5zM6 5v1H5z\'/%3E%3C/g%3E%3C/svg%3E")' }}></div>
 
           <div className="flex justify-center mb-8 relative z-10">
-             <div className="flex text-sm font-serif border-b border-paper-300 w-full justify-center gap-8">
+             <div className="flex text-base font-serif border-b border-paper-300 w-full justify-center gap-8">
                 <button 
                   type="button"
                   onClick={() => setIsSignup(false)}
@@ -126,7 +126,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading, erro
 
             {isSignup && (
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-ink-500 uppercase tracking-widest pl-1">Full Name</label>
+                <label className="text-xs font-bold text-ink-500 uppercase tracking-widest pl-1">Full Name</label>
                 <div className="relative group">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 group-focus-within:text-gold-600 transition-colors" size={18} />
                   <input 
@@ -143,7 +143,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading, erro
             )}
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-ink-500 uppercase tracking-widest pl-1">Email Address</label>
+              <label className="text-xs font-bold text-ink-500 uppercase tracking-widest pl-1">Email Address</label>
               <div className="relative group">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 group-focus-within:text-gold-600 transition-colors" size={18} />
                 <input 
@@ -159,7 +159,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading, erro
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-ink-500 uppercase tracking-widest pl-1">Password</label>
+              <label className="text-xs font-bold text-ink-500 uppercase tracking-widest pl-1">Password</label>
               <div className="relative group">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 group-focus-within:text-gold-600 transition-colors" size={18} />
                 <input 
@@ -177,7 +177,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading, erro
             <button 
               type="submit" 
               disabled={loading}
-              className={`w-full font-serif font-bold py-4 rounded-sm shadow-md transition-all transform active:translate-y-0.5 flex items-center justify-center gap-3 mt-8 text-paper-50 uppercase tracking-widest text-xs relative overflow-hidden group
+              className={`w-full font-serif font-bold py-4 rounded-sm shadow-md transition-all transform active:translate-y-0.5 flex items-center justify-center gap-3 mt-8 text-paper-50 uppercase tracking-widest text-sm relative overflow-hidden group
                 ${!isConfigured 
                    ? 'bg-paper-300 cursor-not-allowed text-paper-100' 
                    : 'bg-ink-900 hover:bg-ink-800 border-b-4 border-black hover:border-ink-900'

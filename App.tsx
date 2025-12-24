@@ -74,7 +74,7 @@ const App: React.FC = () => {
   
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
-  const [systemAnnouncement, setSystemAnnouncement] = useState<Announcement | null>(null);
+  const [systemAnnouncements, setSystemAnnouncements] = useState<Announcement[]>([]);
   const [isSystemAnnouncementOpen, setIsSystemAnnouncementOpen] = useState(false);
   const [hasShownAnnouncement, setHasShownAnnouncement] = useState(false);
 
@@ -107,14 +107,14 @@ const App: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [fetchedLoans, fetchedMetrics, fetchedVolume, fetchedInterest, fetchedUsers, fetchedContributions, fetchedAnnouncement] = await Promise.all([
+      const [fetchedLoans, fetchedMetrics, fetchedVolume, fetchedInterest, fetchedUsers, fetchedContributions, fetchedAnnouncements] = await Promise.all([
         dataService.getLoans(),
         dataService.getTreasuryMetrics(),
         dataService.getActiveLoanVolume(),
         dataService.getTotalInterestGained(),
         dataService.getUsers(),
         dataService.getContributions(),
-        dataService.getActiveAnnouncement()
+        dataService.getActiveAnnouncements()
       ]);
 
       setLoans(fetchedLoans);
@@ -124,8 +124,8 @@ const App: React.FC = () => {
       setMembers(fetchedUsers);
       setContributions(fetchedContributions);
       
-      if (fetchedAnnouncement && !hasShownAnnouncement) {
-        setSystemAnnouncement(fetchedAnnouncement);
+      if (fetchedAnnouncements && fetchedAnnouncements.length > 0 && !hasShownAnnouncement) {
+        setSystemAnnouncements(fetchedAnnouncements);
         setIsSystemAnnouncementOpen(true);
         setHasShownAnnouncement(true);
       }
@@ -183,7 +183,7 @@ const App: React.FC = () => {
     setMembers([]);
     setContributions([]);
     setHasShownAnnouncement(false);
-    setSystemAnnouncement(null);
+    setSystemAnnouncements([]);
     setIsSystemAnnouncementOpen(false);
   };
 
@@ -341,20 +341,20 @@ const App: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-4xl font-serif font-bold text-ink-900">Dashboard Overview</h1>
-            <p className="text-ink-500 mt-2 font-serif italic text-lg">Welcome back, {currentUser.full_name}.</p>
+            <p className="text-ink-500 mt-2 font-serif italic text-xl">Welcome back, {currentUser.full_name}.</p>
           </div>
           
           <div className="flex gap-3">
              <button 
                onClick={handleOpenAnnouncementCreate}
-               className="flex items-center space-x-2 px-4 py-2 bg-paper-50 text-ink-700 hover:bg-paper-100 border border-paper-300 rounded-sm text-xs font-bold uppercase tracking-widest transition-colors shadow-sm"
+               className="flex items-center space-x-2 px-4 py-2 bg-paper-50 text-ink-700 hover:bg-paper-100 border border-paper-300 rounded-sm text-sm font-bold uppercase tracking-widest transition-colors shadow-sm"
              >
                <Megaphone size={16} />
                <span>Post Notice</span>
              </button>
 
              <div 
-               className={`flex items-center space-x-2 px-3 py-1.5 rounded-sm text-xs font-bold uppercase tracking-widest h-fit border ${
+               className={`flex items-center space-x-2 px-3 py-1.5 rounded-sm text-sm font-bold uppercase tracking-widest h-fit border ${
                isSupabaseConfigured() 
                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
                  : 'bg-red-50 text-red-800 border-red-200'
@@ -402,7 +402,7 @@ const App: React.FC = () => {
         {/* Recent Pending Loans Table */}
         <div className="bg-paper-50 rounded-sm border-2 border-paper-200 shadow-card overflow-hidden">
           <div className="p-6 border-b border-paper-200 flex justify-between items-center bg-paper-100/50">
-            <h2 className="text-lg font-serif font-bold text-ink-900">Pending Requests</h2>
+            <h2 className="text-xl font-serif font-bold text-ink-900">Pending Requests</h2>
             <button 
               onClick={() => setActiveTab('loans')}
               className="text-xs font-bold uppercase tracking-wider text-ink-600 hover:text-ink-900 border-b border-ink-300 hover:border-ink-900 pb-0.5 transition-all"
@@ -415,11 +415,11 @@ const App: React.FC = () => {
             <table className="w-full text-left">
               <thead className="bg-paper-100 border-b border-paper-200">
                 <tr>
-                  <th className="px-6 py-4 text-xs font-bold text-ink-400 uppercase tracking-[0.1em] font-sans">Member</th>
-                  <th className="px-6 py-4 text-xs font-bold text-ink-400 uppercase tracking-[0.1em] font-sans">Status</th>
-                  <th className="px-6 py-4 text-xs font-bold text-ink-400 uppercase tracking-[0.1em] font-sans">Amount</th>
-                  <th className="px-6 py-4 text-xs font-bold text-ink-400 uppercase tracking-[0.1em] font-sans">Term</th>
-                  <th className="px-6 py-4 text-xs font-bold text-ink-400 uppercase tracking-[0.1em] font-sans text-right">Action</th>
+                  <th className="px-6 py-4 text-sm font-bold text-ink-400 uppercase tracking-[0.1em] font-sans">Member</th>
+                  <th className="px-6 py-4 text-sm font-bold text-ink-400 uppercase tracking-[0.1em] font-sans">Status</th>
+                  <th className="px-6 py-4 text-sm font-bold text-ink-400 uppercase tracking-[0.1em] font-sans">Amount</th>
+                  <th className="px-6 py-4 text-sm font-bold text-ink-400 uppercase tracking-[0.1em] font-sans">Term</th>
+                  <th className="px-6 py-4 text-sm font-bold text-ink-400 uppercase tracking-[0.1em] font-sans text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-paper-200">
@@ -437,7 +437,7 @@ const App: React.FC = () => {
                           <img 
                             src={loan.borrower.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(loan.borrower.full_name)}&background=random`} 
                             alt="" 
-                            className="w-10 h-10 rounded-full bg-paper-200 object-cover border border-paper-300 grayscale"
+                            className="w-10 h-10 rounded-sm bg-paper-200 object-cover border border-paper-300 grayscale"
                           />
                           <div>
                             <div className="font-serif font-bold text-ink-900 text-lg">{loan.borrower.full_name}</div>
@@ -446,7 +446,7 @@ const App: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-widest border ${
                           loan.borrower.is_coop_member 
                             ? 'bg-blue-50 text-blue-700 border-blue-200' 
                             : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -463,7 +463,7 @@ const App: React.FC = () => {
                       <td className="px-6 py-4 text-right">
                         <button 
                           onClick={() => handleReviewLoan(loan)}
-                          className="text-[10px] font-bold uppercase tracking-widest text-ink-700 hover:bg-paper-200 px-4 py-2 rounded-sm border border-paper-300 transition-all"
+                          className="text-xs font-bold uppercase tracking-widest text-ink-700 hover:bg-paper-200 px-4 py-2 rounded-sm border border-paper-300 transition-all"
                         >
                           Review
                         </button>
@@ -494,7 +494,7 @@ const App: React.FC = () => {
           <h1 className="text-3xl font-serif font-bold text-ink-900">Loan Ledger</h1>
           <button 
             onClick={() => setIsApplicationModalOpen(true)}
-            className="bg-ink-800 hover:bg-ink-900 text-white px-5 py-2.5 rounded-sm font-bold uppercase tracking-widest text-xs shadow-md transition-all active:scale-95 flex items-center space-x-2 border-b-2 border-black"
+            className="bg-ink-800 hover:bg-ink-900 text-white px-5 py-2.5 rounded-sm font-bold uppercase tracking-widest text-sm shadow-md transition-all active:scale-95 flex items-center space-x-2 border-b-2 border-black"
           >
              <CreditCard size={18} />
              <span>New Entry</span>
@@ -511,7 +511,7 @@ const App: React.FC = () => {
             />
           </div>
           <div className="flex gap-2 w-full md:w-auto">
-             <button className="flex items-center space-x-2 px-4 py-2 bg-transparent border border-paper-300 rounded-sm text-ink-600 hover:bg-paper-100 text-xs font-bold uppercase tracking-widest">
+             <button className="flex items-center space-x-2 px-4 py-2 bg-transparent border border-paper-300 rounded-sm text-ink-600 hover:bg-paper-100 text-sm font-bold uppercase tracking-widest">
                <Filter size={16} />
                <span>Filter</span>
              </button>
@@ -530,13 +530,13 @@ const App: React.FC = () => {
 
               <div className="flex justify-between items-start mb-5 pl-3">
                  <div className="flex items-center space-x-3">
-                    <img src={loan.borrower.avatar_url} className="w-10 h-10 rounded-full object-cover border border-paper-300 grayscale" alt="" />
+                    <img src={loan.borrower.avatar_url} className="w-10 h-10 rounded-sm object-cover border border-paper-300 grayscale" alt="" />
                     <div>
                        <h3 className="font-serif font-bold text-ink-900 text-lg leading-tight">{loan.borrower.full_name}</h3>
                        <p className="text-xs text-ink-500 font-mono mt-0.5">{loan.status === 'active' ? 'Active Account' : loan.status === 'pending' ? 'Pending Approval' : loan.status}</p>
                     </div>
                  </div>
-                 <div className={`px-2 py-1 rounded-sm text-[10px] font-bold uppercase tracking-widest border ${
+                 <div className={`px-2 py-1 rounded-sm text-xs font-bold uppercase tracking-widest border ${
                    loan.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                    loan.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                    'bg-paper-100 text-ink-500 border-paper-200'
@@ -546,15 +546,15 @@ const App: React.FC = () => {
               </div>
 
               <div className="space-y-3 mb-6 pl-3 border-l border-dashed border-paper-300 ml-0.5">
-                 <div className="flex justify-between text-sm">
+                 <div className="flex justify-between text-base">
                    <span className="text-ink-500 font-serif italic">Principal</span>
                    <span className="font-bold text-ink-900 font-mono">₱{loan.principal.toLocaleString()}</span>
                  </div>
-                 <div className="flex justify-between text-sm">
+                 <div className="flex justify-between text-base">
                    <span className="text-ink-500 font-serif italic">Rate</span>
                    <span className="font-bold text-ink-900 font-mono">{loan.interest_rate}%</span>
                  </div>
-                 <div className="flex justify-between text-sm">
+                 <div className="flex justify-between text-base">
                    <span className="text-ink-500 font-serif italic">Balance</span>
                    <span className="font-bold text-ink-900 font-mono">₱{loan.remaining_principal.toLocaleString()}</span>
                  </div>
@@ -567,13 +567,13 @@ const App: React.FC = () => {
                       e.stopPropagation();
                       handleReviewLoan(loan);
                     }}
-                    className="w-full py-2 bg-ink-800 text-white rounded-sm text-[10px] font-bold uppercase tracking-widest hover:bg-ink-900 transition-colors shadow-sm"
+                    className="w-full py-2 bg-ink-800 text-white rounded-sm text-xs font-bold uppercase tracking-widest hover:bg-ink-900 transition-colors shadow-sm"
                    >
                      Review Request
                    </button>
                  ) : (
                    <button 
-                    className="w-full py-2 bg-transparent text-ink-600 rounded-sm text-[10px] font-bold uppercase tracking-widest hover:bg-paper-100 transition-colors border border-paper-300"
+                    className="w-full py-2 bg-transparent text-ink-600 rounded-sm text-xs font-bold uppercase tracking-widest hover:bg-paper-100 transition-colors border border-paper-300"
                    >
                      View Details
                    </button>
@@ -599,7 +599,7 @@ const App: React.FC = () => {
       <AnnouncementModal 
         isOpen={isSystemAnnouncementOpen} 
         onClose={() => setIsSystemAnnouncementOpen(false)} 
-        announcement={systemAnnouncement} 
+        announcements={systemAnnouncements} 
       />
 
       <Sidebar 

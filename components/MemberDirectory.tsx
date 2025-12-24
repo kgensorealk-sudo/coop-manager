@@ -109,32 +109,36 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({ members, onRef
             )}
 
             <div className="relative mb-4">
-              <img 
-                src={member.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.full_name)}&background=random`} 
-                alt={member.full_name}
-                className="w-20 h-20 rounded-full object-cover border-4 border-slate-50 bg-slate-200"
-              />
-              <div className={`absolute bottom-0 right-0 p-1.5 rounded-full border-2 border-white ${member.role === 'admin' ? 'bg-purple-500' : 'bg-blue-500'}`}>
-                {member.role === 'admin' ? <Shield size={12} className="text-white" /> : <UserIcon size={12} className="text-white" />}
+              {/* Photo Frame Style */}
+              <div className="w-20 h-20 rounded-sm bg-slate-100 p-1 border border-slate-200 shadow-sm rotate-1 hover:rotate-0 transition-transform duration-300">
+                <img 
+                  src={member.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.full_name)}&background=random`} 
+                  alt={member.full_name}
+                  className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-300"
+                />
+              </div>
+              
+              <div className={`absolute -bottom-1 -right-1 p-1.5 rounded-full border-2 border-white shadow-sm ${member.role === 'admin' ? 'bg-purple-500' : 'bg-blue-500'}`}>
+                {member.role === 'admin' ? <Shield size={10} className="text-white" /> : <UserIcon size={10} className="text-white" />}
               </div>
             </div>
             
-            <h3 className="text-lg font-bold text-slate-900">{member.full_name}</h3>
-            <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-4">
-               <Mail size={14} />
+            <h3 className="text-lg font-bold text-slate-900 font-serif">{member.full_name}</h3>
+            <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-4 font-mono">
+               <Mail size={12} />
                {member.email}
             </div>
             
             <div className="w-full space-y-3 pt-4 border-t border-slate-100">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-500">Status</span>
-                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${member.is_coop_member ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {member.is_coop_member ? 'Active Member' : 'Non-Member'}
+                <span className="text-slate-500 font-serif italic">Status</span>
+                <span className={`px-2 py-0.5 rounded-sm text-xs font-bold uppercase tracking-wide ${member.is_coop_member ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {member.is_coop_member ? 'Member' : 'Non-Member'}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-500 flex items-center gap-1"><Wallet size={14} /> Equity</span>
-                <span className="font-bold text-slate-900">₱{member.equity.toLocaleString()}</span>
+                <span className="text-slate-500 flex items-center gap-1 font-serif italic"><Wallet size={14} /> Equity</span>
+                <span className="font-bold text-slate-900 font-mono">₱{member.equity.toLocaleString()}</span>
               </div>
             </div>
           </div>
