@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { User } from '../types';
 import { dataService } from '../services/dataService';
-import { Search, Shield, User as UserIcon, Wallet, Mail, Edit2, Trash2, Plus, AlertTriangle } from 'lucide-react';
+import { Search, Shield, User as UserIcon, Wallet, Mail, Edit2, Trash2, Plus } from 'lucide-react';
 import MemberModal from './MemberModal';
 
 interface MemberDirectoryProps {

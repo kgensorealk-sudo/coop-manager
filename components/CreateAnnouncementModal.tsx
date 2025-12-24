@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, Loader2, Megaphone, Type, AlignLeft, AlertTriangle, Calendar, Clock } from 'lucide-react';
+import { X, CheckCircle, Loader2, Megaphone, Type, AlignLeft, AlertTriangle, Clock } from 'lucide-react';
 import { AnnouncementPriority, Announcement } from '../types';
 
 interface CreateAnnouncementModalProps {

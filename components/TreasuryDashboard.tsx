@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { ContributionWithMember, LoanWithBorrower } from '../types';
 import { dataService } from '../services/dataService';
 import { StatCard } from './StatCard';
-import { Wallet, PiggyBank, Search, Filter, ArrowUpRight, Plus, Check, X, Clock, TrendingUp, Info, ArrowDownRight, Calculator, Coins, Scale, Activity, ChevronDown, ChevronUp, Calendar, Target, Edit2 } from 'lucide-react';
+import { Wallet, PiggyBank, ArrowUpRight, Plus, Check, X, Clock, TrendingUp, ArrowDownRight, Coins, Scale, Activity, ChevronDown, ChevronUp, Calendar, Target } from 'lucide-react';
 
 interface TreasuryDashboardProps {
   treasuryStats: {

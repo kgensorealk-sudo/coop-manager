@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { dataService } from '../services/dataService';
-import { Calendar, CheckCircle, Clock, User as UserIcon, DollarSign } from 'lucide-react';
+import { Calendar, Clock, User as UserIcon } from 'lucide-react';
 
 export const ScheduleView: React.FC = () => {
   const [schedules, setSchedules] = useState<any[]>([]);

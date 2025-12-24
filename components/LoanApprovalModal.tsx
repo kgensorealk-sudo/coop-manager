@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { LoanWithBorrower } from '../types';
-import { X, AlertCircle, Calculator, CheckCircle, Percent, AlertTriangle } from 'lucide-react';
+import { X, AlertCircle, CheckCircle, Percent, AlertTriangle } from 'lucide-react';
 
 interface LoanApprovalModalProps {
   isOpen: boolean;
@@ -21,7 +21,6 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
   treasuryBalance
 }) => {
   const [interestRate, setInterestRate] = useState<number>(10);
-  const [note, setNote] = useState('');
 
   useEffect(() => {
     if (loan) {

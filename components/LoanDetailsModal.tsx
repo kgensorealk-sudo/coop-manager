@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { LoanWithBorrower, Payment } from '../types';
 import { dataService } from '../services/dataService';
-import { X, Calendar, DollarSign, TrendingDown, History, CreditCard, Loader2, Calculator, Info } from 'lucide-react';
+import { X, DollarSign, TrendingDown, History, CreditCard, Loader2, Calculator, Info } from 'lucide-react';
 
 interface LoanDetailsModalProps {
   isOpen: boolean;

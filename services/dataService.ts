@@ -1,5 +1,5 @@
 
-import { Loan, User, Contribution, LoanWithBorrower, Payment, ContributionWithMember, ContributionStatus, Announcement, AnnouncementPriority } from '../types';
+import { Loan, User, LoanWithBorrower, Payment, ContributionWithMember, ContributionStatus, Announcement, AnnouncementPriority } from '../types';
 import { DEFAULT_INTEREST_RATE } from '../constants';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 

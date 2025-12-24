@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, Users, PiggyBank, FileText, LogOut, Briefcase, Code2, Calendar, Megaphone, PenTool } from 'lucide-react';
+import { LayoutDashboard, Users, PiggyBank, FileText, LogOut, Code2, Calendar, Megaphone, PenTool } from 'lucide-react';
 import { User } from '../types';
 
 interface SidebarProps {
