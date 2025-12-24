@@ -1,0 +1,118 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The 13th Page - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Inter"', 'sans-serif'],
+              serif: ['"Playfair Display"', 'serif'],
+              mono: ['"JetBrains Mono"', 'monospace'],
+            },
+            colors: {
+              // Override Slate for Warm Paper Tones
+              slate: {
+                50: '#F9F7F1',  // Cream Paper
+                100: '#F2EDE4', // Thick Paper
+                200: '#E6E0D4', // Cardstock
+                300: '#D6CDBF',
+                400: '#A8A29E', // Pencil
+                500: '#78716C',
+                600: '#57534E',
+                700: '#44403C', // Charcoal
+                800: '#292524', // Deep Ink
+                900: '#1C1917', // Black Ink
+                950: '#0C0A09',
+              },
+              // Override Blue for Classic Navy Ink
+              blue: {
+                50: '#F0F5F9',
+                100: '#DDE6ED',
+                500: '#3A5A78', // Faded Denim
+                600: '#2C4F64', // Navy Ink
+                700: '#1E3A4C', // Deep Navy
+                800: '#152A38',
+                900: '#0E1D27',
+              },
+              // Override Emerald for Stamp Ink Green
+              emerald: {
+                 50: '#F1F7F3',
+                 100: '#E1EFE6',
+                 500: '#437A55',
+                 600: '#2F5938', // Bank Green
+                 700: '#224229',
+              }
+            },
+            boxShadow: {
+              'paper': '2px 4px 12px rgba(44, 36, 32, 0.08)',
+              'paper-hover': '4px 8px 20px rgba(44, 36, 32, 0.12)',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #F9F7F1;
+        color: #292524;
+        /* Subtle paper grain texture */
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+      }
+      h1, h2, h3, h4, h5, h6 {
+        font-family: 'Playfair Display', serif;
+      }
+      /* Custom scrollbar for cleaner look */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #F2EDE4; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #D6CDBF; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #A8A29E; 
+      }
+      .font-serif {
+        font-family: 'Playfair Display', serif;
+      }
+      .font-mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
+      input, select, textarea {
+        background-color: #FFFFFF !important;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "vite": "https://esm.sh/vite@^7.3.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
