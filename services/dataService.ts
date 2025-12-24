@@ -153,14 +153,22 @@ class DataService {
 
      if (error) {
        console.error("Edge function error:", error);
-       // Fallback message if function is missing
+       
+       // Handle standard missing function error
        if (error.message && (error.message.includes('Function not found') || error.message.includes('404'))) {
          throw new Error("Backend function 'invite-user' is not deployed. Please check Developer Guide.");
        }
+       
+       // Handle the specific 'non-2xx' error which means the backend logic failed but didn't send a custom error body
+       // This happens if the user hasn't deployed the latest 'index.ts' that returns 200 OK on errors.
+       if (error.message && error.message.includes('non-2xx')) {
+          throw new Error("Server Error: The Invite Function needs to be updated. Run 'npx supabase functions deploy invite-user' in your terminal.");
+       }
+
        throw new Error(error.message || "Failed to invoke invite function");
      }
 
-     // Handle application-level errors returned with 200 status
+     // Handle application-level errors returned with 200 status (Our new robust way)
      if (data && data.error) {
        throw new Error(data.error);
      }
@@ -658,3 +666,4 @@ class DataService {
 }
 
 export const dataService = new DataService();
+    
