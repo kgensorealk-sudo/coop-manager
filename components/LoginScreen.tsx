@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { PenTool, Lock, Mail, Loader2, AlertCircle, User, ArrowRight, CheckCircle, Settings, Feather } from 'lucide-react';
+import { Lock, Mail, Loader2, AlertCircle, User, ArrowRight, CheckCircle, Settings, Feather } from 'lucide-react';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import ConnectionModal from './ConnectionModal';
 
