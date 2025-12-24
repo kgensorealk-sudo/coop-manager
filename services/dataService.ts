@@ -130,50 +130,6 @@ class DataService {
     return profile as User;
   }
 
-  async inviteMember(email: string, fullName: string, role: string): Promise<void> {
-     // If we are in mock mode (no supabase), simulate it
-     if (!isSupabaseConfigured() || !supabase) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        // Mock creating the member
-        await this.createMember({
-          full_name: fullName,
-          email: email,
-          role: role as any,
-          is_coop_member: true
-        });
-        return;
-     }
-
-     const db = this.checkConnection();
-
-     // Call Edge Function 'invite-user'
-     const { data, error } = await db.functions.invoke('invite-user', {
-       body: { email, full_name: fullName, role }
-     });
-
-     if (error) {
-       console.error("Edge function error:", error);
-       
-       // Handle standard missing function error
-       if (error.message && (error.message.includes('Function not found') || error.message.includes('404'))) {
-         throw new Error("Backend function 'invite-user' is not deployed. Please check Developer Guide.");
-       }
-       
-       // Handle the specific 'non-2xx' error which means the backend logic failed but didn't send a custom error body
-       // This happens if the user hasn't deployed the latest 'index.ts' that returns 200 OK on errors.
-       if (error.message && error.message.includes('non-2xx')) {
-          throw new Error("Server Error: The Invite Function needs to be updated. Run 'npx supabase functions deploy invite-user' in your terminal.");
-       }
-
-       throw new Error(error.message || "Failed to invoke invite function");
-     }
-
-     // Handle application-level errors returned with 200 status (Our new robust way)
-     if (data && data.error) {
-       throw new Error(data.error);
-     }
-  }
-
   async logout(): Promise<void> {
     const db = this.checkConnection();
     await db.auth.signOut();
@@ -188,6 +144,16 @@ class DataService {
     const { data, error } = await db.from('profiles').select('*');
     if (error) throw error;
     return data as User[];
+  }
+
+  async inviteMember(email: string, fullName: string, role: string): Promise<void> {
+    const db = this.checkConnection();
+    const { data, error } = await db.functions.invoke('invite-user', {
+      body: { email, full_name: fullName, role }
+    });
+
+    if (error) throw error;
+    if (data && data.error) throw new Error(data.error);
   }
 
   async createMember(userData: Omit<User, 'id' | 'equity' | 'avatar_url'>): Promise<void> {
@@ -666,4 +632,3 @@ class DataService {
 }
 
 export const dataService = new DataService();
-    

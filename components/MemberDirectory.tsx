@@ -2,9 +2,8 @@
 import React, { useState } from 'react';
 import { User } from '../types';
 import { dataService } from '../services/dataService';
-import { Search, Shield, User as UserIcon, Wallet, Mail, Edit2, Trash2, Plus, Send } from 'lucide-react';
+import { Search, Shield, User as UserIcon, Wallet, Mail, Edit2, Trash2, Plus } from 'lucide-react';
 import MemberModal from './MemberModal';
-import InviteMemberModal from './InviteMemberModal';
 
 interface MemberDirectoryProps {
   members: User[];
@@ -15,7 +14,6 @@ interface MemberDirectoryProps {
 export const MemberDirectory: React.FC<MemberDirectoryProps> = ({ members, onRefresh, currentUserRole = 'admin' }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<User | null>(null);
 
   const filteredMembers = members.filter(member => 
@@ -78,15 +76,8 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({ members, onRef
           {isAdmin && (
             <div className="flex gap-2 w-full md:w-auto">
               <button 
-                onClick={() => setIsInviteModalOpen(true)}
-                className="flex flex-1 md:flex-auto items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-medium shadow-md shadow-indigo-200 transition-transform active:scale-95 whitespace-nowrap"
-              >
-                <Send size={18} />
-                <span>Invite</span>
-              </button>
-              <button 
                 onClick={openAddModal}
-                className="flex flex-1 md:flex-auto items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl font-medium transition-colors whitespace-nowrap"
+                className="flex flex-1 md:flex-auto items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-medium shadow-md shadow-indigo-200 transition-transform active:scale-95 whitespace-nowrap"
               >
                 <Plus size={18} />
                 <span>Add Manually</span>
@@ -169,13 +160,6 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({ members, onRef
         onSubmit={editingMember ? handleUpdateMember : handleAddMember}
         editingMember={editingMember}
       />
-      
-      <InviteMemberModal 
-        isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
-        onSuccess={onRefresh}
-      />
     </div>
   );
 };
-    
