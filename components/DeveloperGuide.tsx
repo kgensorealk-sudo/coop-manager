@@ -193,8 +193,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
 // Use supabase-js for this project structure
 import { createClient } from '@supabase/supabase-js'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const getEnvVar = (key: string) => {
+  // ... (See lib/supabaseClient.ts for implementation)
+  return import.meta.env[key] || '';
+};
+
+const SUPABASE_URL = getEnvVar('NEXT_PUBLIC_SUPABASE_URL');
+const SUPABASE_ANON_KEY = getEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY');
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
@@ -304,7 +309,7 @@ serve(async (req) => {
 `;
 
 export const DeveloperGuide: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'schema' | 'structure' | 'backend'>('schema');
+  const [activeTab, setActiveTab] = useState<'schema' | 'structure' | 'backend' | 'integration'>('schema');
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -312,6 +317,7 @@ export const DeveloperGuide: React.FC = () => {
     if (activeTab === 'schema') content = SCHEMA_SQL;
     if (activeTab === 'structure') content = STRUCTURE_MD;
     if (activeTab === 'backend') content = EDGE_FUNCTION_CODE;
+    if (activeTab === 'integration') content = INTEGRATION_CODE;
     
     navigator.clipboard.writeText(content);
     setCopied(true);
@@ -321,6 +327,7 @@ export const DeveloperGuide: React.FC = () => {
   const getCodeContent = () => {
     if (activeTab === 'schema') return SCHEMA_SQL;
     if (activeTab === 'structure') return STRUCTURE_MD;
+    if (activeTab === 'integration') return INTEGRATION_CODE;
     return EDGE_FUNCTION_CODE;
   };
 
@@ -368,6 +375,17 @@ export const DeveloperGuide: React.FC = () => {
             >
               <CloudLightning size={16} />
               <span>Backend Functions</span>
+            </button>
+             <button
+              onClick={() => setActiveTab('integration')}
+              className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'integration' 
+                  ? 'border-blue-600 text-blue-600' 
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Terminal size={16} />
+              <span>Client Integration</span>
             </button>
           </div>
           
