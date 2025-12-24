@@ -34,21 +34,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const menuItems = isAdmin ? adminMenuItems : memberMenuItems;
 
   return (
-    <div className="hidden lg:flex flex-col w-64 bg-[#1C1917] text-[#D6CDBF] h-screen fixed left-0 top-0 border-r border-[#2C2420]">
-      <div className="p-8">
-        <div className="flex items-center space-x-3">
-          <div className="bg-[#D6CDBF] p-2 rounded-md">
-            <PenTool size={24} className="text-[#1C1917]" />
+    <div className="hidden lg:flex flex-col w-72 bg-leather-900 text-paper-200 h-screen fixed left-0 top-0 border-r border-leather-800 shadow-2xl z-20">
+      
+      {/* Brand Header */}
+      <div className="p-10 pb-8 relative">
+        <div className="flex items-center space-x-4">
+          <div className="bg-paper-100 p-2.5 rounded-sm shadow-md rotate-3 border border-paper-300">
+            <PenTool size={22} className="text-ink-900" />
           </div>
           <div>
-            <span className="text-xl font-serif font-bold tracking-wide text-[#F2EDE4] block leading-none">The 13th Page</span>
-            <span className="text-sm font-serif italic text-[#A8A29E]">Our Shared Story</span>
+            <span className="text-2xl font-serif font-bold tracking-wide text-paper-50 block leading-none">The 13th Page</span>
+            <span className="text-xs font-sans tracking-widest text-gold-600 uppercase mt-1 block">Cooperative Ledger</span>
           </div>
         </div>
+        {/* Decorative divider */}
+        <div className="mt-8 border-t border-leather-800 border-dashed w-full opacity-50"></div>
       </div>
 
-      <nav className="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar">
-        <div className="text-xs font-bold text-[#57534E] uppercase tracking-widest px-4 mb-2 font-serif">
+      {/* Navigation */}
+      <nav className="flex-1 px-6 space-y-3 overflow-y-auto custom-scrollbar">
+        <div className="text-[10px] font-bold text-gold-600 uppercase tracking-[0.2em] px-3 mb-2 font-sans opacity-80">
           {isAdmin ? 'Administration' : 'Member Access'}
         </div>
         {menuItems.map((item) => {
@@ -58,59 +63,63 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 group border ${
+              className={`w-full flex items-center space-x-4 px-4 py-3.5 rounded-sm transition-all duration-300 group relative overflow-hidden ${
                 isActive 
-                  ? 'bg-[#292524] text-[#F2EDE4] border-[#44403C] shadow-inner' 
-                  : 'border-transparent text-[#A8A29E] hover:text-[#D6CDBF] hover:bg-[#292524]'
+                  ? 'text-paper-50 bg-white/5' 
+                  : 'text-paper-400 hover:text-paper-100 hover:bg-white/5'
               }`}
             >
-              <Icon size={18} className={isActive ? 'text-[#F2EDE4]' : 'text-[#57534E] group-hover:text-[#D6CDBF]'} />
-              <span className="font-medium tracking-wide">{item.label}</span>
+              {/* Active Indicator Line */}
+              {isActive && (
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold-500 shadow-[0_0_10px_rgba(197,160,40,0.5)]"></div>
+              )}
+              
+              <Icon size={18} strokeWidth={1.5} className={isActive ? 'text-gold-400' : 'text-paper-500 group-hover:text-paper-300 transition-colors'} />
+              <span className={`text-sm tracking-wide ${isActive ? 'font-medium' : 'font-light'}`}>{item.label}</span>
             </button>
           );
         })}
         
         {isAdmin && (
-          <div className="pt-6 mt-6 border-t border-[#2C2420]">
-            <div className="text-xs font-bold text-[#57534E] uppercase tracking-widest px-4 mb-2 font-serif">System</div>
+          <div className="pt-8 mt-4">
+            <div className="text-[10px] font-bold text-gold-600 uppercase tracking-[0.2em] px-3 mb-2 font-sans opacity-80">System</div>
             <button
               onClick={() => onTabChange('dev-guide')}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 group mb-2 border ${
+              className={`w-full flex items-center space-x-4 px-4 py-3.5 rounded-sm transition-all duration-300 group relative ${
                 activeTab === 'dev-guide'
-                  ? 'bg-[#292524] text-[#F2EDE4] border-[#44403C]' 
-                  : 'border-transparent text-[#78716C] hover:text-[#D6CDBF] hover:bg-[#292524]'
+                  ? 'text-paper-50 bg-white/5' 
+                  : 'text-paper-400 hover:text-paper-100 hover:bg-white/5'
               }`}
             >
-              <Code2 size={18} className={activeTab === 'dev-guide' ? 'text-[#F2EDE4]' : 'text-[#57534E] group-hover:text-[#D6CDBF]'} />
-              <span className="font-medium">Guide</span>
+              {activeTab === 'dev-guide' && <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold-500"></div>}
+              <Code2 size={18} strokeWidth={1.5} className={activeTab === 'dev-guide' ? 'text-gold-400' : 'text-paper-500 group-hover:text-paper-300'} />
+              <span className="text-sm font-light tracking-wide">Developer Guide</span>
             </button>
           </div>
         )}
       </nav>
 
-      <div className="p-4 border-t border-[#2C2420] mt-auto">
-        <button 
-          onClick={onLogout}
-          className="flex items-center space-x-3 px-4 py-3 text-[#A8A29E] hover:text-red-300 transition-colors w-full rounded-lg hover:bg-[#292524]"
-        >
-          <LogOut size={18} />
-          <span className="font-medium">Sign Out</span>
-        </button>
-      </div>
-      
-      {/* User Profile Snippet */}
-      <div className="p-6 bg-[#0C0A09]">
-        <div className="flex items-center space-x-3">
+      {/* Footer / User */}
+      <div className="p-6 bg-leather-800 border-t border-white/5">
+        <div className="flex items-center space-x-3 mb-4">
           <img 
             src={currentUser.avatar_url || "https://picsum.photos/200"} 
             alt={currentUser.full_name} 
-            className="w-10 h-10 rounded-full border-2 border-[#44403C] object-cover grayscale opacity-80"
+            className="w-10 h-10 rounded-full border border-gold-600/30 object-cover grayscale opacity-80"
           />
           <div className="overflow-hidden">
-            <div className="text-sm font-serif font-bold text-[#D6CDBF] truncate">{currentUser.full_name}</div>
-            <div className="text-xs text-[#78716C] uppercase tracking-wider">{currentUser.role}</div>
+            <div className="text-sm font-serif font-medium text-paper-100 truncate">{currentUser.full_name}</div>
+            <div className="text-[10px] text-gold-600/80 uppercase tracking-wider">{currentUser.role}</div>
           </div>
         </div>
+        
+        <button 
+          onClick={onLogout}
+          className="flex items-center space-x-2 w-full px-3 py-2 text-xs text-paper-400 hover:text-wax-500 transition-colors uppercase tracking-widest font-bold"
+        >
+          <LogOut size={14} />
+          <span>Sign Out</span>
+        </button>
       </div>
     </div>
   );

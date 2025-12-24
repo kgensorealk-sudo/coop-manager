@@ -8,53 +8,52 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
               sans: ['"Inter"', 'sans-serif'],
-              serif: ['"Playfair Display"', 'serif'],
+              serif: ['"Cormorant Garamond"', 'serif'], // Switched to Cormorant for a more elegant "Easthetic" feel
               mono: ['"JetBrains Mono"', 'monospace'],
             },
             colors: {
-              // Override Slate for Warm Paper Tones
-              slate: {
-                50: '#F9F7F1',  // Cream Paper
-                100: '#F2EDE4', // Thick Paper
-                200: '#E6E0D4', // Cardstock
-                300: '#D6CDBF',
-                400: '#A8A29E', // Pencil
+              paper: {
+                50: '#FCFBF9',  // Purest Cream
+                100: '#F5F2EB', // Standard Page
+                200: '#EBE6DB', // Thick Card
+                300: '#DCD4C6', // Aged Edge
+                400: '#A8A29E',
                 500: '#78716C',
-                600: '#57534E',
-                700: '#44403C', // Charcoal
-                800: '#292524', // Deep Ink
-                900: '#1C1917', // Black Ink
-                950: '#0C0A09',
               },
-              // Override Blue for Classic Navy Ink
-              blue: {
-                50: '#F0F5F9',
-                100: '#DDE6ED',
-                500: '#3A5A78', // Faded Denim
-                600: '#2C4F64', // Navy Ink
-                700: '#1E3A4C', // Deep Navy
-                800: '#152A38',
-                900: '#0E1D27',
+              ink: {
+                400: '#94A3B8', // Faded Ink
+                500: '#64748B',
+                600: '#475569',
+                700: '#334155',
+                800: '#1E293B', // Navy Ink
+                900: '#0F172A', // Deepest Navy
+                950: '#020617',
               },
-              // Override Emerald for Stamp Ink Green
-              emerald: {
-                 50: '#F1F7F3',
-                 100: '#E1EFE6',
-                 500: '#437A55',
-                 600: '#2F5938', // Bank Green
-                 700: '#224229',
+              leather: {
+                800: '#2C2420', // Binding
+                900: '#1C1917', // Spine
+              },
+              gold: {
+                400: '#D4AF37',
+                500: '#C5A028',
+                600: '#B08D55',
+              },
+              wax: {
+                500: '#D32F2F', // Sealing Wax Red
+                600: '#B71C1C',
               }
             },
             boxShadow: {
-              'paper': '2px 4px 12px rgba(44, 36, 32, 0.08)',
-              'paper-hover': '4px 8px 20px rgba(44, 36, 32, 0.12)',
+              'paper': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)',
+              'card': '0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -2px rgba(0, 0, 0, 0.02)',
+              'float': '0 10px 15px -3px rgba(28, 25, 23, 0.05), 0 4px 6px -4px rgba(28, 25, 23, 0.025)',
             }
           }
         }
@@ -63,38 +62,67 @@
     <style>
       body {
         font-family: 'Inter', sans-serif;
-        background-color: #F9F7F1;
-        color: #292524;
-        /* Subtle paper grain texture */
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+        background-color: #F5F2EB;
+        color: #1E293B;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
       }
       h1, h2, h3, h4, h5, h6 {
-        font-family: 'Playfair Display', serif;
+        font-family: 'Cormorant Garamond', serif;
       }
-      /* Custom scrollbar for cleaner look */
+      
+      /* Smooth Transitions */
+      .animate-fade-in {
+        animation: fadeIn 0.4s ease-out forwards;
+      }
+      .animate-slide-up {
+        animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Scrollbar */
       ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: #F2EDE4; 
+        background: transparent; 
       }
       ::-webkit-scrollbar-thumb {
-        background: #D6CDBF; 
-        border-radius: 4px;
+        background: #DCD4C6; 
+        border-radius: 3px;
       }
       ::-webkit-scrollbar-thumb:hover {
         background: #A8A29E; 
       }
-      .font-serif {
-        font-family: 'Playfair Display', serif;
-      }
-      .font-mono {
-        font-family: 'JetBrains Mono', monospace;
-      }
+      
+      /* Form Element Overrides for Paper Feel */
       input, select, textarea {
-        background-color: #FFFFFF !important;
+        background-color: transparent !important;
+        border-width: 0 0 1px 0 !important;
+        border-radius: 0 !important;
+        /* Removed global padding reset that was causing icon overlap issues */
       }
+      input:focus, select:focus, textarea:focus {
+        border-color: #1E293B !important;
+        ring: 0 !important;
+        box-shadow: none !important;
+      }
+      /* Exception for specific framed inputs */
+      .framed-input {
+        background-color: #FCFBF9 !important;
+        border-width: 1px !important;
+        border-radius: 0.375rem !important;
+        padding-left: 1rem !important;
+      }
+
     </style>
   <script type="importmap">
 {

@@ -17,25 +17,35 @@ export const StatCard: React.FC<StatCardProps> = ({
   icon: Icon, 
   trend, 
   trendUp,
-  colorClass = "bg-blue-50 text-blue-600"
+  colorClass = "text-ink-800"
 }) => {
   return (
-    <div className="bg-white rounded-sm border border-slate-200 p-6 shadow-paper hover:shadow-paper-hover transition-all duration-300 relative overflow-hidden group">
-      {/* Decorative corner mark */}
-      <div className="absolute top-0 right-0 w-8 h-8 bg-slate-50 rotate-45 transform translate-x-4 -translate-y-4 border border-slate-100"></div>
+    <div className="bg-paper-50 border-2 border-paper-200 p-6 relative overflow-hidden group hover:border-paper-300 transition-all duration-300">
       
-      <div className="flex items-center justify-between mb-4 relative z-10">
-        <div className={`p-3 rounded-lg border border-slate-100 ${colorClass}`}>
-          <Icon size={24} strokeWidth={1.5} />
+      {/* Aesthetic: Corner decorative lines */}
+      <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-paper-300"></div>
+      <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-paper-300"></div>
+      <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-paper-300"></div>
+      <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-paper-300"></div>
+
+      <div className="flex items-start justify-between mb-4 relative z-10">
+        <div>
+          <h3 className="text-ink-500 text-[10px] font-bold uppercase tracking-[0.2em] font-sans mb-1">{title}</h3>
+          <p className="text-3xl font-serif font-medium text-ink-900 tracking-tight">{value}</p>
         </div>
-        {trend && (
-          <div className={`text-xs font-serif font-bold italic px-2 py-1 border rounded-sm ${trendUp ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
-            {trend}
-          </div>
-        )}
+        
+        <div className={`p-2.5 rounded-full border border-dashed border-paper-300 ${colorClass} bg-paper-100`}>
+          <Icon size={20} strokeWidth={1.5} />
+        </div>
       </div>
-      <h3 className="text-slate-500 text-xs font-bold uppercase tracking-widest font-sans">{title}</h3>
-      <p className="text-3xl font-serif font-bold text-slate-800 mt-2 tracking-tight">{value}</p>
+      
+      {trend && (
+        <div className="flex items-center pt-3 border-t border-paper-200 border-dashed">
+           <span className={`text-xs font-serif italic ${trendUp ? 'text-emerald-700' : 'text-wax-600'}`}>
+             {trend}
+           </span>
+        </div>
+      )}
     </div>
   );
 };
