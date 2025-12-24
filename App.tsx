@@ -657,9 +657,14 @@ const App: React.FC = () => {
              <AnnouncementHistory 
                 onOpenCreate={handleOpenAnnouncementCreate} 
                 onEdit={handleOpenAnnouncementEdit}
+                readOnly={currentUser.role === 'member'} // Enable read-only for members
              />
           )}
-          {activeTab === 'schedules' && <ScheduleView />}
+          {activeTab === 'schedules' && (
+             <ScheduleView 
+                filterByUserId={currentUser.role === 'member' ? currentUser.id : undefined} // Filter for members
+             />
+          )}
           {activeTab === 'dev-guide' && <DeveloperGuide />}
         </div>
       </main>

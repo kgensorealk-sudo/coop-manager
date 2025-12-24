@@ -2,7 +2,7 @@
 import React from 'react';
 import { User, LoanWithBorrower, ContributionWithMember } from '../types';
 import { StatCard } from './StatCard';
-import { Wallet, CreditCard, Calendar, Clock, AlertCircle, Plus, PiggyBank, Lock } from 'lucide-react';
+import { Wallet, CreditCard, Calendar, Clock, AlertCircle, Plus, PiggyBank, Lock, TrendingDown, CheckCircle2, XCircle } from 'lucide-react';
 
 interface MemberDashboardProps {
   user: User;
@@ -20,13 +20,41 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   onAddContribution 
 }) => {
   
-  const activeLoan = memberLoans.find(l => l.status === 'active');
+  // Calculate total active balance (sum of all active loans)
+  const activeLoans = memberLoans.filter(l => l.status === 'active');
+  const totalLoanBalance = activeLoans.reduce((sum, l) => sum + l.remaining_principal, 0);
+  
   const pendingLoans = memberLoans.filter(l => l.status === 'pending');
   const hasPendingLoan = pendingLoans.length > 0;
+  
+  // History includes everything not pending
   const historyLoans = memberLoans.filter(l => l.status !== 'pending');
+  
   const pendingContributions = memberContributions.filter(c => c.status === 'pending');
   
-  const nextPaymentDate = activeLoan ? new Date(new Date().setMonth(new Date().getMonth() + 1)).toLocaleDateString() : 'N/A';
+  // Get next payment date from the most recent active loan
+  const latestActiveLoan = activeLoans[0];
+  const nextPaymentDate = latestActiveLoan 
+    ? new Date(new Date().setMonth(new Date().getMonth() + 1)).toLocaleDateString() 
+    : 'N/A';
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'paid': return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'rejected': return 'bg-red-50 text-red-700 border-red-200';
+      default: return 'bg-slate-50 text-slate-600 border-slate-200';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'active': return <TrendingDown size={14} className="mr-1" />;
+      case 'paid': return <CheckCircle2 size={14} className="mr-1" />;
+      case 'rejected': return <XCircle size={14} className="mr-1" />;
+      default: return null;
+    }
+  };
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -70,8 +98,8 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
           colorClass="bg-emerald-50 text-emerald-700 border-emerald-200"
         />
         <StatCard 
-          title="Loan Balance" 
-          value={`₱${(activeLoan?.remaining_principal || 0).toLocaleString()}`} 
+          title="Total Loan Balance" 
+          value={`₱${totalLoanBalance.toLocaleString()}`} 
           icon={CreditCard} 
           colorClass="bg-blue-50 text-blue-700 border-blue-200"
         />
@@ -130,68 +158,80 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
         </div>
       )}
 
-      {/* Loan History Table (Non-Pending) */}
-      <div className="bg-white rounded-sm border border-slate-200 shadow-paper overflow-hidden">
-        <div className="p-6 border-b border-slate-200 bg-slate-50/50">
-          <h2 className="text-lg font-serif font-bold text-slate-900">Loan History</h2>
-        </div>
+      {/* Loan Applications Summary (Non-Pending) - Replaces previous Table */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-serif font-bold text-slate-900 border-b border-slate-200 pb-2">Loan Applications Summary</h2>
         
         {historyLoans.length === 0 ? (
-           <div className="p-12 text-center flex flex-col items-center text-slate-400">
+           <div className="bg-white p-12 text-center flex flex-col items-center justify-center rounded-sm border border-slate-200 border-dashed text-slate-400">
               <AlertCircle size={48} className="mb-3 opacity-20" strokeWidth={1} />
-              <p className="font-serif italic">No loan records found.</p>
+              <p className="font-serif italic text-lg">No active or past loan records found.</p>
            </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-slate-100 border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Start Date</th>
-                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Purpose</th>
-                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Principal</th>
-                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Balance</th>
-                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {historyLoans.map((loan) => (
-                  <tr key={loan.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 text-slate-600 text-sm font-mono">
-                      {loan.start_date ? new Date(loan.start_date).toLocaleDateString() : '-'}
-                    </td>
-                    <td className="px-6 py-4 font-bold text-slate-900 font-serif">
-                      {loan.purpose}
-                    </td>
-                    <td className="px-6 py-4 text-slate-900 font-mono">
-                      ₱{loan.principal.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 text-slate-600 font-bold font-mono">
-                       {loan.status === 'rejected' ? (
-                          <span className="text-slate-300">-</span>
-                       ) : (
-                          `₱${loan.remaining_principal.toLocaleString()}`
-                       )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-sm text-xs font-bold uppercase tracking-wider border ${
-                        loan.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' :
-                        loan.status === 'paid' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                        loan.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
-                        'bg-slate-50 text-slate-600 border-slate-200'
-                      }`}>
-                        {loan.status}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {historyLoans.map((loan) => (
+              <div 
+                key={loan.id} 
+                className={`bg-white rounded-sm border shadow-sm p-6 relative overflow-hidden group transition-all duration-300 hover:shadow-md ${loan.status === 'active' ? 'border-emerald-200 ring-1 ring-emerald-50' : 'border-slate-200'}`}
+              >
+                {/* Decorative Side Bar */}
+                <div className={`absolute top-0 left-0 w-1 h-full ${loan.status === 'active' ? 'bg-emerald-500' : loan.status === 'paid' ? 'bg-blue-500' : 'bg-red-500'}`}></div>
+
+                <div className="flex justify-between items-start mb-6 pl-3">
+                  <div>
+                    <h3 className="font-serif font-bold text-xl text-slate-900">{loan.purpose}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs font-mono text-slate-500">
+                        {loan.start_date ? new Date(loan.start_date).toLocaleDateString() : 'N/A'}
                       </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      {loan.status === 'active' && (
+                        <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold uppercase">
+                           Due: {new Date(new Date().setMonth(new Date().getMonth() + 1)).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border ${getStatusColor(loan.status)}`}>
+                    {getStatusIcon(loan.status)}
+                    {loan.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-x-8 gap-y-4 pl-3 border-l border-dashed border-slate-200 ml-0.5">
+                  <div>
+                    <span className="text-xs text-slate-400 uppercase tracking-wider font-bold block mb-1">Principal</span>
+                    <span className="text-lg font-mono text-slate-700 font-bold">₱{loan.principal.toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-slate-400 uppercase tracking-wider font-bold block mb-1">Remaining Balance</span>
+                    <span className={`text-lg font-mono font-bold ${loan.remaining_principal > 0 ? 'text-blue-600' : 'text-slate-400'}`}>
+                      ₱{loan.remaining_principal.toLocaleString()}
+                    </span>
+                  </div>
+                   <div>
+                    <span className="text-xs text-slate-400 uppercase tracking-wider font-bold block mb-1">Interest Rate</span>
+                    <span className="text-sm font-mono text-slate-600 font-medium">{loan.interest_rate}% / mo</span>
+                  </div>
+                   <div>
+                    <span className="text-xs text-slate-400 uppercase tracking-wider font-bold block mb-1">Duration</span>
+                    <span className="text-sm font-mono text-slate-600 font-medium">{loan.duration_months} Months</span>
+                  </div>
+                </div>
+
+                {loan.status === 'rejected' && (
+                  <div className="mt-4 pl-3 text-xs text-red-500 italic">
+                    This application was not approved. Please contact admin for details.
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>
 
       {/* Contribution History Table */}
-      <div className="bg-white rounded-sm border border-slate-200 shadow-paper overflow-hidden">
+      <div className="bg-white rounded-sm border border-slate-200 shadow-paper overflow-hidden mt-8">
         <div className="p-6 border-b border-slate-200 bg-slate-50/50">
           <h2 className="text-lg font-serif font-bold text-slate-900">Contribution Log</h2>
         </div>

@@ -130,6 +130,42 @@ class DataService {
     return profile as User;
   }
 
+  async inviteMember(email: string, fullName: string, role: string): Promise<void> {
+     // If we are in mock mode (no supabase), simulate it
+     if (!isSupabaseConfigured() || !supabase) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Mock creating the member
+        await this.createMember({
+          full_name: fullName,
+          email: email,
+          role: role as any,
+          is_coop_member: true
+        });
+        return;
+     }
+
+     const db = this.checkConnection();
+
+     // Call Edge Function 'invite-user'
+     const { data, error } = await db.functions.invoke('invite-user', {
+       body: { email, full_name: fullName, role }
+     });
+
+     if (error) {
+       console.error("Edge function error:", error);
+       // Fallback message if function is missing
+       if (error.message && (error.message.includes('Function not found') || error.message.includes('404'))) {
+         throw new Error("Backend function 'invite-user' is not deployed. Please check Developer Guide.");
+       }
+       throw new Error(error.message || "Failed to invoke invite function");
+     }
+
+     // Handle application-level errors returned with 200 status
+     if (data && data.error) {
+       throw new Error(data.error);
+     }
+  }
+
   async logout(): Promise<void> {
     const db = this.checkConnection();
     await db.auth.signOut();
@@ -563,6 +599,7 @@ class DataService {
     date: string;
     title: string;
     borrower_name: string;
+    borrower_id: string; // Added ID for filtering
     amount: number;
     loan_id: string;
   }[]> {
@@ -584,6 +621,7 @@ class DataService {
              date: dueDate.toISOString(),
              title: `Loan Repayment (${i}/${loan.duration_months})`,
              borrower_name: loan.borrower.full_name,
+             borrower_id: loan.borrower_id, // Added ID
              amount: monthlyPayment,
              loan_id: loan.id
            });

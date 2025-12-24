@@ -78,17 +78,31 @@
       .animate-fade-in {
         animation: fadeIn 0.4s ease-out forwards;
       }
+      .animate-fade-out {
+        animation: fadeOut 0.3s ease-in forwards;
+      }
       .animate-slide-up {
         animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      .animate-scale-out {
+        animation: scaleOut 0.3s ease-in forwards;
       }
       
       @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
       }
+      @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
       @keyframes slideUp {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes scaleOut {
+        from { opacity: 1; transform: translateY(0) scale(1); }
+        to { opacity: 0; transform: translateY(10px) scale(0.95); }
       }
 
       /* Scrollbar */
@@ -148,4 +162,3 @@
   <script type="module" src="/index.tsx"></script>
 </body>
 </html>
-    

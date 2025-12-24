@@ -7,25 +7,39 @@ interface AnnouncementModalProps {
   isOpen: boolean;
   onClose: () => void;
   announcements: Announcement[];
+  startIndex?: number; // New prop to start at specific index
 }
 
-const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, announcements }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
+const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, announcements, startIndex = 0 }) => {
+  const [currentIndex, setCurrentIndex] = useState(startIndex);
+  const [isClosing, setIsClosing] = useState(false);
   const touchStartRef = useRef<number | null>(null);
   const touchEndRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      setCurrentIndex(0);
+      setCurrentIndex(startIndex);
+      setIsClosing(false);
     }
-  }, [isOpen]);
+  }, [isOpen, startIndex]);
 
   if (!isOpen || !announcements || announcements.length === 0) return null;
 
-  const announcement = announcements[currentIndex];
-  const hasNext = currentIndex < announcements.length - 1;
-  const hasPrev = currentIndex > 0;
-  const isLast = currentIndex === announcements.length - 1;
+  // Safety check to ensure index is valid
+  const validIndex = Math.min(Math.max(0, currentIndex), announcements.length - 1);
+  const announcement = announcements[validIndex];
+  
+  const hasNext = validIndex < announcements.length - 1;
+  const hasPrev = validIndex > 0;
+  const isLast = validIndex === announcements.length - 1;
+
+  const handleCloseAnimation = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+      setIsClosing(false);
+    }, 300); // 300ms matches the CSS animation duration
+  };
 
   const handleNext = () => {
     if (hasNext) setCurrentIndex(prev => prev + 1);
@@ -39,7 +53,7 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
     if (hasNext) {
       handleNext();
     } else {
-      onClose();
+      handleCloseAnimation();
     }
   };
 
@@ -114,9 +128,9 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
   const theme = getTheme(announcement.priority || 'normal');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-leather-900/80 backdrop-blur-sm p-4 animate-fade-in">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-leather-900/80 backdrop-blur-sm p-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
       <div 
-        className="bg-paper-50 w-full max-w-md overflow-hidden flex flex-col relative animate-slide-up shadow-2xl rounded-3xl border-2 border-paper-300"
+        className={`bg-paper-50 w-full max-w-md overflow-hidden flex flex-col relative shadow-2xl rounded-3xl border-2 border-paper-300 max-h-[90vh] ${isClosing ? 'animate-scale-out' : 'animate-slide-up'}`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -144,7 +158,7 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
         )}
 
         {/* Header Block */}
-        <div className={`${theme.headerBg} p-8 relative overflow-hidden transition-colors duration-500`}>
+        <div className={`${theme.headerBg} p-8 relative overflow-hidden transition-colors duration-500 shrink-0`}>
            <div className={`transition-colors duration-500 ${theme.iconColor}`}>
              {theme.icon}
            </div>
@@ -156,7 +170,7 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
                     <span>{announcement.priority || 'NOTICE'}</span>
                     {announcements.length > 1 && (
                       <span className="opacity-70 ml-2 border-l pl-2 border-current">
-                        {currentIndex + 1} / {announcements.length}
+                        {validIndex + 1} / {announcements.length}
                       </span>
                     )}
                  </div>
@@ -165,7 +179,7 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
                  </h2>
               </div>
               <button 
-                onClick={onClose}
+                onClick={handleCloseAnimation}
                 className={`bg-black/10 hover:bg-black/20 p-2 rounded-full transition-colors ${theme.headerText}`}
               >
                 <X size={20} />
@@ -174,37 +188,37 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
         </div>
 
         {/* Body */}
-        <div className="p-8 relative bg-paper-50 flex-1 flex flex-col">
+        <div className="p-8 relative bg-paper-50 flex-1 flex flex-col overflow-hidden">
            {/* Date Badge */}
-           <div className="flex items-center gap-2 mb-6 text-ink-400 text-sm font-mono border-b border-paper-200 pb-3 border-dashed">
+           <div className="flex items-center gap-2 mb-6 text-ink-400 text-sm font-mono border-b border-paper-200 pb-3 border-dashed shrink-0">
                <Calendar size={14} />
                <span className="uppercase tracking-widest">
                  {new Date(announcement.created_at).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                </span>
            </div>
 
-           <div className="prose prose-sm text-ink-800 font-serif text-lg leading-relaxed mb-8 max-h-[40vh] overflow-y-auto custom-scrollbar flex-1">
+           <div className="prose prose-sm text-ink-800 font-serif text-lg leading-relaxed mb-6 overflow-y-auto custom-scrollbar flex-1 pr-2">
              <p className="whitespace-pre-line">{announcement.message}</p>
            </div>
 
            {/* Progress Dots */}
            {announcements.length > 1 && (
-             <div className="flex justify-center gap-2 mb-6">
+             <div className="flex justify-center gap-2 mb-6 shrink-0">
                 {announcements.map((_, idx) => (
                   <div 
                     key={idx} 
-                    className={`h-2 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-8 bg-ink-800' : 'w-2 bg-paper-300'}`}
+                    className={`h-2 rounded-full transition-all duration-300 ${idx === validIndex ? 'w-8 bg-ink-800' : 'w-2 bg-paper-300'}`}
                   />
                 ))}
              </div>
            )}
 
-           <div className="pt-2">
+           <div className="pt-2 shrink-0">
               <button 
                 onClick={handleMainAction}
                 className={`w-full py-4 rounded-xl font-bold uppercase tracking-[0.2em] text-sm shadow-lg transition-all transform active:scale-[0.98] ${theme.btnClass}`}
               >
-                {isLast ? 'Acknowledge Receipt' : 'Next Announcement'}
+                {isLast ? 'Close Notice' : 'Next Announcement'}
               </button>
            </div>
         </div>

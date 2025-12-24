@@ -29,6 +29,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const memberMenuItems = [
     { id: 'my-dashboard', label: 'My Ledger', icon: LayoutDashboard },
+    { id: 'announcements', label: 'Notices', icon: Megaphone },
+    { id: 'schedules', label: 'My Calendar', icon: Calendar },
   ];
 
   const menuItems = isAdmin ? adminMenuItems : memberMenuItems;

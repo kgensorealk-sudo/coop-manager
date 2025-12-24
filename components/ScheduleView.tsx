@@ -3,7 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { dataService } from '../services/dataService';
 import { Calendar, Clock, User as UserIcon } from 'lucide-react';
 
-export const ScheduleView: React.FC = () => {
+interface ScheduleViewProps {
+   filterByUserId?: string; // If present, only show schedules for this user
+}
+
+export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) => {
   const [schedules, setSchedules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -12,7 +16,13 @@ export const ScheduleView: React.FC = () => {
       setLoading(true);
       try {
         const data = await dataService.getUpcomingSchedules();
-        setSchedules(data);
+        
+        let filteredData = data;
+        if (filterByUserId) {
+           filteredData = data.filter((item) => item.borrower_id === filterByUserId);
+        }
+        
+        setSchedules(filteredData);
       } catch (e) {
         console.error(e);
       } finally {
@@ -20,7 +30,7 @@ export const ScheduleView: React.FC = () => {
       }
     };
     fetchSchedules();
-  }, []);
+  }, [filterByUserId]);
 
   if (loading) {
     return (
@@ -41,8 +51,10 @@ export const ScheduleView: React.FC = () => {
   return (
     <div className="space-y-8 animate-fade-in">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Schedules & Deadlines</h1>
-        <p className="text-slate-500 mt-2">Upcoming loan repayments and events.</p>
+        <h1 className="text-3xl font-bold text-slate-900">{filterByUserId ? 'My Calendar' : 'Schedules & Deadlines'}</h1>
+        <p className="text-slate-500 mt-2">
+           {filterByUserId ? 'Your upcoming repayment dates.' : 'Upcoming loan repayments and events.'}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -51,7 +63,7 @@ export const ScheduleView: React.FC = () => {
           {Object.keys(groupedSchedules).length === 0 ? (
             <div className="bg-white p-12 rounded-xl border border-slate-200 text-center text-slate-400">
               <Calendar size={48} className="mx-auto mb-3 opacity-20" />
-              <p>No upcoming schedules found based on active loans.</p>
+              <p>No upcoming schedules found.</p>
             </div>
           ) : (
              Object.entries(groupedSchedules).map(([month, items]: [string, any]) => (
@@ -76,10 +88,12 @@ export const ScheduleView: React.FC = () => {
                                
                                <div className="flex-1">
                                   <h3 className={`font-bold ${isPast ? 'text-slate-500' : 'text-slate-900'}`}>{item.title}</h3>
-                                  <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-                                     <UserIcon size={14} />
-                                     <span>{item.borrower_name}</span>
-                                  </div>
+                                  {!filterByUserId && (
+                                     <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
+                                        <UserIcon size={14} />
+                                        <span>{item.borrower_name}</span>
+                                     </div>
+                                  )}
                                </div>
                                
                                <div className="text-right">
