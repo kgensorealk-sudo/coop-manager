@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { LoanWithBorrower, Payment } from '../types';
 import { dataService } from '../services/dataService';
-import { X, DollarSign, TrendingDown, History, CreditCard, Loader2, Calculator, Info } from 'lucide-react';
+import { X, DollarSign, TrendingDown, History, CreditCard, Loader2, Calculator, Info, AlertCircle } from 'lucide-react';
 
 interface LoanDetailsModalProps {
   isOpen: boolean;
@@ -21,10 +21,13 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
   const [amount, setAmount] = useState<number | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && loan) {
       fetchHistory();
+      setAmount('');
+      setError(null);
     }
   }, [isOpen, loan]);
 
@@ -43,17 +46,31 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
 
   const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loan || !amount || Number(amount) <= 0) return;
+    setError(null);
+
+    if (!loan) return;
+    const paymentAmount = Number(amount);
+
+    // Validation
+    if (!amount || paymentAmount <= 0) {
+      setError("Please enter a valid positive amount.");
+      return;
+    }
+
+    if (paymentAmount > loan.remaining_principal) {
+      setError(`Payment cannot exceed the remaining balance of ₱${loan.remaining_principal.toLocaleString()}`);
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      await dataService.addPayment(loan.id, Number(amount));
+      await dataService.addPayment(loan.id, paymentAmount);
       setAmount('');
       await fetchHistory(); // Refresh local history
       onPaymentSuccess(); // Refresh parent data (remaining principal update)
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Failed to record payment');
+      setError(error.message || 'Failed to record payment');
     } finally {
       setIsSubmitting(false);
     }
@@ -147,16 +164,28 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
           {loan.status === 'active' && (
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-4">Record New Payment</h3>
+              
+              {error && (
+                <div className="mb-4 bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+                  <AlertCircle size={16} className="mt-0.5 shrink-0"/>
+                  <span>{error}</span>
+                </div>
+              )}
+
               <form onSubmit={handleAddPayment} className="flex gap-4">
                  <div className="relative flex-1">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">₱</span>
                     <input 
                       type="number"
-                      min="1" 
+                      min="0.01"
+                      max={loan.remaining_principal}
                       step="0.01"
-                      placeholder="Enter amount..." 
+                      placeholder={`Max: ${loan.remaining_principal.toFixed(2)}`}
                       value={amount}
-                      onChange={(e) => setAmount(e.target.value ? Number(e.target.value) : '')}
+                      onChange={(e) => {
+                        setAmount(e.target.value ? Number(e.target.value) : '');
+                        setError(null); 
+                      }}
                       className="w-full pl-8 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     />
                  </div>
@@ -168,6 +197,9 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                    {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : 'Add Payment'}
                  </button>
               </form>
+              <p className="text-xs text-slate-400 mt-2 ml-1">
+                Enter an amount up to ₱{loan.remaining_principal.toLocaleString()} to pay off principal.
+              </p>
             </div>
           )}
 

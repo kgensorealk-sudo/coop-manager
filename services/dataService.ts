@@ -246,9 +246,37 @@ class DataService {
     const { data: loan } = await db.from('loans').select('*').eq('id', loanId).single();
     if (!loan) throw new Error("Loan not found");
 
-    const interestAccrued = loan.principal * (loan.interest_rate / 100);
-    const interestPaid = Math.min(amount, interestAccrued);
-    const principalPaid = Math.max(0, amount - interestPaid);
+    // VALIDATION: Prevent negative numbers and overpayments
+    if (amount <= 0) {
+      throw new Error("Payment amount must be greater than zero.");
+    }
+    
+    // Allow a very small epsilon for floating point, but essentially reject overpayment
+    if (amount > loan.remaining_principal + 0.01) {
+      throw new Error("Payment amount cannot exceed the remaining principal balance.");
+    }
+
+    // Calculation Logic
+    let interestPaid = 0;
+    let principalPaid = 0;
+
+    if (amount >= loan.remaining_principal) {
+      // Full payoff scenario
+      // If amount matches remaining principal, we consider it all principal payment
+      // (Assuming interest for the final period is handled separately or included in this check if tracking accrued interest)
+      // Since we strictly blocked overpayment above, amount == remaining_principal here.
+      principalPaid = loan.remaining_principal;
+      interestPaid = 0; 
+    } else {
+      // Partial payment scenario
+      const monthlyInterest = loan.principal * (loan.interest_rate / 100);
+      interestPaid = Math.min(amount, monthlyInterest);
+      principalPaid = amount - interestPaid;
+    }
+    
+    // Ensure we don't end up with negative numbers due to floating point math
+    principalPaid = Math.max(0, principalPaid);
+    interestPaid = Math.max(0, interestPaid);
     
     const newRemainingPrincipal = Math.max(0, loan.remaining_principal - principalPaid);
     const newStatus = newRemainingPrincipal === 0 ? 'paid' : 'active';

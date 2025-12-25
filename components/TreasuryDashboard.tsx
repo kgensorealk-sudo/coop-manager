@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { ContributionWithMember, LoanWithBorrower } from '../types';
 import { dataService } from '../services/dataService';
 import { StatCard } from './StatCard';
-import { Wallet, PiggyBank, ArrowUpRight, Plus, Check, X, Clock, TrendingUp, ArrowDownRight, Coins, Scale, Activity, ChevronDown, ChevronUp, Calendar, Target } from 'lucide-react';
+import { Wallet, PiggyBank, ArrowUpRight, Plus, Check, X, Clock, TrendingUp, ArrowDownRight, Coins, Scale, Activity, ChevronDown, ChevronUp, Calendar, Target, Equal } from 'lucide-react';
 
 interface TreasuryDashboardProps {
   treasuryStats: {
@@ -312,13 +312,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
               </div>
               <div>
                 <h2 className="text-lg font-serif font-bold text-ink-900">Cash Flow Statement</h2>
-                <p className="text-sm text-ink-500 font-mono">Detailed breakdown</p>
-              </div>
-           </div>
-           <div className="text-right">
-              <div className="text-xs text-ink-400 uppercase font-bold tracking-widest">Net Flow</div>
-              <div className={`text-xl font-bold font-mono ${treasuryStats.balance >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-                 ₱{treasuryStats.balance.toLocaleString()}
+                <p className="text-sm text-ink-500 font-mono">Activity Log (Receipts & Disbursements)</p>
               </div>
            </div>
         </div>
@@ -326,10 +320,10 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-paper-200">
            
            {/* INFLOWS */}
-           <div className="p-8 space-y-8">
+           <div className="p-8 space-y-8 flex flex-col">
               <div className="flex items-center space-x-2 mb-4">
                  <div className="p-1 bg-green-50 rounded-sm text-green-700 border border-green-200"><ArrowUpRight size={14} /></div>
-                 <h3 className="text-sm font-bold text-ink-900 uppercase tracking-[0.2em]">Inflows</h3>
+                 <h3 className="text-sm font-bold text-ink-900 uppercase tracking-[0.2em]">Cash Receipts (In)</h3>
               </div>
 
               {/* 1. Member Capital */}
@@ -386,7 +380,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                  <h4 className="text-sm font-bold text-ink-400 uppercase border-b border-paper-200 pb-1 font-serif italic">Operating Activities</h4>
                  
                  <BreakdownRow 
-                    title="Loan Repayments"
+                    title="Loan Principal Repaid" 
                     amount={treasuryStats.totalPrincipalRepaid}
                     color="blue"
                     percent={getPercent(treasuryStats.totalPrincipalRepaid)}
@@ -411,17 +405,22 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                  />
               </div>
               
-              <div className="flex justify-between pt-4 border-t-2 border-paper-200 font-serif font-bold text-ink-900 text-lg">
-                 <span>Total Inflow</span>
-                 <span className="font-mono">₱{totalInflow.toLocaleString()}</span>
+              <div className="flex flex-col pt-4 border-t-2 border-paper-200 mt-auto">
+                 <div className="flex justify-between font-serif font-bold text-ink-900 text-lg">
+                    <span>Total Cash Collected</span>
+                    <span className="font-mono">₱{totalInflow.toLocaleString()}</span>
+                 </div>
+                 <div className="flex justify-between text-[10px] text-ink-400 mt-1 font-mono uppercase tracking-wider">
+                     <span>(Gross amount received before disbursements)</span>
+                 </div>
               </div>
            </div>
 
            {/* OUTFLOWS */}
-           <div className="p-8 space-y-8 bg-paper-100/30">
+           <div className="p-8 space-y-8 bg-paper-100/30 flex flex-col">
               <div className="flex items-center space-x-2 mb-4">
                  <div className="p-1 bg-red-50 rounded-sm text-red-700 border border-red-200"><ArrowDownRight size={14} /></div>
-                 <h3 className="text-sm font-bold text-ink-900 uppercase tracking-[0.2em]">Outflows</h3>
+                 <h3 className="text-sm font-bold text-ink-900 uppercase tracking-[0.2em]">Cash Disbursements (Out)</h3>
               </div>
 
               <div className="space-y-4">
@@ -461,13 +460,43 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                  </div>
               </div>
 
-              <div className="flex justify-between pt-4 border-t-2 border-paper-200 font-serif font-bold text-ink-900 mt-auto text-lg">
-                 <span>Total Outflow</span>
-                 <span className="text-wax-600 font-mono">- ₱{treasuryStats.totalDisbursed.toLocaleString()}</span>
+              <div className="flex flex-col pt-4 border-t-2 border-paper-200 mt-auto">
+                 <div className="flex justify-between font-serif font-bold text-ink-900 text-lg">
+                    <span>Total Cash Disbursed</span>
+                    <span className="text-wax-600 font-mono">- ₱{treasuryStats.totalDisbursed.toLocaleString()}</span>
+                 </div>
+                 <div className="flex justify-between text-[10px] text-ink-400 mt-1 font-mono uppercase tracking-wider">
+                     <span>(Gross amount paid out)</span>
+                 </div>
               </div>
            </div>
-
         </div>
+        
+        {/* Net Calculation Footer */}
+        <div className="bg-paper-200 p-4 flex flex-col md:flex-row justify-between items-center border-t-2 border-paper-300 gap-4">
+           <div className="flex items-center gap-2 text-ink-600">
+               <Equal size={18} />
+               <span className="text-xs font-bold uppercase tracking-widest">Net Calculation</span>
+           </div>
+           
+           <div className="flex items-center flex-wrap justify-center gap-2 md:gap-4 font-mono text-sm text-ink-600">
+              <span className="flex flex-col items-center">
+                 <span className="text-[10px] uppercase text-ink-400 font-bold">Collected</span>
+                 <span>₱{totalInflow.toLocaleString()}</span>
+              </span>
+              <span className="text-lg">-</span>
+              <span className="flex flex-col items-center">
+                 <span className="text-[10px] uppercase text-ink-400 font-bold">Disbursed</span>
+                 <span>₱{treasuryStats.totalDisbursed.toLocaleString()}</span>
+              </span>
+              <span className="text-lg">=</span>
+              <span className="flex flex-col items-center">
+                 <span className="text-[10px] uppercase text-emerald-600 font-bold">Balance</span>
+                 <span className="font-bold text-ink-900 text-lg">₱{treasuryStats.balance.toLocaleString()}</span>
+              </span>
+           </div>
+        </div>
+
       </div>
 
       {/* Review Pending Deposits Table */}
