@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { FolderTree, Copy, Check, Database, Terminal } from 'lucide-react';
+import { FolderTree, Copy, Check, Database, Terminal, Image } from 'lucide-react';
 
 // SQL Schema
 const SCHEMA_SQL = `-- Enable UUID extension
@@ -25,7 +25,7 @@ create table if not exists contributions (
   id uuid default uuid_generate_v4() primary key,
   member_id uuid references profiles(id) not null,
   amount numeric not null,
-  type text check (type in ('monthly_deposit', 'one_time')) default 'monthly_deposit',
+  type text check (type in ('monthly_deposit' | 'one_time')) default 'monthly_deposit',
   date timestamp with time zone default timezone('utc'::text, now()) not null,
   status text check (status in ('pending', 'approved', 'rejected')) default 'pending'
 );
@@ -57,10 +57,7 @@ create table if not exists payments (
 );
 
 -- 5. ANNOUNCEMENTS
--- Recreated to include scheduling columns
-drop table if exists announcements;
-
-create table announcements (
+create table if not exists announcements (
   id uuid default uuid_generate_v4() primary key,
   title text not null,
   message text not null,
@@ -72,7 +69,18 @@ create table announcements (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 6. SETTINGS
+-- 6. GALLERY ITEMS
+create table if not exists gallery_items (
+  id uuid default uuid_generate_v4() primary key,
+  image_url text not null,
+  caption text,
+  uploaded_by uuid references profiles(id),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  is_archived boolean default false,
+  archived_at timestamp with time zone
+);
+
+-- 7. SETTINGS
 create table if not exists settings (
   key text primary key,
   value text
@@ -81,67 +89,95 @@ create table if not exists settings (
 -- Default Goal
 insert into settings (key, value) values ('monthly_goal', '10000') on conflict do nothing;
 
--- Enable RLS
+-- 8. STORAGE BUCKET
+-- Ensure the gallery bucket exists
+insert into storage.buckets (id, name, public) 
+values ('gallery', 'gallery', true)
+on conflict (id) do nothing;
+
+-- =========================================================
+-- MIGRATIONS (FIX FOR EXISTING DATABASES)
+-- Run this block if you are getting "column not found" errors
+-- =========================================================
+
+alter table gallery_items add column if not exists is_archived boolean default false;
+alter table gallery_items add column if not exists archived_at timestamp with time zone;
+
+-- Enable RLS on Tables
 alter table profiles enable row level security;
 alter table contributions enable row level security;
 alter table loans enable row level security;
 alter table payments enable row level security;
 alter table announcements enable row level security;
+alter table gallery_items enable row level security;
 alter table settings enable row level security;
 
--- Cleanup old policies to prevent errors
+-- Drop old policies to prevent conflicts
 drop policy if exists "Public profiles are viewable by everyone" on profiles;
 drop policy if exists "Admins can insert profiles" on profiles;
 drop policy if exists "Admins can update profiles" on profiles;
+drop policy if exists "Admins can delete profiles" on profiles;
 
 drop policy if exists "Announcements are viewable by everyone" on announcements;
 drop policy if exists "Admins can insert announcements" on announcements;
 drop policy if exists "Admins can update announcements" on announcements;
 drop policy if exists "Admins can delete announcements" on announcements;
 
-drop policy if exists "Enable read access for all users" on contributions;
-drop policy if exists "Enable insert for all users" on contributions;
-drop policy if exists "Enable update for all users" on contributions;
-
-drop policy if exists "Enable read access for all users" on loans;
-drop policy if exists "Enable insert for all users" on loans;
-drop policy if exists "Enable update for all users" on loans;
-
-drop policy if exists "Enable read access for all users" on payments;
-drop policy if exists "Enable insert for all users" on payments;
+drop policy if exists "Gallery is viewable by everyone" on gallery_items;
+drop policy if exists "Admins can insert gallery items" on gallery_items;
+drop policy if exists "Admins can update gallery items" on gallery_items;
+drop policy if exists "Admins can delete gallery items" on gallery_items;
 
 drop policy if exists "Enable read access for all users" on settings;
 drop policy if exists "Admins can update settings" on settings;
 drop policy if exists "Admins can insert settings" on settings;
 
--- Create Policies
+drop policy if exists "Enable read access for all users" on contributions;
+drop policy if exists "Enable insert for all users" on contributions;
+drop policy if exists "Enable update for all users" on contributions;
+drop policy if exists "Admins can delete contributions" on contributions;
+
+drop policy if exists "Enable read access for all users" on loans;
+drop policy if exists "Enable insert for all users" on loans;
+drop policy if exists "Enable update for all users" on loans;
+drop policy if exists "Admins can delete loans" on loans;
+
+drop policy if exists "Enable read access for all users" on payments;
+drop policy if exists "Enable insert for all users" on payments;
+drop policy if exists "Admins can delete payments" on payments;
+
+-- Storage Policies cleanup
+drop policy if exists "Public Access" on storage.objects;
+drop policy if exists "Authenticated Upload" on storage.objects;
+drop policy if exists "Authenticated Delete" on storage.objects;
+drop policy if exists "Admin Delete Assets" on storage.objects;
+
+-- =========================================================
+-- CREATE POLICIES (Run this section to fix permissions)
+-- =========================================================
+
+-- 1. PROFILES
 create policy "Public profiles are viewable by everyone" on profiles for select using (true);
 create policy "Admins can insert profiles" on profiles for insert with check (true);
 create policy "Admins can update profiles" on profiles for update using (true);
 
+-- 2. ANNOUNCEMENTS
 create policy "Announcements are viewable by everyone" on announcements for select using (true);
+create policy "Admins can insert announcements" on announcements for insert with check (exists (select 1 from profiles where auth_id = auth.uid() and role = 'admin'));
+create policy "Admins can update announcements" on announcements for update using (exists (select 1 from profiles where auth_id = auth.uid() and role = 'admin'));
 
--- Enhanced Security: Check for Admin Role explicitly
-create policy "Admins can insert announcements" on announcements for insert 
-with check (
-  auth.uid() in (select auth_id from profiles where role = 'admin')
-);
+-- 3. GALLERY ITEMS
+create policy "Gallery is viewable by everyone" on gallery_items for select using (true);
+create policy "Admins can insert gallery items" on gallery_items for insert with check (exists (select 1 from profiles where auth_id = auth.uid() and role = 'admin'));
+create policy "Admins can update gallery items" on gallery_items for update using (exists (select 1 from profiles where auth_id = auth.uid() and role = 'admin'));
 
-create policy "Admins can update announcements" on announcements for update 
-using (
-  auth.uid() in (select auth_id from profiles where role = 'admin')
-);
-
-create policy "Admins can delete announcements" on announcements for delete 
-using (
-  auth.uid() in (select auth_id from profiles where role = 'admin')
-);
-
+-- 4. SETTINGS
 create policy "Enable read access for all users" on settings for select using (true);
 create policy "Admins can update settings" on settings for update using (true);
 create policy "Admins can insert settings" on settings for insert with check (true);
 
--- Open Access Policies (For testing)
+-- 5. FINANCIAL TABLES (Loans, Contributions, Payments)
+-- Read/Write for everyone (simplified for demo), NO DELETE ALLOWED
 create policy "Enable read access for all users" on contributions for select using (true);
 create policy "Enable insert for all users" on contributions for insert with check (true);
 create policy "Enable update for all users" on contributions for update using (true);
@@ -152,56 +188,50 @@ create policy "Enable update for all users" on loans for update using (true);
 
 create policy "Enable read access for all users" on payments for select using (true);
 create policy "Enable insert for all users" on payments for insert with check (true);
+
+-- 6. STORAGE POLICIES
+create policy "Public Access" on storage.objects for select using ( bucket_id = 'gallery' );
+create policy "Authenticated Upload" on storage.objects for insert with check ( bucket_id = 'gallery' and auth.role() = 'authenticated' );
+`;
+
+const STORAGE_INSTRUCTIONS = `
+-- OPTIONAL: If the schema above fails to create the bucket (due to permissions), use the Dashboard:
+
+1. Go to Supabase Dashboard -> Storage
+2. Create a new bucket named 'gallery'
+3. Toggle "Public bucket" to ON.
+4. Save.
+
+The policies in the SQL Schema section will handle the permissions.
 `;
 
 // Folder Structure
 const STRUCTURE_MD = `/
-├── .env                        # Store keys here (Add to .gitignore!)
+├── .env                        # Store keys here
 ├── .gitignore
 ├── index.html                  # Entry Point
-├── package.json
-├── vite.config.ts
 ├── types.ts                    # Shared Interfaces
 ├── lib/
 │   └── supabaseClient.ts       # Database Connection
 ├── services/
-│   └── dataService.ts          # Business Logic (Loans, Auth)
+│   └── dataService.ts          # Business Logic
 ├── components/
 │   ├── ui/
 │   ├── Sidebar.tsx
-│   ├── LoanApprovalModal.tsx
-│   ├── DeveloperGuide.tsx
+│   ├── GalleryView.tsx         # New!
+│   ├── UploadPhotoModal.tsx    # New!
 │   └── ...
 └── App.tsx                     # Main Router Logic`;
 
-// Integration Code
-const INTEGRATION_CODE = `// 1. Create a file named '.env' in your project root
-VITE_SUPABASE_URL=https://ygnxgcqnfwcecrtjqwnb.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlnbnhnY3FuZndjZWNydGpxd25iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0ODAzOTIsImV4cCI6MjA4MjA1NjM5Mn0.ThbIV7hKzY8Za_at7WBclNbScTQT3fMT2RJR2JpQ64A
-
-// 2. Restart your development server
-// npm run dev
-
-// 3. How it works (Already implemented in lib/supabaseClient.ts):
-/*
-const getEnv = (key) => import.meta.env[key];
-
-export const supabase = createClient(
-  getEnv('VITE_SUPABASE_URL'),
-  getEnv('VITE_SUPABASE_ANON_KEY')
-);
-*/
-`;
-
 export const DeveloperGuide: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'schema' | 'structure' | 'integration'>('schema');
+  const [activeTab, setActiveTab] = useState<'schema' | 'storage' | 'structure'>('schema');
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
     let content = '';
     if (activeTab === 'schema') content = SCHEMA_SQL;
+    if (activeTab === 'storage') content = STORAGE_INSTRUCTIONS;
     if (activeTab === 'structure') content = STRUCTURE_MD;
-    if (activeTab === 'integration') content = INTEGRATION_CODE;
     
     navigator.clipboard.writeText(content);
     setCopied(true);
@@ -210,8 +240,8 @@ export const DeveloperGuide: React.FC = () => {
 
   const getCodeContent = () => {
     if (activeTab === 'schema') return SCHEMA_SQL;
+    if (activeTab === 'storage') return STORAGE_INSTRUCTIONS;
     if (activeTab === 'structure') return STRUCTURE_MD;
-    if (activeTab === 'integration') return INTEGRATION_CODE;
     return SCHEMA_SQL;
   };
 
@@ -220,7 +250,7 @@ export const DeveloperGuide: React.FC = () => {
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Developer Resources</h1>
         <p className="text-slate-500 mt-2">
-          Use these artifacts to initialize your Supabase backend and configure your local Next.js environment.
+          Use these artifacts to initialize your Supabase backend and configure your environment.
         </p>
       </div>
 
@@ -239,6 +269,17 @@ export const DeveloperGuide: React.FC = () => {
               <span>SQL Schema</span>
             </button>
             <button
+              onClick={() => setActiveTab('storage')}
+              className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'storage' 
+                  ? 'border-blue-600 text-blue-600' 
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Image size={16} />
+              <span>Manual Storage</span>
+            </button>
+            <button
               onClick={() => setActiveTab('structure')}
               className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'structure' 
@@ -249,17 +290,6 @@ export const DeveloperGuide: React.FC = () => {
               <FolderTree size={16} />
               <span>Folder Structure</span>
             </button>
-             <button
-              onClick={() => setActiveTab('integration')}
-              className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'integration' 
-                  ? 'border-blue-600 text-blue-600' 
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Terminal size={16} />
-              <span>Env Setup</span>
-            </button>
           </div>
           
           <button 
@@ -267,7 +297,7 @@ export const DeveloperGuide: React.FC = () => {
             className="flex items-center space-x-2 px-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shrink-0 ml-4"
           >
             {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
-            <span>{copied ? 'Copied!' : 'Copy to Clipboard'}</span>
+            <span>{copied ? 'Copied!' : 'Copy'}</span>
           </button>
         </div>
 

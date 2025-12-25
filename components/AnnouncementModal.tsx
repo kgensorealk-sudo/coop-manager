@@ -13,6 +13,12 @@ interface AnnouncementModalProps {
 const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, announcements, startIndex = 0 }) => {
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [isClosing, setIsClosing] = useState(false);
+  
+  // Animation States
+  const [isExiting, setIsExiting] = useState(false);
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left'); // 'left' means going to next (content exits left)
+  const [isInitialMount, setIsInitialMount] = useState(true);
+
   const touchStartRef = useRef<number | null>(null);
   const touchEndRef = useRef<number | null>(null);
 
@@ -20,6 +26,13 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
     if (isOpen) {
       setCurrentIndex(startIndex);
       setIsClosing(false);
+      setIsExiting(false);
+      setSlideDirection('left');
+      setIsInitialMount(true);
+      
+      // Reset initial mount flag after animation
+      const timer = setTimeout(() => setIsInitialMount(false), 400);
+      return () => clearTimeout(timer);
     }
   }, [isOpen, startIndex]);
 
@@ -34,6 +47,7 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
   const isLast = validIndex === announcements.length - 1;
 
   const handleCloseAnimation = () => {
+    if (isClosing) return;
     setIsClosing(true);
     setTimeout(() => {
       onClose();
@@ -42,11 +56,25 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
   };
 
   const handleNext = () => {
-    if (hasNext) setCurrentIndex(prev => prev + 1);
+    if (hasNext && !isExiting) {
+      setIsExiting(true);
+      setSlideDirection('left');
+      setTimeout(() => {
+        setCurrentIndex(prev => prev + 1);
+        setIsExiting(false);
+      }, 300); // Match CSS animation duration
+    }
   };
 
   const handlePrev = () => {
-    if (hasPrev) setCurrentIndex(prev => prev - 1);
+    if (hasPrev && !isExiting) {
+      setIsExiting(true);
+      setSlideDirection('right');
+      setTimeout(() => {
+        setCurrentIndex(prev => prev - 1);
+        setIsExiting(false);
+      }, 300); // Match CSS animation duration
+    }
   };
 
   const handleMainAction = () => {
@@ -127,102 +155,131 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
 
   const theme = getTheme(announcement.priority || 'normal');
 
+  // Determine animation for the CARD CONTAINER (Entrance/Exit)
+  const getCardAnimationClass = () => {
+    if (isClosing) return 'animate-scale-out';
+    if (isInitialMount) return 'animate-slide-up';
+    return '';
+  };
+
+  // Determine animation for the CONTENT (Slide Left/Right)
+  const getContentAnimationClass = () => {
+    if (isExiting) {
+      return slideDirection === 'left' ? 'animate-slide-out-left' : 'animate-slide-out-right';
+    }
+    if (!isInitialMount && !isClosing) {
+       // Only animate entrance if we are navigating, not on first load or close
+       return slideDirection === 'left' ? 'animate-slide-in-right' : 'animate-slide-in-left';
+    }
+    return '';
+  };
+
   return (
     <div className={`fixed inset-0 z-50 flex items-center justify-center bg-leather-900/80 backdrop-blur-sm p-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
+      
+      {/* Desktop Navigation: Prev (Moved Outside) */}
+      <button 
+        onClick={handlePrev}
+        disabled={!hasPrev || isExiting}
+        className={`hidden md:flex p-3 mr-4 rounded-full bg-white/10 text-paper-50 backdrop-blur-md border border-white/20 transition-all hover:scale-110 shrink-0 z-50 ${!hasPrev ? 'opacity-0 pointer-events-none' : 'hover:bg-white/20'}`}
+        aria-label="Previous Announcement"
+      >
+        <ChevronLeft size={32} />
+      </button>
+
+      {/* Main Card Container - Fixed Dimensions to prevent jumping */}
       <div 
-        className={`bg-paper-50 w-full max-w-md overflow-hidden flex flex-col relative shadow-2xl rounded-3xl border-2 border-paper-300 max-h-[90vh] ${isClosing ? 'animate-scale-out' : 'animate-slide-up'}`}
+        className={`bg-paper-50 w-full max-w-md h-[550px] overflow-hidden flex flex-col relative shadow-2xl rounded-3xl border-2 border-paper-300 ${getCardAnimationClass()}`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         
-        {/* Paper texture overlay */}
-        <div className="absolute inset-0 pointer-events-none opacity-50 mix-blend-multiply" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'4\' height=\'4\' viewBox=\'0 0 4 4\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M1 3h1v1H1V3zm2-2h1v1H3V1z\' fill=\'%23000000\' fill-opacity=\'0.02\' fill-rule=\'evenodd\'/%3E%3C/svg%3E")' }}></div>
+        {/* Paper texture overlay (Static background) */}
+        <div className="absolute inset-0 pointer-events-none opacity-50 mix-blend-multiply z-10" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'4\' height=\'4\' viewBox=\'0 0 4 4\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M1 3h1v1H1V3zm2-2h1v1H3V1z\' fill=\'%23000000\' fill-opacity=\'0.02\' fill-rule=\'evenodd\'/%3E%3C/svg%3E")' }}></div>
 
-        {/* Carousel Navigation (Desktop Arrows) */}
-        {hasPrev && (
-           <button 
-             onClick={handlePrev}
-             className="absolute left-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 hover:bg-white/40 text-ink-900 backdrop-blur-md border border-white/30 hidden md:flex transition-all hover:scale-110"
-           >
-              <ChevronLeft size={24} />
-           </button>
-        )}
-        {hasNext && (
-           <button 
-             onClick={handleNext}
-             className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/20 hover:bg-white/40 text-ink-900 backdrop-blur-md border border-white/30 hidden md:flex transition-all hover:scale-110"
-           >
-              <ChevronRight size={24} />
-           </button>
-        )}
-
-        {/* Header Block */}
-        <div className={`${theme.headerBg} p-8 relative overflow-hidden transition-colors duration-500 shrink-0`}>
-           <div className={`transition-colors duration-500 ${theme.iconColor}`}>
-             {theme.icon}
-           </div>
-           
-           <div className="relative z-10 flex justify-between items-start">
-              <div className="flex flex-col pr-8">
-                 <div className={`flex items-center gap-2 text-xs uppercase tracking-[0.2em] font-bold opacity-80 mb-2 transition-colors duration-500 ${theme.headerText}`}>
-                    {theme.smallIcon}
-                    <span>{announcement.priority || 'NOTICE'}</span>
-                    {announcements.length > 1 && (
-                      <span className="opacity-70 ml-2 border-l pl-2 border-current">
-                        {validIndex + 1} / {announcements.length}
-                      </span>
-                    )}
-                 </div>
-                 <h2 className={`text-2xl font-serif font-bold ${theme.headerText} leading-tight transition-colors duration-500`}>
-                    {announcement.title}
-                 </h2>
-              </div>
-              <button 
-                onClick={handleCloseAnimation}
-                className={`bg-black/10 hover:bg-black/20 p-2 rounded-full transition-colors ${theme.headerText}`}
-              >
-                <X size={20} />
-              </button>
-           </div>
-        </div>
-
-        {/* Body */}
-        <div className="p-8 relative bg-paper-50 flex-1 flex flex-col overflow-hidden">
-           {/* Date Badge */}
-           <div className="flex items-center gap-2 mb-6 text-ink-400 text-sm font-mono border-b border-paper-200 pb-3 border-dashed shrink-0">
-               <Calendar size={14} />
-               <span className="uppercase tracking-widest">
-                 {new Date(announcement.created_at).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-               </span>
-           </div>
-
-           <div className="prose prose-sm text-ink-800 font-serif text-lg leading-relaxed mb-6 overflow-y-auto custom-scrollbar flex-1 pr-2">
-             <p className="whitespace-pre-line">{announcement.message}</p>
-           </div>
-
-           {/* Progress Dots */}
-           {announcements.length > 1 && (
-             <div className="flex justify-center gap-2 mb-6 shrink-0">
-                {announcements.map((_, idx) => (
-                  <div 
-                    key={idx} 
-                    className={`h-2 rounded-full transition-all duration-300 ${idx === validIndex ? 'w-8 bg-ink-800' : 'w-2 bg-paper-300'}`}
-                  />
-                ))}
+        {/* Animated Content Wrapper */}
+        <div className={`flex-1 flex flex-col h-full ${getContentAnimationClass()}`}>
+          
+          {/* Header Block */}
+          <div className={`${theme.headerBg} p-8 relative overflow-hidden transition-colors duration-500 shrink-0`}>
+             <div className={`transition-colors duration-500 ${theme.iconColor}`}>
+               {theme.icon}
              </div>
-           )}
+             
+             <div className="relative z-20 flex justify-between items-start">
+                <div className="flex flex-col pr-8">
+                   <div className={`flex items-center gap-2 text-xs uppercase tracking-[0.2em] font-bold opacity-80 mb-2 transition-colors duration-500 ${theme.headerText}`}>
+                      {theme.smallIcon}
+                      <span>{announcement.priority || 'NOTICE'}</span>
+                      {announcements.length > 1 && (
+                        <span className="opacity-70 ml-2 border-l pl-2 border-current">
+                          {validIndex + 1} / {announcements.length}
+                        </span>
+                      )}
+                   </div>
+                   <h2 className={`text-2xl font-serif font-bold ${theme.headerText} leading-tight transition-colors duration-500 line-clamp-3`}>
+                      {announcement.title}
+                   </h2>
+                </div>
+                <button 
+                  onClick={handleCloseAnimation}
+                  className={`bg-black/10 hover:bg-black/20 p-2 rounded-full transition-colors ${theme.headerText}`}
+                >
+                  <X size={20} />
+                </button>
+             </div>
+          </div>
 
-           <div className="pt-2 shrink-0">
-              <button 
-                onClick={handleMainAction}
-                className={`w-full py-4 rounded-xl font-bold uppercase tracking-[0.2em] text-sm shadow-lg transition-all transform active:scale-[0.98] ${theme.btnClass}`}
-              >
-                {isLast ? 'Close Notice' : 'Next Announcement'}
-              </button>
-           </div>
+          {/* Body */}
+          <div className="p-8 relative bg-paper-50 flex-1 flex flex-col overflow-hidden">
+             {/* Date Badge */}
+             <div className="flex items-center gap-2 mb-6 text-ink-400 text-sm font-mono border-b border-paper-200 pb-3 border-dashed shrink-0">
+                 <Calendar size={14} />
+                 <span className="uppercase tracking-widest">
+                   {new Date(announcement.created_at).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                 </span>
+             </div>
+
+             <div className="prose prose-sm text-ink-800 font-serif text-lg leading-relaxed mb-6 overflow-y-auto custom-scrollbar flex-1 pr-2">
+               <p className="whitespace-pre-line">{announcement.message}</p>
+             </div>
+
+             {/* Progress Dots */}
+             {announcements.length > 1 && (
+               <div className="flex justify-center gap-2 mb-6 shrink-0">
+                  {announcements.map((_, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`h-2 rounded-full transition-all duration-300 ${idx === validIndex ? 'w-8 bg-ink-800' : 'w-2 bg-paper-300'}`}
+                    />
+                  ))}
+               </div>
+             )}
+
+             <div className="pt-2 shrink-0">
+                <button 
+                  onClick={handleMainAction}
+                  disabled={isExiting}
+                  className={`w-full py-4 rounded-xl font-bold uppercase tracking-[0.2em] text-sm shadow-lg transition-all transform active:scale-[0.98] ${theme.btnClass}`}
+                >
+                  {isLast ? 'Close Notice' : 'Next Announcement'}
+                </button>
+             </div>
+          </div>
         </div>
       </div>
+
+      {/* Desktop Navigation: Next (Moved Outside) */}
+      <button 
+        onClick={handleNext}
+        disabled={!hasNext || isExiting}
+        className={`hidden md:flex p-3 ml-4 rounded-full bg-white/10 text-paper-50 backdrop-blur-md border border-white/20 transition-all hover:scale-110 shrink-0 z-50 ${!hasNext ? 'opacity-0 pointer-events-none' : 'hover:bg-white/20'}`}
+        aria-label="Next Announcement"
+      >
+        <ChevronRight size={32} />
+      </button>
+
     </div>
   );
 };

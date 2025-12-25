@@ -1,5 +1,5 @@
 
-import { Loan, User, LoanWithBorrower, Payment, ContributionWithMember, ContributionStatus, Announcement, AnnouncementPriority } from '../types';
+import { Loan, User, LoanWithBorrower, Payment, ContributionWithMember, ContributionStatus, Announcement, AnnouncementPriority, GalleryItem } from '../types';
 import { DEFAULT_INTEREST_RATE } from '../constants';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
@@ -45,19 +45,16 @@ class DataService {
       .eq('auth_id', authData.user.id)
       .single();
     
-    // Lazy Profile Creation: If profile doesn't exist (e.g. created via signup flow that didn't insert profile due to email confirm)
+    // Lazy Profile Creation: If profile doesn't exist
     if (profileError || !profile) {
-       // Fallback 1: Check if profile exists by email (legacy/manual link) to avoid dupes
        const { data: legacyProfile } = await db.from('profiles').select('*').eq('email', email).single();
        if (legacyProfile) {
-          // Link auth_id if missing
           if (!legacyProfile.auth_id) {
              await db.from('profiles').update({ auth_id: authData.user.id }).eq('id', legacyProfile.id);
           }
           return legacyProfile as User;
        }
 
-       // Fallback 2: Create new profile now
        const fullName = authData.user.user_metadata?.full_name || email.split('@')[0];
        const newProfile = {
           auth_id: authData.user.id,
@@ -89,7 +86,6 @@ class DataService {
   async signUp(email: string, password: string, fullName: string): Promise<User> {
     const db = this.checkConnection();
 
-    // Clear stale session before sign up as well
     await db.auth.signOut();
 
     const { data: authData, error: authError } = await db.auth.signUp({
@@ -102,20 +98,18 @@ class DataService {
 
     if (authError) throw authError;
     
-    // Check if email confirmation is required (User created, but no Session)
     if (authData.user && !authData.session) {
        throw new Error("Registration successful! Please check your email to confirm your account before logging in.");
     }
 
     if (!authData.user) throw new Error("Signup failed");
 
-    // Create Profile Record (Only if we have a session/auto-confirm is on)
     const newProfile = {
       auth_id: authData.user.id,
       email: email,
       full_name: fullName,
       role: 'member',
-      is_coop_member: false, // Default to pending/non-member until approved
+      is_coop_member: false,
       equity: 0,
       avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`
     };
@@ -174,12 +168,6 @@ class DataService {
     if (error) throw error;
   }
 
-  async deleteMember(id: string): Promise<void> {
-    const db = this.checkConnection();
-    const { error } = await db.from('profiles').delete().eq('id', id);
-    if (error) throw error;
-  }
-
   // ----------------------------------------------------------------------
   // LOANS
   // ----------------------------------------------------------------------
@@ -196,11 +184,6 @@ class DataService {
 
     if (error) throw error;
     return data as LoanWithBorrower[];
-  }
-
-  async getMemberLoans(memberId: string): Promise<LoanWithBorrower[]> {
-    const allLoans = await this.getLoans();
-    return allLoans.filter(l => l.borrower_id === memberId);
   }
 
   async createLoan(data: { borrower_id: string; principal: number; duration_months: number; purpose: string }): Promise<void> {
@@ -239,36 +222,6 @@ class DataService {
       .eq('id', loanId);
 
     if (error) throw error;
-  }
-
-  async recalculateInterestAccruals(): Promise<void> {
-    const db = this.checkConnection();
-    const loans = await this.getLoans();
-    const activeLoans = loans.filter(l => l.status === 'active' || l.status === 'paid');
-
-    for (const loan of activeLoans) {
-      if (!loan.start_date) continue;
-
-      const startDate = new Date(loan.start_date);
-      const currentDate = new Date();
-      
-      const yearsDiff = currentDate.getFullYear() - startDate.getFullYear();
-      const monthsDiff = currentDate.getMonth() - startDate.getMonth();
-      const totalMonthsPassed = Math.max(1, (yearsDiff * 12) + monthsDiff);
-      
-      const monthlyInterest = loan.principal * (loan.interest_rate / 100);
-      const totalInterestExpected = monthlyInterest * totalMonthsPassed;
-
-      const payments = await this.getLoanPayments(loan.id);
-      const totalInterestPaid = payments.reduce((sum, p) => sum + p.interest_paid, 0);
-
-      const accrued = Math.max(0, totalInterestExpected - totalInterestPaid);
-
-      await db
-        .from('loans')
-        .update({ interest_accrued: accrued })
-        .eq('id', loan.id);
-    }
   }
 
   // ----------------------------------------------------------------------
@@ -369,11 +322,6 @@ class DataService {
     };
   }
 
-  async getTotalTreasury(): Promise<number> {
-     const metrics = await this.getTreasuryMetrics();
-     return metrics.balance;
-  }
-
   async getContributions(): Promise<ContributionWithMember[]> {
     const db = this.checkConnection();
     const { data, error } = await db
@@ -445,17 +393,6 @@ class DataService {
     if (updateError) throw updateError;
   }
 
-  async getMemberEquity(memberId: string): Promise<number> {
-    const db = this.checkConnection();
-    const { data, error } = await db
-      .from('contributions')
-      .select('amount')
-      .eq('member_id', memberId)
-      .eq('status', 'approved');
-    if (error) throw error;
-    return data.reduce((sum, item) => sum + (item.amount || 0), 0);
-  }
-
   async getActiveLoanVolume(): Promise<number> {
     const db = this.checkConnection();
     const { data, error } = await db
@@ -479,7 +416,6 @@ class DataService {
     
     if (error) {
        if (error.code === 'PGRST116') return [];
-       console.warn("Announcement fetch warning:", error.message);
        return [];
     }
     return data as Announcement[];
@@ -492,12 +428,9 @@ class DataService {
         .from('announcements')
         .select('*')
         .eq('is_active', true)
-        .order('created_at', { ascending: false }); // Newest first
+        .order('created_at', { ascending: false });
       
-      if (error) {
-         console.warn("Announcement fetch warning:", error.message);
-         return [];
-      }
+      if (error) return [];
       
       const now = new Date();
       const activeList = announcements?.filter(a => {
@@ -511,14 +444,8 @@ class DataService {
 
       return activeList;
     } catch (e) {
-      console.warn("Unexpected error fetching announcement:", e);
       return [];
     }
-  }
-
-  async getActiveAnnouncement(): Promise<Announcement | null> {
-    const all = await this.getActiveAnnouncements();
-    return all.length > 0 ? all[0] : null;
   }
 
   async createAnnouncement(
@@ -560,9 +487,71 @@ class DataService {
     if (error) throw error;
   }
 
-  async deleteAnnouncement(id: string): Promise<void> {
+  // ----------------------------------------------------------------------
+  // GALLERY
+  // ----------------------------------------------------------------------
+  async getGalleryItems(): Promise<GalleryItem[]> {
     const db = this.checkConnection();
-    const { error } = await db.from('announcements').delete().eq('id', id);
+    const { data, error } = await db
+      .from('gallery_items')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+       // If table doesn't exist, just return empty array gracefully
+       if (error.code === '42P01') return [];
+       throw error;
+    }
+    return data as GalleryItem[];
+  }
+
+  async uploadGalleryItem(file: File, caption: string, userId: string): Promise<void> {
+    const db = this.checkConnection();
+
+    // 1. Upload File to Storage
+    // Create a unique file name
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await db.storage
+      .from('gallery')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      console.error("Storage upload error:", uploadError);
+      throw new Error(uploadError.message || "Failed to upload image. Storage bucket might be missing.");
+    }
+
+    // 2. Get Public URL
+    const { data: urlData } = db.storage.from('gallery').getPublicUrl(filePath);
+    const publicUrl = urlData.publicUrl;
+
+    // 3. Insert Record
+    const { error: insertError } = await db.from('gallery_items').insert({
+      image_url: publicUrl,
+      caption: caption,
+      uploaded_by: userId,
+      created_at: new Date().toISOString(),
+      is_archived: false
+    });
+
+    if (insertError) throw new Error("Failed to save gallery record: " + insertError.message);
+  }
+
+  async updateGalleryItem(id: string, updates: { caption?: string }): Promise<void> {
+    const db = this.checkConnection();
+    const { error } = await db.from('gallery_items').update(updates).eq('id', id);
+    if (error) throw error;
+  }
+
+  async toggleGalleryArchive(id: string, isArchived: boolean): Promise<void> {
+    const db = this.checkConnection();
+    const updates = {
+      is_archived: isArchived,
+      archived_at: isArchived ? new Date().toISOString() : null
+    };
+    const { error } = await db.from('gallery_items').update(updates).eq('id', id);
     if (error) throw error;
   }
 
@@ -573,7 +562,7 @@ class DataService {
     date: string;
     title: string;
     borrower_name: string;
-    borrower_id: string; // Added ID for filtering
+    borrower_id: string; 
     amount: number;
     loan_id: string;
   }[]> {
@@ -595,7 +584,7 @@ class DataService {
              date: dueDate.toISOString(),
              title: `Loan Repayment (${i}/${loan.duration_months})`,
              borrower_name: loan.borrower.full_name,
-             borrower_id: loan.borrower_id, // Added ID
+             borrower_id: loan.borrower_id, 
              amount: monthlyPayment,
              loan_id: loan.id
            });

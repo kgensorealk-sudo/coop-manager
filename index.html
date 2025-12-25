@@ -88,6 +88,29 @@
         animation: scaleOut 0.3s ease-in forwards;
       }
       
+      /* Swipe Animations */
+      .animate-slide-out-left { animation: slideOutLeft 0.3s ease-in forwards; }
+      .animate-slide-in-right { animation: slideInRight 0.3s ease-out forwards; }
+      .animate-slide-out-right { animation: slideOutRight 0.3s ease-in forwards; }
+      .animate-slide-in-left { animation: slideInLeft 0.3s ease-out forwards; }
+
+      @keyframes slideOutLeft {
+        from { opacity: 1; transform: translateX(0); }
+        to { opacity: 0; transform: translateX(-40px); }
+      }
+      @keyframes slideInRight {
+        from { opacity: 0; transform: translateX(40px); }
+        to { opacity: 1; transform: translateX(0); }
+      }
+      @keyframes slideOutRight {
+        from { opacity: 1; transform: translateX(0); }
+        to { opacity: 0; transform: translateX(40px); }
+      }
+      @keyframes slideInLeft {
+        from { opacity: 0; transform: translateX(-40px); }
+        to { opacity: 1; transform: translateX(0); }
+      }
+      
       @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
@@ -162,3 +185,4 @@
   <script type="module" src="/index.tsx"></script>
 </body>
 </html>
+    

@@ -60,6 +60,16 @@ export interface Announcement {
   scheduled_end?: string | null;   // ISO Date string
 }
 
+export interface GalleryItem {
+  id: string;
+  image_url: string;
+  caption: string;
+  uploaded_by: string;
+  created_at: string;
+  is_archived?: boolean;
+  archived_at?: string | null;
+}
+
 // Helper type for joining loan with borrower data
 export interface LoanWithBorrower extends Loan {
   borrower: User;

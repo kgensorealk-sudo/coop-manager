@@ -15,6 +15,7 @@ import { DeveloperGuide } from './components/DeveloperGuide';
 import { LoginScreen } from './components/LoginScreen';
 import { AnnouncementHistory } from './components/AnnouncementHistory';
 import { ScheduleView } from './components/ScheduleView';
+import { GalleryView } from './components/GalleryView';
 import { dataService } from './services/dataService';
 import { LoanWithBorrower, User, ContributionWithMember, ContributionStatus, Announcement, AnnouncementPriority } from './types';
 import { isSupabaseConfigured } from './lib/supabaseClient';
@@ -658,6 +659,11 @@ const App: React.FC = () => {
                 onOpenCreate={handleOpenAnnouncementCreate} 
                 onEdit={handleOpenAnnouncementEdit}
                 readOnly={currentUser.role === 'member'} // Enable read-only for members
+             />
+          )}
+          {activeTab === 'gallery' && (
+             <GalleryView 
+               currentUser={currentUser}
              />
           )}
           {activeTab === 'schedules' && (

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Announcement } from '../types';
 import { dataService } from '../services/dataService';
 import AnnouncementModal from './AnnouncementModal';
-import { Megaphone, Calendar, Trash2, Eye, EyeOff, Plus, AlertTriangle, AlertCircle, Info, CheckCircle2, Edit2, Clock } from 'lucide-react';
+import { Megaphone, Calendar, Eye, EyeOff, Plus, AlertTriangle, AlertCircle, Info, CheckCircle2, Edit2, Clock } from 'lucide-react';
 
 interface AnnouncementHistoryProps {
   onOpenCreate: () => void;
@@ -42,19 +42,6 @@ export const AnnouncementHistory: React.FC<AnnouncementHistoryProps> = ({ onOpen
     } catch (e: any) {
         alert("Failed to update status: " + e.message);
         fetchAnnouncements();
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this announcement?')) {
-      try {
-        setAnnouncements(prev => prev.filter(a => a.id !== id));
-        await dataService.deleteAnnouncement(id);
-      } catch (e: any) {
-        console.error("Delete failed:", e);
-        alert("Failed to delete announcement: " + (e.message || "Unknown error"));
-        fetchAnnouncements();
-      }
     }
   };
 
@@ -169,8 +156,9 @@ export const AnnouncementHistory: React.FC<AnnouncementHistoryProps> = ({ onOpen
                            </div>
 
                            {!readOnly && (
-                              <div className="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                              <div className="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 relative">
                                  <button 
+                                    type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       onEdit(item);
@@ -181,6 +169,7 @@ export const AnnouncementHistory: React.FC<AnnouncementHistoryProps> = ({ onOpen
                                     <Edit2 size={18} />
                                  </button>
                                  <button 
+                                    type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleToggleStatus(item.id, item.is_active);
@@ -189,16 +178,6 @@ export const AnnouncementHistory: React.FC<AnnouncementHistoryProps> = ({ onOpen
                                     title={item.is_active ? "Archive" : "Activate"}
                                  >
                                     {item.is_active ? <EyeOff size={18} /> : <Eye size={18} />}
-                                 </button>
-                                 <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDelete(item.id);
-                                    }}
-                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                    title="Delete"
-                                 >
-                                    <Trash2 size={18} />
                                  </button>
                               </div>
                            )}

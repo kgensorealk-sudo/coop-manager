@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { User } from '../types';
 import { dataService } from '../services/dataService';
-import { Search, Shield, User as UserIcon, Wallet, Mail, Edit2, Trash2, Plus } from 'lucide-react';
+import { Search, Shield, User as UserIcon, Wallet, Mail, Edit2, Plus } from 'lucide-react';
 import MemberModal from './MemberModal';
 
 interface MemberDirectoryProps {
@@ -29,13 +29,6 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({ members, onRef
   const handleUpdateMember = async (data: any) => {
     if (editingMember) {
       await dataService.updateMember(editingMember.id, data);
-      onRefresh();
-    }
-  };
-
-  const handleDeleteMember = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this member? This action cannot be undone.')) {
-      await dataService.deleteMember(id);
       onRefresh();
     }
   };
@@ -99,13 +92,6 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({ members, onRef
                   title="Edit Member"
                 >
                   <Edit2 size={16} />
-                </button>
-                <button 
-                  onClick={() => handleDeleteMember(member.id)}
-                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Delete Member"
-                >
-                  <Trash2 size={16} />
                 </button>
               </div>
             )}
