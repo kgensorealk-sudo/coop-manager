@@ -30,7 +30,9 @@ import {
   Database,
   RefreshCw,
   AlertTriangle,
-  Megaphone
+  Megaphone,
+  Loader2,
+  Feather
 } from 'lucide-react';
 
 // Helper to extract clean error message
@@ -62,6 +64,9 @@ const getErrorMessage = (err: any): string => {
 // Main App Component
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  // Initial loading state for checking session
+  const [initialLoading, setInitialLoading] = useState(true);
+  
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loans, setLoans] = useState<LoanWithBorrower[]>([]);
   const [members, setMembers] = useState<User[]>([]);
@@ -107,6 +112,24 @@ const App: React.FC = () => {
     }
   }, [currentUser]);
 
+  // Restore Session on Mount
+  useEffect(() => {
+    const initSession = async () => {
+      try {
+        const user = await dataService.restoreSession();
+        if (user) {
+          setCurrentUser(user);
+          setActiveTab(user.role === 'admin' ? 'dashboard' : 'my-dashboard');
+        }
+      } catch (e) {
+        console.error("Session restore failed", e);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+    initSession();
+  }, []);
+
   useEffect(() => {
     if (currentUser) {
       refreshData();
@@ -136,10 +159,13 @@ const App: React.FC = () => {
       setMembers(fetchedUsers);
       setContributions(fetchedContributions);
       
+      // Delay showing announcement to allow dashboard to render first (Better UX)
       if (fetchedAnnouncements && fetchedAnnouncements.length > 0 && !hasShownAnnouncement) {
         setSystemAnnouncements(fetchedAnnouncements);
-        setIsSystemAnnouncementOpen(true);
-        setHasShownAnnouncement(true);
+        setTimeout(() => {
+           setIsSystemAnnouncementOpen(true);
+           setHasShownAnnouncement(true);
+        }, 800); // 800ms delay for smooth entrance
       }
       
       const updatedCurrentUser = fetchedUsers.find(u => u.id === currentUser.id);
@@ -299,6 +325,24 @@ const App: React.FC = () => {
      setEditingAnnouncement(announcement);
      setIsAnnouncementModalOpen(true);
   };
+
+  // Loading Screen for Session Restore
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-paper-100 flex flex-col items-center justify-center p-4">
+         <div className="flex flex-col items-center animate-pulse">
+            <div className="mx-auto bg-ink-900 w-12 h-12 rounded-sm flex items-center justify-center mb-4 shadow-lg rotate-45 border-2 border-paper-50">
+              <Feather size={20} className="text-paper-50 -rotate-45" strokeWidth={2} />
+            </div>
+            <h2 className="text-2xl font-serif font-bold text-ink-900 mb-2">The 13th Page</h2>
+            <div className="flex items-center gap-2 text-ink-500 text-sm font-mono uppercase tracking-widest">
+               <Loader2 size={14} className="animate-spin" />
+               <span>Loading Ledger...</span>
+            </div>
+         </div>
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return (

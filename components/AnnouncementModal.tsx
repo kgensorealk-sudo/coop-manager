@@ -18,6 +18,7 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
   const [isExiting, setIsExiting] = useState(false);
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left'); // 'left' means going to next (content exits left)
   const [isInitialMount, setIsInitialMount] = useState(true);
+  const [isNavigating, setIsNavigating] = useState(false); // New state to track if we are actively navigating
 
   const touchStartRef = useRef<number | null>(null);
   const touchEndRef = useRef<number | null>(null);
@@ -29,9 +30,10 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
       setIsExiting(false);
       setSlideDirection('left');
       setIsInitialMount(true);
+      setIsNavigating(false); // Reset navigation state on open to prevent auto-swipe
       
       // Reset initial mount flag after animation
-      const timer = setTimeout(() => setIsInitialMount(false), 400);
+      const timer = setTimeout(() => setIsInitialMount(false), 700); 
       return () => clearTimeout(timer);
     }
   }, [isOpen, startIndex]);
@@ -52,12 +54,13 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
     setTimeout(() => {
       onClose();
       setIsClosing(false);
-    }, 300); // 300ms matches the CSS animation duration
+    }, 300); // 300ms matches the CSS animation duration for exit
   };
 
   const handleNext = () => {
     if (hasNext && !isExiting) {
       setIsExiting(true);
+      setIsNavigating(true); // Explicitly mark as navigating
       setSlideDirection('left');
       setTimeout(() => {
         setCurrentIndex(prev => prev + 1);
@@ -69,6 +72,7 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
   const handlePrev = () => {
     if (hasPrev && !isExiting) {
       setIsExiting(true);
+      setIsNavigating(true); // Explicitly mark as navigating
       setSlideDirection('right');
       setTimeout(() => {
         setCurrentIndex(prev => prev - 1);
@@ -158,7 +162,7 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
   // Determine animation for the CARD CONTAINER (Entrance/Exit)
   const getCardAnimationClass = () => {
     if (isClosing) return 'animate-scale-out';
-    if (isInitialMount) return 'animate-slide-up';
+    if (isInitialMount) return 'animate-zoom-in'; // Switched to zoom-in for better UX
     return '';
   };
 
@@ -167,15 +171,18 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
     if (isExiting) {
       return slideDirection === 'left' ? 'animate-slide-out-left' : 'animate-slide-out-right';
     }
-    if (!isInitialMount && !isClosing) {
-       // Only animate entrance if we are navigating, not on first load or close
+    // Only animate entrance if we are actively navigating (clicked next/prev), not on first load or close
+    if (isNavigating && !isClosing) {
        return slideDirection === 'left' ? 'animate-slide-in-right' : 'animate-slide-in-left';
     }
     return '';
   };
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-leather-900/80 backdrop-blur-sm p-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
+    <div 
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-leather-900/80 backdrop-blur-sm p-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}
+      style={{ animationDuration: isClosing ? '0.3s' : '0.6s' }}
+    >
       
       {/* Desktop Navigation: Prev (Moved Outside) */}
       <button 
@@ -190,6 +197,7 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
       {/* Main Card Container - Fixed Dimensions to prevent jumping */}
       <div 
         className={`bg-paper-50 w-full max-w-md h-[550px] overflow-hidden flex flex-col relative shadow-2xl rounded-3xl border-2 border-paper-300 ${getCardAnimationClass()}`}
+        style={{ animationDuration: isInitialMount ? '0.6s' : '0.3s' }} // Slower initial mount
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}

@@ -17,6 +17,36 @@ class DataService {
   // AUTHENTICATION
   // ----------------------------------------------------------------------
 
+  async restoreSession(): Promise<User | null> {
+    // If keys aren't set, we can't restore a session. Return null silently.
+    if (!isSupabaseConfigured() || !supabase) return null;
+    
+    const db = supabase;
+    
+    // Get current session from LocalStorage (handled by Supabase client)
+    const { data: { session }, error } = await db.auth.getSession();
+    
+    if (error || !session?.user) {
+      return null;
+    }
+
+    // Session exists, fetch the full profile
+    const { data: profile, error: profileError } = await db
+      .from('profiles')
+      .select('*')
+      .eq('auth_id', session.user.id)
+      .single();
+
+    if (profileError || !profile) {
+       // Valid auth session but no profile? (Edge case). 
+       // Sign out to clean up state.
+       await db.auth.signOut();
+       return null;
+    }
+
+    return profile as User;
+  }
+
   async login(email: string, password: string): Promise<User> {
     const db = this.checkConnection();
     
