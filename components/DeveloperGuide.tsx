@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { FolderTree, Copy, Check, Database, Terminal, Image } from 'lucide-react';
+import { FolderTree, Copy, Check, Database, Image } from 'lucide-react';
 
 // SQL Schema
 const SCHEMA_SQL = `-- Enable UUID extension
