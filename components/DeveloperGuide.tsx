@@ -93,6 +93,104 @@ insert into settings (key, value) values ('monthly_goal', '10000') on conflict d
 insert into storage.buckets (id, name, public) 
 values ('gallery', 'gallery', true)
 on conflict (id) do nothing;
+
+-- =========================================================
+-- MIGRATIONS (FIX FOR EXISTING DATABASES)
+-- Run this block if you are getting "column not found" errors
+-- =========================================================
+
+alter table gallery_items add column if not exists is_archived boolean default false;
+alter table gallery_items add column if not exists archived_at timestamp with time zone;
+
+-- Enable RLS on Tables
+alter table profiles enable row level security;
+alter table contributions enable row level security;
+alter table loans enable row level security;
+alter table payments enable row level security;
+alter table announcements enable row level security;
+alter table gallery_items enable row level security;
+alter table settings enable row level security;
+
+-- Drop old policies to prevent conflicts
+drop policy if exists "Public profiles are viewable by everyone" on profiles;
+drop policy if exists "Admins can insert profiles" on profiles;
+drop policy if exists "Admins can update profiles" on profiles;
+drop policy if exists "Admins can delete profiles" on profiles;
+
+drop policy if exists "Announcements are viewable by everyone" on announcements;
+drop policy if exists "Admins can insert announcements" on announcements;
+drop policy if exists "Admins can update announcements" on announcements;
+drop policy if exists "Admins can delete announcements" on announcements;
+
+drop policy if exists "Gallery is viewable by everyone" on gallery_items;
+drop policy if exists "Admins can insert gallery items" on gallery_items;
+drop policy if exists "Admins can update gallery items" on gallery_items;
+drop policy if exists "Admins can delete gallery items" on gallery_items;
+
+drop policy if exists "Enable read access for all users" on settings;
+drop policy if exists "Admins can update settings" on settings;
+drop policy if exists "Admins can insert settings" on settings;
+
+drop policy if exists "Enable read access for all users" on contributions;
+drop policy if exists "Enable insert for all users" on contributions;
+drop policy if exists "Enable update for all users" on contributions;
+drop policy if exists "Admins can delete contributions" on contributions;
+
+drop policy if exists "Enable read access for all users" on loans;
+drop policy if exists "Enable insert for all users" on loans;
+drop policy if exists "Enable update for all users" on loans;
+drop policy if exists "Admins can delete loans" on loans;
+
+drop policy if exists "Enable read access for all users" on payments;
+drop policy if exists "Enable insert for all users" on payments;
+drop policy if exists "Admins can delete payments" on payments;
+
+-- Storage Policies cleanup
+drop policy if exists "Public Access" on storage.objects;
+drop policy if exists "Authenticated Upload" on storage.objects;
+drop policy if exists "Authenticated Delete" on storage.objects;
+drop policy if exists "Admin Delete Assets" on storage.objects;
+
+-- =========================================================
+-- CREATE POLICIES (Run this section to fix permissions)
+-- =========================================================
+
+-- 1. PROFILES
+create policy "Public profiles are viewable by everyone" on profiles for select using (true);
+create policy "Admins can insert profiles" on profiles for insert with check (true);
+create policy "Admins can update profiles" on profiles for update using (true);
+
+-- 2. ANNOUNCEMENTS
+create policy "Announcements are viewable by everyone" on announcements for select using (true);
+create policy "Admins can insert announcements" on announcements for insert with check (exists (select 1 from profiles where auth_id = auth.uid() and role = 'admin'));
+create policy "Admins can update announcements" on announcements for update using (exists (select 1 from profiles where auth_id = auth.uid() and role = 'admin'));
+
+-- 3. GALLERY ITEMS
+create policy "Gallery is viewable by everyone" on gallery_items for select using (true);
+create policy "Admins can insert gallery items" on gallery_items for insert with check (exists (select 1 from profiles where auth_id = auth.uid() and role = 'admin'));
+create policy "Admins can update gallery items" on gallery_items for update using (exists (select 1 from profiles where auth_id = auth.uid() and role = 'admin'));
+
+-- 4. SETTINGS
+create policy "Enable read access for all users" on settings for select using (true);
+create policy "Admins can update settings" on settings for update using (true);
+create policy "Admins can insert settings" on settings for insert with check (true);
+
+-- 5. FINANCIAL TABLES (Loans, Contributions, Payments)
+-- Read/Write for everyone (simplified for demo), NO DELETE ALLOWED
+create policy "Enable read access for all users" on contributions for select using (true);
+create policy "Enable insert for all users" on contributions for insert with check (true);
+create policy "Enable update for all users" on contributions for update using (true);
+
+create policy "Enable read access for all users" on loans for select using (true);
+create policy "Enable insert for all users" on loans for insert with check (true);
+create policy "Enable update for all users" on loans for update using (true);
+
+create policy "Enable read access for all users" on payments for select using (true);
+create policy "Enable insert for all users" on payments for insert with check (true);
+
+-- 6. STORAGE POLICIES
+create policy "Public Access" on storage.objects for select using ( bucket_id = 'gallery' );
+create policy "Authenticated Upload" on storage.objects for insert with check ( bucket_id = 'gallery' and auth.role() = 'authenticated' );
 `;
 
 const STORAGE_INSTRUCTIONS = `
@@ -119,8 +217,8 @@ const STRUCTURE_MD = `/
 ├── components/
 │   ├── ui/
 │   ├── Sidebar.tsx
-│   ├── GalleryView.tsx         
-│   ├── UploadPhotoModal.tsx    
+│   ├── GalleryView.tsx         # New!
+│   ├── UploadPhotoModal.tsx    # New!
 │   └── ...
 └── App.tsx                     # Main Router Logic`;
 
@@ -134,13 +232,9 @@ export const DeveloperGuide: React.FC = () => {
     if (activeTab === 'storage') content = STORAGE_INSTRUCTIONS;
     if (activeTab === 'structure') content = STRUCTURE_MD;
     
-    try {
-      navigator.clipboard.writeText(content);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-    }
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const getCodeContent = () => {
