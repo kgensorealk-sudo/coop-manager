@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, Users, PiggyBank, FileText, LogOut, Code2, Calendar, Megaphone, PenTool, Image } from 'lucide-react';
+import { LayoutDashboard, Users, PiggyBank, FileText, LogOut, Code2, Calendar, Megaphone, Feather, Image } from 'lucide-react';
 import { User } from '../types';
 
 interface SidebarProps {
@@ -44,7 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-10 pb-8 relative">
         <div className="flex items-center space-x-4">
           <div className="bg-paper-100 p-2.5 rounded-sm shadow-md rotate-3 border border-paper-300">
-            <PenTool size={22} className="text-ink-900" />
+            <Feather size={22} className="text-ink-900" />
           </div>
           <div>
             <span className="text-2xl font-serif font-bold tracking-wide text-paper-50 block leading-none">The 13th Page</span>
@@ -107,7 +107,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-6 bg-leather-800 border-t border-white/5 relative overflow-hidden">
         {/* Decorative background accent */}
         <div className="absolute bottom-0 right-0 p-4 opacity-5 pointer-events-none">
-           <PenTool size={64} />
+           <Feather size={64} />
         </div>
 
         <div className="flex items-center space-x-4 mb-4 relative z-10">

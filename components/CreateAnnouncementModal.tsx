@@ -22,10 +22,14 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
   const [scheduledStart, setScheduledStart] = useState('');
   const [scheduledEnd, setScheduledEnd] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Animation state
+  const [isClosing, setIsClosing] = useState(false);
 
   // Load data if editing
   useEffect(() => {
     if (isOpen) {
+       setIsClosing(false);
        if (editingAnnouncement) {
           setTitle(editingAnnouncement.title);
           setMessage(editingAnnouncement.message);
@@ -43,6 +47,14 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
     }
   }, [isOpen, editingAnnouncement]);
 
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+      setIsClosing(false);
+    }, 300);
+  };
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,10 +68,9 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
       const end = scheduledEnd ? new Date(scheduledEnd).toISOString() : null;
       
       await onSubmit(title, message, priority, start, end);
-      onClose();
+      handleClose();
     } catch (error) {
       console.error(error);
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -72,8 +83,8 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
+      <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] ${isClosing ? 'animate-scale-out' : 'animate-zoom-in'}`}>
         
         {/* Header */}
         <div className="bg-slate-50 border-b border-slate-100 p-6 flex justify-between items-start">
@@ -87,7 +98,7 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
              </div>
           </div>
           <button 
-            onClick={onClose}
+            onClick={handleClose}
             className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-200 rounded-full"
           >
             <X size={20} />
@@ -183,7 +194,7 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
           <div className="pt-4 flex items-center justify-end space-x-3 border-t border-slate-100 mt-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={isSubmitting}
               className="px-5 py-2.5 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
             >

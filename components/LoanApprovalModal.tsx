@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { LoanWithBorrower } from '../types';
-import { X, AlertCircle, CheckCircle, Percent, AlertTriangle } from 'lucide-react';
+import { X, AlertCircle, CheckCircle, Percent, AlertTriangle, Info } from 'lucide-react';
 
 interface LoanApprovalModalProps {
   isOpen: boolean;
@@ -21,26 +21,42 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
   treasuryBalance
 }) => {
   const [interestRate, setInterestRate] = useState<number>(10);
+  
+  // Animation state
+  const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
+    if (isOpen) {
+      setIsClosing(false);
+    }
     if (loan) {
       setInterestRate(loan.interest_rate);
     }
-  }, [loan]);
+  }, [isOpen, loan]);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+      setIsClosing(false);
+    }, 300);
+  };
 
   if (!isOpen || !loan) return null;
 
   const isNonMember = !loan.borrower.is_coop_member;
   
-  const monthlyInterest = (loan.principal * (interestRate / 100));
-  const estimatedTotalRepayment = loan.principal + (monthlyInterest * loan.duration_months);
+  // Logic: Principal + (interest per month x duration_months) = Total
+  const monthlyInterestAmount = (loan.principal * (interestRate / 100));
+  const totalTermInterest = monthlyInterestAmount * loan.duration_months;
+  const totalResponsibility = loan.principal + totalTermInterest;
   
   const hasInsufficientFunds = loan.principal > treasuryBalance;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-leather-900/60 backdrop-blur-sm p-4 animate-fade-in">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-leather-900/60 backdrop-blur-sm p-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
       {/* Modal Container: Double Border effect for document feel */}
-      <div className="bg-paper-50 rounded-sm shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border-4 border-double border-paper-300 relative">
+      <div className={`bg-paper-50 rounded-sm shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border-4 border-double border-paper-300 relative ${isClosing ? 'animate-scale-out' : 'animate-zoom-in'}`}>
         
         {/* Header */}
         <div className="bg-paper-100 border-b border-paper-200 p-8 flex justify-between items-start">
@@ -50,7 +66,7 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
             <p className="text-sm text-ink-500 mt-1 font-serif italic">Ref: {loan.id.substring(0,8).toUpperCase()}</p>
           </div>
           <button 
-            onClick={onClose}
+            onClick={handleClose}
             className="text-ink-400 hover:text-ink-700 transition-colors p-1 hover:bg-paper-200 rounded-full"
           >
             <X size={20} />
@@ -135,15 +151,31 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
             </div>
 
             {/* Projections */}
-            <div className="space-y-2 pt-2">
-               <div className="flex justify-between text-sm font-mono">
-                  <span className="text-ink-500">Monthly Interest:</span>
-                  <span className="font-bold text-ink-900">₱{monthlyInterest.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            <div className="space-y-3 pt-2">
+               <div className="flex justify-between text-sm font-mono items-center">
+                  <span className="text-ink-500 flex items-center gap-1">
+                    Monthly Interest Component:
+                  </span>
+                  <span className="font-bold text-ink-800">₱{monthlyInterestAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                </div>
-               <div className="flex justify-between text-sm font-mono border-t border-paper-200 pt-2 mt-2">
-                  <span className="text-ink-500">Total Repayment:</span>
-                  <span className="font-bold text-ink-900">~₱{estimatedTotalRepayment.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+               <div className="flex justify-between text-sm font-mono items-center">
+                  <span className="text-emerald-700 font-bold flex items-center gap-1">
+                    <Info size={12} />
+                    Total Term Interest:
+                  </span>
+                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-sm">₱{totalTermInterest.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                </div>
+               <div className="flex justify-between text-sm font-mono border-t border-paper-200 pt-3 mt-1">
+                  <span className="text-ink-900 font-bold uppercase tracking-widest text-xs">Total Responsibility:</span>
+                  <span className="font-bold text-ink-900 text-lg">₱{totalResponsibility.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+               </div>
+            </div>
+
+            <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-sm">
+              <p className="text-[11px] text-indigo-700 font-serif italic flex gap-2">
+                <CheckCircle size={12} className="shrink-0 mt-0.5" />
+                Upon approval, the full interest for the {loan.duration_months}-month term (₱{totalTermInterest.toLocaleString()}) will be applied to the borrower's ledger immediately.
+              </p>
             </div>
           </div>
 
@@ -166,7 +198,10 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
             Reject Application
           </button>
           <button
-            onClick={() => onApprove(loan.id, interestRate)}
+            onClick={() => {
+               onApprove(loan.id, interestRate);
+               handleClose();
+            }}
             disabled={hasInsufficientFunds}
             className={`flex items-center space-x-2 px-8 py-3 font-bold uppercase text-xs tracking-widest rounded-sm shadow-md transition-all active:translate-y-0.5 border-b-2 ${
                hasInsufficientFunds 

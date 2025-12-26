@@ -23,9 +23,13 @@ const MemberModal: React.FC<MemberModalProps> = ({
     is_coop_member: true
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Animation state
+  const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
+      setIsClosing(false);
       if (editingMember) {
         setFormData({
           full_name: editingMember.full_name,
@@ -44,6 +48,14 @@ const MemberModal: React.FC<MemberModalProps> = ({
     }
   }, [isOpen, editingMember]);
 
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+      setIsClosing(false);
+    }, 300);
+  };
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,7 +63,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
     setIsSubmitting(true);
     try {
       await onSubmit(formData);
-      onClose();
+      handleClose();
     } catch (error) {
       console.error(error);
     } finally {
@@ -60,14 +72,14 @@ const MemberModal: React.FC<MemberModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
+      <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col ${isClosing ? 'animate-scale-out' : 'animate-zoom-in'}`}>
         <div className="bg-slate-50 border-b border-slate-100 p-6 flex justify-between items-start">
           <div>
             <h2 className="text-xl font-bold text-slate-800">{editingMember ? 'Edit Member' : 'Add New Member'}</h2>
             <p className="text-sm text-slate-500 mt-1">{editingMember ? 'Update member details.' : 'Register a new user to the system.'}</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-200 rounded-full">
+          <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-200 rounded-full">
             <X size={20} />
           </button>
         </div>
@@ -136,7 +148,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
           </div>
 
           <div className="pt-4 flex justify-end gap-3">
-             <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg">Cancel</button>
+             <button type="button" onClick={handleClose} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg">Cancel</button>
              <button type="submit" disabled={isSubmitting} className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50">
                {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
                <span>{editingMember ? 'Update Member' : 'Create Member'}</span>

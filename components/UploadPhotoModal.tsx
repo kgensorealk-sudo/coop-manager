@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, Loader2, Image, Type, UploadCloud, AlertCircle } from 'lucide-react';
 
 interface UploadPhotoModalProps {
@@ -18,6 +18,23 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({
   const [caption, setCaption] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Animation state
+  const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsClosing(false);
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+      setIsClosing(false);
+    }, 300);
+  };
 
   if (!isOpen) return null;
 
@@ -47,19 +64,18 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({
       setFile(null);
       setPreview(null);
       setCaption('');
-      onClose();
+      handleClose();
     } catch (err: any) {
       console.error(err);
       const msg = err.message || (typeof err === 'string' ? err : "Upload failed. Please try again.");
       setError(msg);
-    } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
+      <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] ${isClosing ? 'animate-scale-out' : 'animate-zoom-in'}`}>
         
         {/* Header */}
         <div className="bg-slate-50 border-b border-slate-100 p-6 flex justify-between items-start">
@@ -73,7 +89,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({
              </div>
           </div>
           <button 
-            onClick={onClose}
+            onClick={handleClose}
             className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-200 rounded-full"
           >
             <X size={20} />
@@ -134,7 +150,7 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({
           <div className="pt-4 flex items-center justify-end space-x-3 border-t border-slate-100 mt-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={isSubmitting}
               className="px-5 py-2.5 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
             >

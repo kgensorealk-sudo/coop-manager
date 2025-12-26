@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Mail, Send, User, Shield, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { dataService } from '../services/dataService';
 import { Role } from '../types';
@@ -19,6 +19,26 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ isOpen, onClose, 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  
+  // Animation state
+  const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsClosing(false);
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setFormData({ full_name: '', email: '', role: 'member' });
+      setError(null);
+      setSuccess(false);
+      setIsClosing(false);
+      onClose();
+    }, 300);
+  };
 
   if (!isOpen) return null;
 
@@ -46,16 +66,9 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ isOpen, onClose, 
     }
   };
 
-  const handleClose = () => {
-    setFormData({ full_name: '', email: '', role: 'member' });
-    setError(null);
-    setSuccess(false);
-    onClose();
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col relative">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
+      <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col relative ${isClosing ? 'animate-scale-out' : 'animate-zoom-in'}`}>
         
         {/* Header */}
         <div className="bg-slate-50 border-b border-slate-100 p-6 flex justify-between items-start">

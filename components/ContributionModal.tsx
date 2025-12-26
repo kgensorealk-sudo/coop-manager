@@ -23,16 +23,29 @@ const ContributionModal: React.FC<ContributionModalProps> = ({
   const [type, setType] = useState<'monthly_deposit' | 'one_time'>('monthly_deposit');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  
+  // Animation state
+  const [isClosing, setIsClosing] = useState(false);
 
-  // Set default member if current user is a member
   useEffect(() => {
-    if (isOpen && currentUser && currentUser.role === 'member') {
-      setMemberId(currentUser.id);
-    } else if (isOpen) {
-      setMemberId('');
-      setAmount('');
+    if (isOpen) {
+      setIsClosing(false);
+      if (currentUser && currentUser.role === 'member') {
+        setMemberId(currentUser.id);
+      } else {
+        setMemberId('');
+        setAmount('');
+      }
     }
   }, [isOpen, currentUser]);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+      setIsClosing(false);
+    }, 300);
+  };
 
   if (!isOpen) return null;
 
@@ -63,18 +76,17 @@ const ContributionModal: React.FC<ContributionModalProps> = ({
       setMemberId('');
       setAmount('');
       setType('monthly_deposit');
-      onClose();
+      handleClose();
     } catch (err) {
       console.error(err);
       setError('Failed to record contribution.');
-    } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
+      <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col ${isClosing ? 'animate-scale-out' : 'animate-zoom-in'}`}>
         
         {/* Header */}
         <div className="bg-slate-50 border-b border-slate-100 p-6 flex justify-between items-start">
@@ -85,7 +97,7 @@ const ContributionModal: React.FC<ContributionModalProps> = ({
             </p>
           </div>
           <button 
-            onClick={onClose}
+            onClick={handleClose}
             className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-200 rounded-full"
           >
             <X size={20} />
@@ -171,7 +183,7 @@ const ContributionModal: React.FC<ContributionModalProps> = ({
           <div className="pt-4 flex items-center justify-end space-x-3 border-t border-slate-100 mt-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={isSubmitting}
               className="px-5 py-2.5 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
             >

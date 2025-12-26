@@ -217,7 +217,7 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
              
              <div className="relative z-20 flex justify-between items-start">
                 <div className="flex flex-col pr-8">
-                   <div className={`flex items-center gap-2 text-xs uppercase tracking-[0.2em] font-bold opacity-80 mb-2 transition-colors duration-500 ${theme.headerText}`}>
+                   <div className={`flex items-center gap-2 text-sm uppercase tracking-[0.2em] font-bold opacity-80 mb-2 transition-colors duration-500 ${theme.headerText}`}>
                       {theme.smallIcon}
                       <span>{announcement.priority || 'NOTICE'}</span>
                       {announcements.length > 1 && (
