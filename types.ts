@@ -28,6 +28,8 @@ export interface Loan {
   purpose: string;
   remaining_principal: number;
   interest_accrued: number; // Accumulated unpaid interest
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface Contribution {

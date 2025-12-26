@@ -55,7 +55,8 @@ export const MOCK_LOANS: Loan[] = [
     start_date: '2023-10-01',
     purpose: 'Home Renovation',
     remaining_principal: 3000,
-    interest_accrued: 0
+    interest_accrued: 0,
+    created_at: '2023-09-28T10:00:00Z'
   },
   {
     id: 'l2',
@@ -66,7 +67,8 @@ export const MOCK_LOANS: Loan[] = [
     status: 'pending',
     purpose: 'Business Capital',
     remaining_principal: 10000,
-    interest_accrued: 0
+    interest_accrued: 0,
+    created_at: '2023-10-15T14:30:00Z'
   },
   {
     id: 'l3',
@@ -77,7 +79,8 @@ export const MOCK_LOANS: Loan[] = [
     status: 'pending',
     purpose: 'Emergency Fund',
     remaining_principal: 2000,
-    interest_accrued: 0
+    interest_accrued: 0,
+    created_at: '2023-10-25T09:00:00Z'
   }
 ];
 

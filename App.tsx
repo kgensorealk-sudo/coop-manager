@@ -18,16 +18,13 @@ import { ScheduleView } from './components/ScheduleView';
 import { GalleryView } from './components/GalleryView';
 import { dataService } from './services/dataService';
 import { LoanWithBorrower, User, ContributionWithMember, ContributionStatus, Announcement, AnnouncementPriority, LoanStatus } from './types';
-import { isSupabaseConfigured } from './lib/supabaseClient';
 import { 
   CreditCard, 
   Wallet, 
-  AlertCircle, 
   Search, 
   Filter,
   TrendingUp, 
   Activity,
-  Database,
   RefreshCw,
   AlertTriangle,
   Megaphone,
@@ -95,7 +92,7 @@ const App: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [authLoading, setAuthLoading] = useState(false);
+  // Removed unused authLoading state as initialLoading covers the login transition
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   
@@ -361,7 +358,7 @@ const App: React.FC = () => {
 
   if (!currentUser) {
     return (
-      <LoginScreen onLogin={handleLogin} loading={authLoading} error={authError} success={authSuccess} />
+      <LoginScreen onLogin={handleLogin} loading={false} error={authError} success={authSuccess} />
     );
   }
 
