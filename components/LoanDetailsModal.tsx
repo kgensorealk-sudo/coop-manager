@@ -162,7 +162,7 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                 </div>
                 <div className="bg-white p-3 rounded-lg border border-slate-100">
                    <span className="text-slate-500 block text-xs mb-1">Priority Hierarchy</span>
-                   <span className="font-semibold text-slate-900">Interest > Principal</span>
+                   <span className="font-semibold text-slate-900">Interest &gt; Principal</span>
                    <span className="text-xs text-slate-400 block mt-0.5">Payments clear interest before principal.</span>
                 </div>
              </div>
