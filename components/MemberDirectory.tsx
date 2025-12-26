@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { User, LoanWithBorrower } from '../types';
 import { dataService } from '../services/dataService';
-import { Search, Shield, User as UserIcon, Wallet, Mail, Edit2, Plus, CreditCard, PiggyBank } from 'lucide-react';
+import { Search, Shield, User as UserIcon, Mail, Edit2, Plus, CreditCard, PiggyBank } from 'lucide-react';
 import MemberModal from './MemberModal';
 
 interface MemberDirectoryProps {

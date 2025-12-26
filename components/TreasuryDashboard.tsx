@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ContributionWithMember, LoanWithBorrower, Payment } from '../types';
+import { ContributionWithMember, LoanWithBorrower } from '../types';
 import { dataService } from '../services/dataService';
 import { StatCard } from './StatCard';
 import { 
@@ -9,16 +9,13 @@ import {
   ArrowUpRight, 
   Plus, 
   Check, 
-  X, 
   Clock, 
   TrendingUp, 
   ArrowDownRight, 
-  Coins, 
   Scale, 
   Activity, 
   ChevronDown, 
   ChevronUp, 
-  Calendar, 
   Target, 
   Equal,
   BookOpen,
@@ -26,7 +23,6 @@ import {
   FileText,
   ShieldCheck,
   Download,
-  // Added missing icon imports
   AlertTriangle,
   AlertCircle
 } from 'lucide-react';
