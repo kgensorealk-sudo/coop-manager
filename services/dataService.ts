@@ -1,7 +1,7 @@
 
 import { supabase } from '../lib/supabaseClient';
 import { 
-  User, Loan, LoanWithBorrower, Contribution, ContributionWithMember, 
+  User, LoanWithBorrower, ContributionWithMember, 
   Payment, Announcement, AnnouncementPriority, GalleryItem, PersonalLedgerEntry,
   LoanStatus, ContributionStatus, Role, CategoryBudget, PersonalAccount, SavingGoal
 } from '../types';
@@ -283,7 +283,6 @@ class DataService {
      if (error) throw error;
   }
 
-  // New method to fix error in MemberDirectory.tsx
   async createMember(data: any): Promise<void> {
     if (this.isMock()) {
        MOCK_USERS.push({
@@ -297,7 +296,6 @@ class DataService {
     if (error) throw error;
   }
 
-  // New method to fix error in App.tsx
   async createAnnouncement(title: string, message: string, authorId: string, priority: AnnouncementPriority, start: string | null, end: string | null): Promise<void> {
     if (this.isMock()) {
        MOCK_ANNOUNCEMENTS.push({
@@ -315,7 +313,6 @@ class DataService {
     if (error) throw error;
   }
 
-  // New method to fix error in App.tsx
   async updateAnnouncement(id: string, updates: any): Promise<void> {
     if (this.isMock()) {
        const index = MOCK_ANNOUNCEMENTS.findIndex(a => a.id === id);
@@ -326,7 +323,6 @@ class DataService {
     if (error) throw error;
   }
 
-  // New method to fix error in AnnouncementHistory.tsx
   async updateAnnouncementStatus(id: string, is_active: boolean): Promise<void> {
     if (this.isMock()) {
        const index = MOCK_ANNOUNCEMENTS.findIndex(a => a.id === id);
@@ -369,7 +365,7 @@ class DataService {
 
   async toggleGalleryArchive(id: string, isArchived: boolean): Promise<void> {
     if (this.isMock()) return;
-    const { error } = await this.supabase!.from('gallery_items').update({
+    const { error = null } = await this.supabase!.from('gallery_items').update({
        is_archived: isArchived, archived_at: isArchived ? new Date().toISOString() : null
     }).eq('id', id);
     if (error) throw error;
@@ -407,7 +403,6 @@ class DataService {
   async addPersonalEntry(entry: Omit<PersonalLedgerEntry, 'id' | 'created_at'>): Promise<void> {
     if (this.isMock()) return;
     
-    // Begin Transaction (Implicitly via multiple calls or explicit if using RPC)
     const { error } = await this.supabase!.from('personal_ledger').insert(entry);
     if (error) throw error;
 
