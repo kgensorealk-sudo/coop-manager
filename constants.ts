@@ -1,5 +1,5 @@
 
-import { User, Loan, Contribution, Payment, Announcement } from './types';
+import { User, Loan, Contribution, Payment, Announcement, PersonalLedgerEntry } from './types';
 
 // Default Interest Rate as per requirements
 export const DEFAULT_INTEREST_RATE = 10;
@@ -131,5 +131,38 @@ export const MOCK_ANNOUNCEMENTS: Announcement[] = [
     is_active: true,
     author_id: 'u1',
     priority: 'urgent'
+  }
+];
+
+export const MOCK_PERSONAL_LEDGER: PersonalLedgerEntry[] = [
+  {
+    id: 'pe1',
+    user_id: 'u1',
+    date: '2023-10-01',
+    description: 'Salary',
+    amount: 50000,
+    type: 'income',
+    category: 'Employment',
+    created_at: '2023-10-01T09:00:00Z'
+  },
+  {
+    id: 'pe2',
+    user_id: 'u1',
+    date: '2023-10-05',
+    description: 'Groceries',
+    amount: 4500,
+    type: 'expense',
+    category: 'Food',
+    created_at: '2023-10-05T14:30:00Z'
+  },
+  {
+    id: 'pe3',
+    user_id: 'u2',
+    date: '2023-10-01',
+    description: 'Freelance Project',
+    amount: 15000,
+    type: 'income',
+    category: 'Side Hustle',
+    created_at: '2023-10-01T10:00:00Z'
   }
 ];

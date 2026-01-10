@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, Users, PiggyBank, FileText, LogOut, Code2, Calendar, Megaphone, Feather, Image } from 'lucide-react';
+import { LayoutDashboard, Users, PiggyBank, FileText, LogOut, Code2, Calendar, Megaphone, Feather, Image, Book } from 'lucide-react';
 import { User } from '../types';
 
 interface SidebarProps {
@@ -25,11 +25,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'treasury', label: 'Treasury', icon: PiggyBank },
     { id: 'announcements', label: 'Notices', icon: Megaphone },
     { id: 'gallery', label: 'Gallery', icon: Image },
+    { id: 'personal-ledger', label: 'Personal Books', icon: Book },
     { id: 'schedules', label: 'Calendar', icon: Calendar },
   ];
 
   const memberMenuItems = [
     { id: 'my-dashboard', label: 'My Ledger', icon: LayoutDashboard },
+    { id: 'personal-ledger', label: 'Personal Books', icon: Book },
     { id: 'announcements', label: 'Notices', icon: Megaphone },
     { id: 'gallery', label: 'Gallery', icon: Image },
     { id: 'schedules', label: 'My Calendar', icon: Calendar },

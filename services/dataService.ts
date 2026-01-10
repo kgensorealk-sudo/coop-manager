@@ -1,514 +1,539 @@
 
-import { Loan, User, LoanWithBorrower, Payment, ContributionWithMember, ContributionStatus, Announcement, AnnouncementPriority, GalleryItem } from '../types';
-import { DEFAULT_INTEREST_RATE } from '../constants';
-import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabaseClient';
+import { 
+  User, Loan, LoanWithBorrower, Contribution, ContributionWithMember, 
+  Payment, Announcement, AnnouncementPriority, GalleryItem, PersonalLedgerEntry,
+  LoanStatus, ContributionStatus, Role, CategoryBudget, PersonalAccount, SavingGoal
+} from '../types';
+import { 
+  MOCK_USERS, MOCK_LOANS, MOCK_CONTRIBUTIONS, MOCK_PAYMENTS, 
+  MOCK_ANNOUNCEMENTS, MOCK_PERSONAL_LEDGER 
+} from '../constants';
 
 class DataService {
-  
-  // Helper to ensure database is connected before operations
-  private checkConnection() {
-    if (!isSupabaseConfigured() || !supabase) {
-       throw new Error("Database not connected. Please configure your Supabase connection in settings.");
-    }
-    return supabase;
+  private supabase = supabase;
+
+  private isMock() {
+    return !this.supabase;
   }
 
-  // ----------------------------------------------------------------------
-  // AUTHENTICATION
-  // ----------------------------------------------------------------------
-
+  // AUTH
   async restoreSession(): Promise<User | null> {
-    if (!isSupabaseConfigured() || !supabase) return null;
-    const db = supabase;
-    const { data: { session }, error } = await db.auth.getSession();
-    if (error) {
-       console.warn("Session restore error, clearing state:", error.message);
-       await db.auth.signOut().catch(() => {});
-       return null;
-    }
-    if (!session?.user) return null;
-
-    const { data: profile, error: profileError } = await db
+    if (this.isMock()) return MOCK_USERS[0];
+    
+    const { data: { session } } = await this.supabase!.auth.getSession();
+    if (!session) return null;
+    
+    const { data: profile } = await this.supabase!
       .from('profiles')
       .select('*')
       .eq('auth_id', session.user.id)
       .single();
-
-    if (profileError || !profile) {
-       await db.auth.signOut().catch(() => {});
-       return null;
-    }
-
+      
     return profile as User;
   }
 
-  async login(email: string, password: string): Promise<User> {
-    const db = this.checkConnection();
-    try {
-      await db.auth.signOut(); 
-    } catch (e) {}
-
-    const { data: authData, error: authError } = await db.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (authError) {
-      if (authError.message.includes("Email not confirmed")) {
-        throw new Error("Email not confirmed. Please check your inbox or spam folder to verify your account.");
-      }
-      throw authError;
-    }
-    
-    if (!authData.user) throw new Error("No user returned from Supabase");
-
-    let { data: profile, error: profileError } = await db
-      .from('profiles')
-      .select('*')
-      .eq('auth_id', authData.user.id)
-      .single();
-    
-    if (profileError || !profile) {
-       const { data: legacyProfile } = await db.from('profiles').select('*').eq('email', email).single();
-       if (legacyProfile) {
-          if (!legacyProfile.auth_id) {
-             await db.from('profiles').update({ auth_id: authData.user.id }).eq('id', legacyProfile.id);
-          }
-          return legacyProfile as User;
-       }
-
-       const fullName = authData.user.user_metadata?.full_name || email.split('@')[0];
-       const newProfile = {
-          auth_id: authData.user.id,
-          email: email,
-          full_name: fullName,
-          role: 'member',
-          is_coop_member: false,
-          equity: 0,
-          avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`
-       };
-       
-       const { data: createdProfile, error: createError } = await db
-          .from('profiles')
-          .insert(newProfile)
-          .select()
-          .single();
-          
-       if (createError) throw new Error("User profile not found and could not be created.");
-       profile = createdProfile;
+  async login(email: string, pass: string): Promise<User> {
+    if (this.isMock()) {
+      const user = MOCK_USERS.find(u => u.email === email);
+      if (user) return user;
+      throw new Error("Invalid mock credentials");
     }
 
-    return profile as User;
+    const { data, error } = await this.supabase!.auth.signInWithPassword({ email, password: pass });
+    if (error) throw error;
+    
+    if (data.user) {
+       const { data: profile } = await this.supabase!
+        .from('profiles')
+        .select('*')
+        .eq('auth_id', data.user.id)
+        .single();
+       if (profile) return profile as User;
+    }
+    throw new Error("User profile not found");
   }
 
-  async signUp(email: string, password: string, fullName: string): Promise<User> {
-    const db = this.checkConnection();
-    try { await db.auth.signOut(); } catch (e) {}
-    const { data: authData, error: authError } = await db.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: fullName } }
-    });
-    if (authError) throw authError;
-    if (authData.user && !authData.session) throw new Error("Registration successful! Please confirm your email.");
-    if (!authData.user) throw new Error("Signup failed");
-
-    const newProfile = {
-      auth_id: authData.user.id,
-      email: email,
-      full_name: fullName,
-      role: 'member',
-      is_coop_member: false,
-      equity: 0,
-      avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`
-    };
-    const { data: profile, error: profileError } = await db.from('profiles').insert(newProfile).select().single();
-    if (profileError) throw profileError;
-    return profile as User;
+  async signUp(email: string, pass: string, fullName: string): Promise<User> {
+     if (this.isMock()) throw new Error("Signup not supported in mock mode");
+     
+     const { data, error } = await this.supabase!.auth.signUp({
+        email, 
+        password: pass,
+        options: { data: { full_name: fullName } }
+     });
+     if (error) throw error;
+     
+     if (data.user && data.user.identities && data.user.identities.length === 0) {
+        throw new Error("This email is already registered.");
+     }
+     
+     throw new Error("Registration successful. Please check your email to confirm.");
   }
 
   async logout(): Promise<void> {
-    const db = this.checkConnection();
-    await db.auth.signOut().catch((e) => console.warn("Logout error:", e));
+    if (this.isMock()) return;
+    await this.supabase!.auth.signOut();
   }
 
-  // ----------------------------------------------------------------------
-  // USERS
-  // ----------------------------------------------------------------------
-  
-  async getUsers(): Promise<User[]> {
-    const db = this.checkConnection();
-    const { data, error } = await db.from('profiles').select('*');
-    if (error) throw error;
-    return data as User[];
-  }
-
-  async inviteMember(email: string, fullName: string, role: string): Promise<void> {
-    const db = this.checkConnection();
-    const { data, error } = await db.functions.invoke('invite-user', {
-      body: { email, full_name: fullName, role }
-    });
-    if (error) throw error;
-    if (data && data.error) throw new Error(data.error);
-  }
-
-  async createMember(userData: Omit<User, 'id' | 'equity' | 'avatar_url'>): Promise<void> {
-    const db = this.checkConnection();
-    const { error } = await db.from('profiles').insert({
-      full_name: userData.full_name,
-      email: userData.email,
-      role: userData.role,
-      is_coop_member: userData.is_coop_member,
-      equity: 0
-    });
-    if (error) throw error;
-  }
-
-  async updateMember(id: string, updates: Partial<User>): Promise<void> {
-    const db = this.checkConnection();
-    const { error } = await db.from('profiles').update(updates).eq('id', id);
-    if (error) throw error;
-  }
-
-  // ----------------------------------------------------------------------
-  // LOANS
-  // ----------------------------------------------------------------------
-
+  // DATA FETCHING (COOP)
   async getLoans(): Promise<LoanWithBorrower[]> {
-    const db = this.checkConnection();
-    const { data, error } = await db
+    if (this.isMock()) {
+       return MOCK_LOANS.map(l => {
+          const borrower = MOCK_USERS.find(u => u.id === l.borrower_id) || MOCK_USERS[0];
+          return { ...l, borrower };
+       });
+    }
+    
+    const { data, error } = await this.supabase!
       .from('loans')
       .select(`*, borrower:profiles(*)`)
       .order('created_at', { ascending: false });
+      
     if (error) throw error;
     return data as LoanWithBorrower[];
   }
 
-  async createLoan(data: { borrower_id: string; principal: number; duration_months: number; purpose: string }): Promise<void> {
-    const db = this.checkConnection();
-    const { error } = await db
-      .from('loans')
-      .insert({
-        borrower_id: data.borrower_id,
-        principal: data.principal,
-        duration_months: data.duration_months,
-        purpose: data.purpose,
-        interest_rate: DEFAULT_INTEREST_RATE,
-        status: 'pending',
-        remaining_principal: data.principal,
-        interest_accrued: 0
-      });
-    if (error) throw error;
+  async getTreasuryMetrics() {
+     if (this.isMock()) {
+        return { 
+           balance: 50000, 
+           totalContributions: 75000, 
+           totalPayments: 5000, 
+           totalDisbursed: 30000,
+           totalInterestCollected: 2500,
+           totalPrincipalRepaid: 2500
+        };
+     }
+     
+     const { data: contribs } = await this.supabase!.from('contributions').select('amount').eq('status', 'approved');
+     const { data: payments } = await this.supabase!.from('payments').select('amount, interest_paid, principal_paid');
+     const { data: loans } = await this.supabase!.from('loans').select('principal').in('status', ['active', 'paid']);
+     
+     const totalContributions = contribs?.reduce((sum, c) => sum + c.amount, 0) || 0;
+     const totalPayments = payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+     const totalInterestCollected = payments?.reduce((sum, p) => sum + p.interest_paid, 0) || 0;
+     const totalPrincipalRepaid = payments?.reduce((sum, p) => sum + p.principal_paid, 0) || 0;
+     const totalDisbursed = loans?.reduce((sum, l) => sum + l.principal, 0) || 0;
+     
+     const balance = (totalContributions + totalPayments) - totalDisbursed;
+     
+     return {
+        balance,
+        totalContributions,
+        totalPayments,
+        totalDisbursed,
+        totalInterestCollected,
+        totalPrincipalRepaid
+     };
   }
-
-  async updateLoanStatus(loanId: string, status: Loan['status'], customInterestRate?: number): Promise<void> {
-    const db = this.checkConnection();
-    
-    if (status === 'active') {
-      const { data: loan, error: fetchError } = await db.from('loans').select('*').eq('id', loanId).single();
-      if (fetchError || !loan) throw new Error("Loan not found for activation.");
-
-      const rateToUse = customInterestRate !== undefined ? customInterestRate : loan.interest_rate;
-      
-      // Fixed Sum Calculation: Principal + (Monthly Interest * Duration)
-      const monthlyInterestAmount = loan.principal * (rateToUse / 100);
-      const totalTermInterest = monthlyInterestAmount * loan.duration_months;
-
-      const { error } = await db.from('loans').update({
-        status: 'active',
-        interest_rate: rateToUse,
-        start_date: new Date().toISOString(),
-        interest_accrued: totalTermInterest, 
-        remaining_principal: loan.principal,
-        updated_at: new Date().toISOString()
-      }).eq('id', loanId);
-
-      if (error) throw error;
-    } else {
-      const updates: any = { status, updated_at: new Date().toISOString() };
-      if (customInterestRate !== undefined) {
-        updates.interest_rate = customInterestRate;
-      }
-      const { error } = await db.from('loans').update(updates).eq('id', loanId);
-      if (error) throw error;
-    }
+  
+  async getActiveLoanVolume(): Promise<number> {
+     if (this.isMock()) return 15000;
+     const { data } = await this.supabase!.from('loans').select('remaining_principal').eq('status', 'active');
+     return data?.reduce((sum, l) => sum + l.remaining_principal, 0) || 0;
   }
-
-  // ----------------------------------------------------------------------
-  // PAYMENTS
-  // ----------------------------------------------------------------------
-
-  async getLoanPayments(loanId: string): Promise<Payment[]> {
-    const db = this.checkConnection();
-    const { data, error } = await db
-      .from('payments')
-      .select('*')
-      .eq('loan_id', loanId)
-      .order('date', { ascending: false });
-    if (error) throw error;
-    return data as Payment[];
-  }
-
-  async addPayment(loanId: string, amount: number): Promise<void> {
-    const db = this.checkConnection();
-    const { data: loan } = await db.from('loans').select('*').eq('id', loanId).single();
-    if (!loan) throw new Error("Loan not found");
-
-    if (amount <= 0) throw new Error("Payment amount must be greater than zero.");
-    const totalDue = (loan.remaining_principal || 0) + (loan.interest_accrued || 0);
-    
-    if (amount > totalDue + 0.01) {
-      throw new Error(`Payment exceeds total amount due (₱${totalDue.toLocaleString()}).`);
-    }
-
-    let remainingAmount = amount;
-    let interestPaid = 0;
-    let principalPaid = 0;
-
-    if (loan.interest_accrued > 0) {
-      interestPaid = Math.min(remainingAmount, loan.interest_accrued);
-      remainingAmount -= interestPaid;
-    }
-
-    if (remainingAmount > 0) {
-      principalPaid = Math.min(remainingAmount, loan.remaining_principal);
-      remainingAmount -= principalPaid;
-    }
-
-    const newInterestAccrued = Math.max(0, loan.interest_accrued - interestPaid);
-    const newRemainingPrincipal = Math.max(0, loan.remaining_principal - principalPaid);
-    const newStatus = (newRemainingPrincipal === 0 && newInterestAccrued === 0) ? 'paid' : 'active';
-
-    const { error: paymentError } = await db.from('payments').insert({
-      loan_id: loanId,
-      amount,
-      interest_paid: interestPaid,
-      principal_paid: principalPaid,
-      date: new Date().toISOString()
-    });
-    if (paymentError) throw paymentError;
-
-    const { error: loanError } = await db
-      .from('loans')
-      .update({ 
-        remaining_principal: newRemainingPrincipal,
-        interest_accrued: newInterestAccrued,
-        status: newStatus,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', loanId);
-    if (loanError) throw loanError;
-  }
-
+  
   async getTotalInterestGained(): Promise<number> {
-    const db = this.checkConnection();
-    const { data, error } = await db.from('payments').select('interest_paid');
-    if (error) throw error;
-    return data.reduce((sum, item) => sum + (item.interest_paid || 0), 0);
+     if (this.isMock()) return 2500;
+     const { data } = await this.supabase!.from('payments').select('interest_paid');
+     return data?.reduce((sum, p) => sum + p.interest_paid, 0) || 0;
   }
-
-  // ----------------------------------------------------------------------
-  // TREASURY / CONTRIBUTIONS
-  // ----------------------------------------------------------------------
-
-  async getTreasuryMetrics(): Promise<{ 
-    balance: number, 
-    totalContributions: number, 
-    totalPayments: number, 
-    totalDisbursed: number,
-    totalInterestCollected: number,
-    totalPrincipalRepaid: number
-  }> {
-    const db = this.checkConnection();
-    const { data: contribs, error: cError } = await db.from('contributions').select('amount').eq('status', 'approved');
-    if (cError) throw cError;
-    const totalContributions = contribs.reduce((sum, item) => sum + (item.amount || 0), 0);
-
-    const { data: payments, error: pError } = await db.from('payments').select('amount, interest_paid, principal_paid');
-    if (pError) throw pError;
-    const totalPayments = payments.reduce((sum, item) => sum + (item.amount || 0), 0);
-    const totalInterestCollected = payments.reduce((sum, item) => sum + (item.interest_paid || 0), 0);
-    const totalPrincipalRepaid = payments.reduce((sum, item) => sum + (item.principal_paid || 0), 0);
-
-    const { data: loans, error: lError } = await db.from('loans').select('principal').in('status', ['active', 'paid']);
-    if (lError) throw lError;
-    const totalDisbursed = loans.reduce((sum, item) => sum + (item.principal || 0), 0);
-
-    return {
-      balance: totalContributions + totalPayments - totalDisbursed,
-      totalContributions,
-      totalPayments,
-      totalDisbursed,
-      totalInterestCollected,
-      totalPrincipalRepaid
-    };
+  
+  async getUsers(): Promise<User[]> {
+     if (this.isMock()) return MOCK_USERS;
+     const { data, error } = await this.supabase!.from('profiles').select('*');
+     if (error) throw error;
+     return data as User[];
   }
-
+  
   async getContributions(): Promise<ContributionWithMember[]> {
-    const db = this.checkConnection();
-    const { data, error } = await db
+     if (this.isMock()) {
+        return MOCK_CONTRIBUTIONS.map(c => ({
+           ...c,
+           member: MOCK_USERS.find(u => u.id === c.member_id)!
+        }));
+     }
+     const { data, error } = await this.supabase!
       .from('contributions')
       .select(`*, member:profiles(*)`)
       .order('date', { ascending: false });
-    if (error) throw error;
-    return data as ContributionWithMember[];
-  }
-
-  async addContribution(data: { member_id: string; amount: number; type: 'monthly_deposit' | 'one_time'; status: ContributionStatus }): Promise<void> {
-    const db = this.checkConnection();
-    const { error: insertError } = await db.from('contributions').insert({
-      member_id: data.member_id,
-      amount: data.amount,
-      type: data.type,
-      status: data.status,
-      date: new Date().toISOString()
-    });
-    if (insertError) throw insertError;
-    if (data.status === 'approved') await this._updateUserEquity(data.member_id, data.amount);
-  }
-
-  async updateContributionStatus(id: string, status: 'approved' | 'rejected'): Promise<void> {
-    const db = this.checkConnection();
-    const { data: contribution, error: fetchError } = await db.from('contributions').select('*').eq('id', id).single();
-    if (fetchError) throw fetchError;
-    if (contribution.status === 'approved') throw new Error("Already approved");
-    const { error } = await db.from('contributions').update({ status }).eq('id', id);
-    if(error) throw error;
-    if (status === 'approved') await this._updateUserEquity(contribution.member_id, contribution.amount);
-  }
-
-  private async _updateUserEquity(memberId: string, amountToAdd: number) {
-    const db = this.checkConnection();
-    const { data: profile, error: fetchError } = await db.from('profiles').select('equity').eq('id', memberId).single();
-    if (fetchError) throw fetchError;
-    const newEquity = (profile?.equity || 0) + amountToAdd;
-    await db.from('profiles').update({ equity: newEquity, updated_at: new Date().toISOString() }).eq('id', memberId);
-  }
-
-  async getActiveLoanVolume(): Promise<number> {
-    const db = this.checkConnection();
-    const { data, error } = await db.from('loans').select('remaining_principal').eq('status', 'active');
-    if (error) throw error;
-    return data.reduce((sum, item) => sum + (item.remaining_principal || 0), 0);
-  }
-
-  // ----------------------------------------------------------------------
-  // ANNOUNCEMENTS
-  // ----------------------------------------------------------------------
-  async getAnnouncements(): Promise<Announcement[]> {
-    const db = this.checkConnection();
-    const { data, error } = await db.from('announcements').select('*').order('created_at', { ascending: false });
-    if (error) return [];
-    return data as Announcement[];
-  }
-
-  async getActiveAnnouncements(): Promise<Announcement[]> {
-    const db = this.checkConnection();
-    try {
-      const { data: announcements, error } = await db.from('announcements').select('*').eq('is_active', true).order('created_at', { ascending: false });
-      if (error) return [];
-      const now = new Date();
-      return announcements?.filter(a => {
-         const start = a.scheduled_start ? new Date(a.scheduled_start) : null;
-         const end = a.scheduled_end ? new Date(a.scheduled_end) : null;
-         if (start && start > now) return false;
-         if (end && end < now) return false;
-         return true;
-      }) || [];
-    } catch (e) { return []; }
-  }
-
-  async createAnnouncement(title: string, message: string, authorId: string, priority: AnnouncementPriority = 'normal', scheduledStart: string | null = null, scheduledEnd: string | null = null): Promise<void> {
-    const db = this.checkConnection();
-    const { error } = await db.from('announcements').insert({ title, message, author_id: authorId, is_active: true, priority, scheduled_start: scheduledStart, scheduled_end: scheduledEnd, created_at: new Date().toISOString() });
-    if (error) throw error;
+     if (error) throw error;
+     return data as ContributionWithMember[];
   }
   
-  async updateAnnouncement(id: string, updates: Partial<Announcement>): Promise<void> {
-     const db = this.checkConnection();
-     const { error } = await db.from('announcements').update(updates).eq('id', id);
+  async getActiveAnnouncements(): Promise<Announcement[]> {
+     if (this.isMock()) return MOCK_ANNOUNCEMENTS.filter(a => a.is_active);
+     const { data, error } = await this.supabase!
+       .from('announcements')
+       .select('*')
+       .eq('is_active', true)
+       .order('created_at', { ascending: false });
+     if (error) throw error;
+     return data as Announcement[];
+  }
+  
+  async getAnnouncements(): Promise<Announcement[]> {
+     if (this.isMock()) return MOCK_ANNOUNCEMENTS;
+     const { data, error } = await this.supabase!
+       .from('announcements')
+       .select('*')
+       .order('created_at', { ascending: false });
+     if (error) throw error;
+     return data as Announcement[];
+  }
+
+  // MUTATIONS (COOP)
+  async createLoan(data: { borrower_id: string; principal: number; duration_months: number; purpose: string }): Promise<void> {
+     if (this.isMock()) return;
+     const { error } = await this.supabase!.from('loans').insert({
+        ...data,
+        interest_rate: 10,
+        status: 'pending',
+        remaining_principal: data.principal,
+        interest_accrued: 0
+     });
+     if (error) throw error;
+  }
+  
+  async updateLoanStatus(loanId: string, status: LoanStatus, customRate?: number): Promise<void> {
+     if (this.isMock()) return;
+     const updates: any = { status };
+     if (status === 'active') {
+        updates.start_date = new Date().toISOString();
+        if (customRate !== undefined) updates.interest_rate = customRate;
+     }
+     const { error } = await this.supabase!.from('loans').update(updates).eq('id', loanId);
+     if (error) throw error;
+  }
+  
+  async addContribution(data: { member_id: string; amount: number; type: string; status: ContributionStatus }): Promise<void> {
+     if (this.isMock()) return;
+     const { error } = await this.supabase!.from('contributions').insert({
+        ...data,
+        date: new Date().toISOString()
+     });
+     if (error) throw error;
+     // Manual profile update removed because the SQL Trigger handles it now.
+  }
+  
+  async updateContributionStatus(id: string, status: ContributionStatus): Promise<void> {
+     if (this.isMock()) return;
+     const { error } = await this.supabase!.from('contributions').update({ status }).eq('id', id);
+     if (error) throw error;
+     // Manual profile update removed because the SQL Trigger handles it now.
+  }
+
+  async getLoanPayments(loanId: string): Promise<Payment[]> {
+     if (this.isMock()) return MOCK_PAYMENTS.filter(p => p.loan_id === loanId);
+     const { data, error } = await this.supabase!.from('payments').select('*').eq('loan_id', loanId).order('date', { ascending: false });
+     if (error) throw error;
+     return data as Payment[];
+  }
+  
+  async addPayment(loanId: string, amount: number): Promise<void> {
+     if (this.isMock()) return;
+     
+     const { data: loan } = await this.supabase!.from('loans').select('*').eq('id', loanId).single();
+     if (!loan) throw new Error("Loan not found");
+     
+     const interestDue = loan.interest_accrued || 0;
+     let interestPaid = 0;
+     let principalPaid = 0;
+     
+     if (amount <= interestDue) {
+        interestPaid = amount;
+     } else {
+        interestPaid = interestDue;
+        principalPaid = amount - interestDue;
+     }
+     
+     const { error: payError } = await this.supabase!.from('payments').insert({
+        loan_id: loanId,
+        amount,
+        interest_paid: interestPaid,
+        principal_paid: principalPaid,
+        date: new Date().toISOString()
+     });
+     if (payError) throw payError;
+     
+     const newInterestAccrued = interestDue - interestPaid;
+     const newRemaining = loan.remaining_principal - principalPaid;
+     const newStatus = newRemaining <= 0.1 ? 'paid' : 'active';
+     
+     await this.supabase!.from('loans').update({
+        interest_accrued: newInterestAccrued,
+        remaining_principal: Math.max(0, newRemaining),
+        status: newStatus
+     }).eq('id', loanId);
+  }
+  
+  async inviteMember(email: string, fullName: string, role: Role): Promise<void> {
+     if (this.isMock()) return;
+     const { data, error } = await this.supabase!.functions.invoke('invite-user', {
+        body: { email, full_name: fullName, role }
+     });
+     if (error) throw error;
+     if (data?.error) throw new Error(data.error);
+  }
+
+  async updateMember(id: string, data: any): Promise<void> {
+     if (this.isMock()) return;
+     const { error } = await this.supabase!.from('profiles').update(data).eq('id', id);
      if (error) throw error;
   }
 
-  async updateAnnouncementStatus(id: string, isActive: boolean): Promise<void> {
-    const db = this.checkConnection();
-    const { error } = await db.from('announcements').update({ is_active: isActive }).eq('id', id);
+  // New method to fix error in MemberDirectory.tsx
+  async createMember(data: any): Promise<void> {
+    if (this.isMock()) {
+       MOCK_USERS.push({
+          id: `u${MOCK_USERS.length + 1}`,
+          ...data,
+          equity: 0
+       });
+       return;
+    }
+    const { error } = await this.supabase!.from('profiles').insert(data);
     if (error) throw error;
   }
 
-  // ----------------------------------------------------------------------
+  // New method to fix error in App.tsx
+  async createAnnouncement(title: string, message: string, authorId: string, priority: AnnouncementPriority, start: string | null, end: string | null): Promise<void> {
+    if (this.isMock()) {
+       MOCK_ANNOUNCEMENTS.push({
+          id: `a${MOCK_ANNOUNCEMENTS.length + 1}`,
+          title, message, author_id: authorId, priority,
+          scheduled_start: start, scheduled_end: end,
+          is_active: true, created_at: new Date().toISOString()
+       });
+       return;
+    }
+    const { error } = await this.supabase!.from('announcements').insert({
+       title, message, author_id: authorId, priority,
+       scheduled_start: start, scheduled_end: end
+    });
+    if (error) throw error;
+  }
+
+  // New method to fix error in App.tsx
+  async updateAnnouncement(id: string, updates: any): Promise<void> {
+    if (this.isMock()) {
+       const index = MOCK_ANNOUNCEMENTS.findIndex(a => a.id === id);
+       if (index !== -1) MOCK_ANNOUNCEMENTS[index] = { ...MOCK_ANNOUNCEMENTS[index], ...updates };
+       return;
+    }
+    const { error } = await this.supabase!.from('announcements').update(updates).eq('id', id);
+    if (error) throw error;
+  }
+
+  // New method to fix error in AnnouncementHistory.tsx
+  async updateAnnouncementStatus(id: string, is_active: boolean): Promise<void> {
+    if (this.isMock()) {
+       const index = MOCK_ANNOUNCEMENTS.findIndex(a => a.id === id);
+       if (index !== -1) MOCK_ANNOUNCEMENTS[index].is_active = is_active;
+       return;
+    }
+    const { error } = await this.supabase!.from('announcements').update({ is_active }).eq('id', id);
+    if (error) throw error;
+  }
+
   // GALLERY
-  // ----------------------------------------------------------------------
   async getGalleryItems(): Promise<GalleryItem[]> {
-    const db = this.checkConnection();
-    const { data, error } = await db.from('gallery_items').select('*').order('created_at', { ascending: false });
-    if (error) return [];
-    return data as GalleryItem[];
+     if (this.isMock()) return [];
+     const { data, error } = await this.supabase!
+        .from('gallery_items')
+        .select('*')
+        .order('created_at', { ascending: false });
+     if (error) throw error;
+     return data as GalleryItem[];
   }
-
+  
   async uploadGalleryItem(file: File, caption: string, userId: string): Promise<void> {
-    const db = this.checkConnection();
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-    const { error: uploadError } = await db.storage.from('gallery').upload(fileName, file);
-    if (uploadError) throw new Error(uploadError.message);
-    const { data: urlData } = db.storage.from('gallery').getPublicUrl(fileName);
-    const { error: insertError } = await db.from('gallery_items').insert({ image_url: urlData.publicUrl, caption, uploaded_by: userId, created_at: new Date().toISOString(), is_archived: false });
-    if (insertError) throw insertError;
+     if (this.isMock()) return;
+     const fileExt = file.name.split('.').pop();
+     const fileName = `${Math.random()}.${fileExt}`;
+     const { error: uploadError } = await this.supabase!.storage.from('gallery').upload(fileName, file);
+     if (uploadError) throw uploadError;
+     const { data: { publicUrl } } = this.supabase!.storage.from('gallery').getPublicUrl(fileName);
+     const { error: dbError } = await this.supabase!.from('gallery_items').insert({
+        image_url: publicUrl, caption, uploaded_by: userId
+     });
+     if (dbError) throw dbError;
   }
 
-  async updateGalleryItem(id: string, updates: { caption?: string }): Promise<void> {
-    const db = this.checkConnection();
-    const { error: fetchError } = await db.from('gallery_items').update(updates).eq('id', id);
-    if (fetchError) throw fetchError;
+  async updateGalleryItem(id: string, updates: Partial<GalleryItem>): Promise<void> {
+    if (this.isMock()) return;
+    const { error } = await this.supabase!.from('gallery_items').update(updates).eq('id', id);
+    if (error) throw error;
   }
 
   async toggleGalleryArchive(id: string, isArchived: boolean): Promise<void> {
-    const db = this.checkConnection();
-    const { error } = await db.from('gallery_items').update({ is_archived: isArchived, archived_at: isArchived ? new Date().toISOString() : null }).eq('id', id);
+    if (this.isMock()) return;
+    const { error } = await this.supabase!.from('gallery_items').update({
+       is_archived: isArchived, archived_at: isArchived ? new Date().toISOString() : null
+    }).eq('id', id);
     if (error) throw error;
   }
 
-  // ----------------------------------------------------------------------
-  // SCHEDULES (Derived)
-  // ----------------------------------------------------------------------
+  // PERSONAL ACCOUNTS (VAULTS)
+  async getPersonalAccounts(userId: string): Promise<PersonalAccount[]> {
+     if (this.isMock()) return [
+        { id: 'acc1', user_id: userId, name: 'Cash Wallet', type: 'cash', balance: 5000, color: 'bg-emerald-500' },
+        { id: 'acc2', user_id: userId, name: 'Main Bank', type: 'bank', balance: 45000, color: 'bg-blue-500' }
+     ];
+     const { data, error } = await this.supabase!.from('personal_accounts').select('*').eq('user_id', userId);
+     if (error) throw error;
+     return data as PersonalAccount[];
+  }
+
+  async addPersonalAccount(account: Omit<PersonalAccount, 'id'>): Promise<void> {
+     if (this.isMock()) return;
+     const { error } = await this.supabase!.from('personal_accounts').insert(account);
+     if (error) throw error;
+  }
+
+  // PERSONAL LEDGER
+  async getPersonalEntries(userId: string): Promise<PersonalLedgerEntry[]> {
+    if (this.isMock()) return MOCK_PERSONAL_LEDGER.filter(e => e.user_id === userId);
+    const { data, error } = await this.supabase!
+      .from('personal_ledger')
+      .select('*')
+      .eq('user_id', userId)
+      .order('date', { ascending: false });
+    if (error) throw error;
+    return data as PersonalLedgerEntry[];
+  }
+
+  async addPersonalEntry(entry: Omit<PersonalLedgerEntry, 'id' | 'created_at'>): Promise<void> {
+    if (this.isMock()) return;
+    
+    // Begin Transaction (Implicitly via multiple calls or explicit if using RPC)
+    const { error } = await this.supabase!.from('personal_ledger').insert(entry);
+    if (error) throw error;
+
+    // Update account balance
+    if (entry.account_id) {
+       const { data: acc } = await this.supabase!.from('personal_accounts').select('balance').eq('id', entry.account_id).single();
+       if (acc) {
+          const newBalance = entry.type === 'income' ? acc.balance + entry.amount : acc.balance - entry.amount;
+          await this.supabase!.from('personal_accounts').update({ balance: newBalance }).eq('id', entry.account_id);
+       }
+    }
+  }
+
+  async updatePersonalEntry(id: string, updates: Partial<PersonalLedgerEntry>): Promise<void> {
+    if (this.isMock()) return;
+    const { error } = await this.supabase!.from('personal_ledger').update(updates).eq('id', id);
+    if (error) throw error;
+  }
+
+  async deletePersonalEntry(id: string): Promise<void> {
+    if (this.isMock()) return;
+    const { error } = await this.supabase!.from('personal_ledger').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  // BUDGETS
+  async getBudgets(userId: string): Promise<CategoryBudget[]> {
+     if (this.isMock()) return [];
+     const { data, error } = await this.supabase!.from('category_budgets').select('*').eq('user_id', userId);
+     if (error) throw error;
+     return data as CategoryBudget[];
+  }
+
+  async updateBudget(userId: string, category: string, limit: number): Promise<void> {
+     if (this.isMock()) return;
+     const { error } = await this.supabase!.from('category_budgets').upsert({
+        user_id: userId, category, limit_amount: limit
+     }, { onConflict: 'user_id,category' });
+     if (error) throw error;
+  }
+
+  // SAVING GOALS
+  async getSavingGoals(userId: string): Promise<SavingGoal[]> {
+     if (this.isMock()) return [
+        { id: 'g1', user_id: userId, name: 'Emergency Fund', target_amount: 50000, current_amount: 15000 },
+        { id: 'g2', user_id: userId, name: 'New Laptop', target_amount: 80000, current_amount: 12000 }
+     ];
+     const { data, error } = await this.supabase!.from('saving_goals').select('*').eq('user_id', userId);
+     if (error) throw error;
+     return data as SavingGoal[];
+  }
+
+  async addSavingGoal(goal: Omit<SavingGoal, 'id'>): Promise<void> {
+     if (this.isMock()) return;
+     const { error } = await this.supabase!.from('saving_goals').insert(goal);
+     if (error) throw error;
+  }
+
+  async updateSavingGoal(id: string, updates: Partial<SavingGoal>): Promise<void> {
+     if (this.isMock()) return;
+     const { error } = await this.supabase!.from('saving_goals').update(updates).eq('id', id);
+     if (error) throw error;
+  }
+
+  // SETTINGS & SCHEDULES
+  async getMonthlyGoal(): Promise<number> {
+     if (this.isMock()) return 10000;
+     const { data } = await this.supabase!.from('settings').select('value').eq('key', 'monthly_goal').single();
+     return data ? Number(data.value) : 10000;
+  }
+  
+  async updateMonthlyGoal(amount: number): Promise<void> {
+     if (this.isMock()) return;
+     await this.supabase!.from('settings').upsert({ key: 'monthly_goal', value: amount.toString() });
+  }
+
   async getUpcomingSchedules(): Promise<any[]> {
-    const loans = await this.getLoans();
-    const activeLoans = loans.filter(l => l.status === 'active' && l.start_date);
-    const schedules: any[] = [];
-    const today = new Date();
-    for (const loan of activeLoans) {
-      if (!loan.start_date) continue;
-      const startDate = new Date(loan.start_date);
-      for (let i = 1; i <= loan.duration_months; i++) {
-        const dueDate = new Date(startDate);
-        dueDate.setMonth(startDate.getMonth() + i);
-        if (dueDate > new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)) {
-           const monthlyPayment = (loan.principal / loan.duration_months) + (loan.principal * (loan.interest_rate / 100));
+     if (this.isMock()) {
+        const loans = await this.getLoans();
+        const activeLoans = loans.filter(l => l.status === 'active');
+        const schedules: any[] = [];
+        activeLoans.forEach(loan => {
+           const monthlyTotal = (loan.principal / loan.duration_months) + (loan.principal * (loan.interest_rate/100));
+           const paydayAmount = monthlyTotal / 2;
+           
+           for (let i = 0; i < 3; i++) {
+              const d = new Date(); d.setMonth(d.getMonth() + i);
+              const date10 = new Date(d.getFullYear(), d.getMonth(), 10);
+              const date25 = new Date(d.getFullYear(), d.getMonth(), 25);
+              
+              schedules.push({
+                 date: date10.toISOString(), title: `Payday Repayment (10th) - ${loan.purpose}`,
+                 amount: paydayAmount, borrower_id: loan.borrower_id, borrower_name: loan.borrower.full_name, is_payday: true
+              });
+              schedules.push({
+                 date: date25.toISOString(), title: `Payday Repayment (25th) - ${loan.purpose}`,
+                 amount: paydayAmount, borrower_id: loan.borrower_id, borrower_name: loan.borrower.full_name, is_payday: true
+              });
+           }
+        });
+        return schedules.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+     }
+     
+     const loans = await this.getLoans();
+     const activeLoans = loans.filter(l => l.status === 'active');
+     const schedules: any[] = [];
+     activeLoans.forEach(loan => {
+        const monthlyTotal = (loan.principal / loan.duration_months) + (loan.principal * (loan.interest_rate/100));
+        const paydayAmount = monthlyTotal / 2;
+        
+        for (let i = 0; i < 3; i++) {
+           const d = new Date(); d.setMonth(d.getMonth() + i);
+           const date10 = new Date(d.getFullYear(), d.getMonth(), 10);
+           const date25 = new Date(d.getFullYear(), d.getMonth(), 25);
+           
            schedules.push({
-             date: dueDate.toISOString(),
-             title: `Loan Repayment (${i}/${loan.duration_months})`,
-             borrower_name: loan.borrower.full_name,
-             borrower_id: loan.borrower_id, 
-             amount: monthlyPayment,
-             loan_id: loan.id
+              date: date10.toISOString(), title: `Payday Repayment (10th) - ${loan.purpose}`,
+              amount: paydayAmount, borrower_id: loan.borrower_id, borrower_name: loan.borrower.full_name, is_payday: true
+           });
+           schedules.push({
+              date: date25.toISOString(), title: `Payday Repayment (25th) - ${loan.purpose}`,
+              amount: paydayAmount, borrower_id: loan.borrower_id, borrower_name: loan.borrower.full_name, is_payday: true
            });
         }
-      }
-    }
-    return schedules.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }
-
-  async getMonthlyGoal(): Promise<number> {
-    const db = this.checkConnection();
-    const { data, error } = await db.from('settings').select('value').eq('key', 'monthly_goal').single();
-    if (error || !data) return 10000;
-    return Number(data.value);
-  }
-
-  async updateMonthlyGoal(amount: number): Promise<void> {
-    const db = this.checkConnection();
-    await db.from('settings').upsert({ key: 'monthly_goal', value: amount.toString() }, { onConflict: 'key' });
+     });
+     return schedules.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 }
 

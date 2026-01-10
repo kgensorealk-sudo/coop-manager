@@ -72,6 +72,44 @@ export interface GalleryItem {
   archived_at?: string | null;
 }
 
+export interface PersonalAccount {
+  id: string;
+  user_id: string;
+  name: string;
+  type: 'cash' | 'bank' | 'digital' | 'savings';
+  balance: number;
+  color?: string;
+}
+
+export interface SavingGoal {
+  id: string;
+  user_id: string;
+  name: string;
+  target_amount: number;
+  current_amount: number;
+  deadline?: string;
+}
+
+export interface PersonalLedgerEntry {
+  id: string;
+  user_id: string;
+  account_id?: string; // Linked Vault
+  date: string;
+  description: string;
+  amount: number;
+  type: 'income' | 'expense';
+  category: string;
+  is_recurring?: boolean;
+  created_at: string;
+}
+
+export interface CategoryBudget {
+  id: string;
+  user_id: string;
+  category: string;
+  limit_amount: number;
+}
+
 // Helper type for joining loan with borrower data
 export interface LoanWithBorrower extends Loan {
   borrower: User;

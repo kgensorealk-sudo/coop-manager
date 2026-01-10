@@ -16,6 +16,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { AnnouncementHistory } from './components/AnnouncementHistory';
 import { ScheduleView } from './components/ScheduleView';
 import { GalleryView } from './components/GalleryView';
+import { PersonalLedger } from './components/PersonalLedger';
 import { dataService } from './services/dataService';
 import { LoanWithBorrower, User, ContributionWithMember, ContributionStatus, Announcement, AnnouncementPriority, LoanStatus } from './types';
 import { 
@@ -748,6 +749,7 @@ const App: React.FC = () => {
           {activeTab === 'treasury' && <TreasuryDashboard treasuryStats={treasuryStats} contributions={contributions} loans={loans} activeLoanVolume={activeVolume} totalInterestGained={totalInterestGained} onAddContribution={() => setIsContributionModalOpen(true)} onApproveContribution={handleApproveContribution} onRejectContribution={handleRejectContribution} loading={loading} />}
           {activeTab === 'announcements' && <AnnouncementHistory onOpenCreate={handleOpenAnnouncementCreate} onEdit={handleOpenAnnouncementEdit} readOnly={currentUser.role === 'member'} />}
           {activeTab === 'gallery' && <GalleryView currentUser={currentUser} />}
+          {activeTab === 'personal-ledger' && <PersonalLedger currentUser={currentUser} />}
           {activeTab === 'schedules' && <ScheduleView filterByUserId={currentUser.role === 'member' ? currentUser.id : undefined} />}
           {activeTab === 'dev-guide' && <DeveloperGuide />}
         </div>
