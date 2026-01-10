@@ -19,9 +19,7 @@ import {
   AlertTriangle,
   RefreshCw,
   Target,
-  Clock,
   PiggyBank,
-  ArrowRightLeft,
   Coins,
   History,
   LayoutGrid,
@@ -36,9 +34,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
   const [entries, setEntries] = useState<PersonalLedgerEntry[]>([]);
   const [accounts, setAccounts] = useState<PersonalAccount[]>([]);
   const [goals, setGoals] = useState<SavingGoal[]>([]);
-  const [budgets, setBudgets] = useState<CategoryBudget[]>([]);
   const [obligations, setObligations] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   
   // View State
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); 
@@ -58,26 +54,21 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchAllData = async () => {
-    setLoading(true);
     try {
-      const [entryData, accountData, goalData, budgetData, scheduleData] = await Promise.all([
+      const [entryData, accountData, goalData, scheduleData] = await Promise.all([
         dataService.getPersonalEntries(currentUser.id),
         dataService.getPersonalAccounts(currentUser.id),
         dataService.getSavingGoals(currentUser.id),
-        dataService.getBudgets(currentUser.id),
         dataService.getUpcomingSchedules()
       ]);
       setEntries(entryData);
       setAccounts(accountData);
       setGoals(goalData);
-      setBudgets(budgetData);
       setObligations(scheduleData.filter(s => s.borrower_id === currentUser.id));
       
       if (accountData.length > 0 && !accountId) setAccountId(accountData[0].id);
     } catch (e) {
       console.error(e);
-    } finally {
-      setLoading(false);
     }
   };
 
