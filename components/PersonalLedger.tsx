@@ -18,15 +18,12 @@ import {
   ShieldCheck,
   AlertTriangle,
   RefreshCw,
-  Target,
   PiggyBank,
   Coins,
   History,
   LayoutGrid,
   Edit2,
   Book,
-  Info,
-  CreditCard,
   Building2,
   Smartphone
 } from 'lucide-react';
@@ -38,7 +35,6 @@ interface PersonalLedgerProps {
 export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) => {
   const [entries, setEntries] = useState<PersonalLedgerEntry[]>([]);
   const [accounts, setAccounts] = useState<PersonalAccount[]>([]);
-  const [goals, setGoals] = useState<SavingGoal[]>([]);
   const [obligations, setObligations] = useState<any[]>([]);
   
   // View State
@@ -67,7 +63,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
 
   const fetchAllData = async () => {
     try {
-      const [entryData, accountData, goalData, scheduleData] = await Promise.all([
+      const [entryData, accountData, _goalData, scheduleData] = await Promise.all([
         dataService.getPersonalEntries(currentUser.id),
         dataService.getPersonalAccounts(currentUser.id),
         dataService.getSavingGoals(currentUser.id),
@@ -75,7 +71,6 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
       ]);
       setEntries(entryData);
       setAccounts(accountData);
-      setGoals(goalData);
       setObligations(scheduleData.filter(s => s.borrower_id === currentUser.id));
       
       if (accountData.length > 0 && !accountId) setAccountId(accountData[0].id);
