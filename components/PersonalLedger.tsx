@@ -23,7 +23,12 @@ import {
   Coins,
   History,
   LayoutGrid,
-  Edit2
+  Edit2,
+  Book,
+  Info,
+  CreditCard,
+  Building2,
+  Smartphone
 } from 'lucide-react';
 
 interface PersonalLedgerProps {
@@ -40,10 +45,11 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); 
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [showVaultForm, setShowVaultForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<PersonalLedgerEntry | null>(null);
   const [activeView, setActiveView] = useState<'register' | 'insights' | 'vaults'>('register');
 
-  // Form State
+  // Transaction Form State
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState<number | ''>('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
@@ -52,6 +58,12 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [isRecurring, setIsRecurring] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Vault Form State
+  const [vName, setVName] = useState('');
+  const [vType, setVType] = useState<'cash' | 'bank' | 'digital' | 'savings'>('bank');
+  const [vBalance, setVBalance] = useState<number | ''>('');
+  const [vColor, setVColor] = useState('bg-blue-500');
 
   const fetchAllData = async () => {
     try {
@@ -100,6 +112,14 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
     setShowForm(false);
   };
 
+  const resetVaultForm = () => {
+     setVName('');
+     setVType('bank');
+     setVBalance('');
+     setVColor('bg-blue-500');
+     setShowVaultForm(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description || !amount || amount <= 0 || !accountId) return;
@@ -133,6 +153,29 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmitVault = async (e: React.FormEvent) => {
+     e.preventDefault();
+     if (!vName || vBalance === '') return;
+     
+     setIsSubmitting(true);
+     try {
+        await dataService.addPersonalAccount({
+           user_id: currentUser.id,
+           name: vName,
+           type: vType,
+           balance: Number(vBalance),
+           color: vColor
+        });
+        resetVaultForm();
+        fetchAllData();
+     } catch (e) {
+        console.error(e);
+        alert("Failed to create vault");
+     } finally {
+        setIsSubmitting(false);
+     }
   };
 
   const handleDelete = async (id: string) => {
@@ -182,8 +225,71 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
 
   const monthLabel = new Date(selectedMonth + '-01').toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
+  const vaultColors = [
+    'bg-blue-500', 'bg-emerald-500', 'bg-rose-500', 'bg-amber-500', 'bg-indigo-500', 'bg-slate-700', 'bg-purple-500', 'bg-gold-500'
+  ];
+
   return (
     <div className="space-y-8 animate-fade-in pb-16">
+      {/* Vault Creation Modal */}
+      {showVaultForm && (
+         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-leather-900/60 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="bg-paper-50 rounded-sm shadow-2xl w-full max-w-md overflow-hidden border-4 border-double border-paper-300 animate-slide-up">
+               <div className="bg-leather-900 p-6 flex justify-between items-center text-paper-50">
+                  <h3 className="font-serif font-bold text-2xl">Commission a New Vault</h3>
+                  <button onClick={resetVaultForm} className="text-paper-400 hover:text-paper-100"><X size={20}/></button>
+               </div>
+               
+               <form onSubmit={handleSubmitVault} className="p-8 space-y-6">
+                  <div className="space-y-1">
+                     <label className="text-[10px] font-black uppercase text-ink-400 tracking-widest block mb-1">Vault Designation</label>
+                     <input required autoFocus value={vName} onChange={e => setVName(e.target.value)}
+                        className="w-full text-2xl font-serif text-ink-900 border-b-2 border-paper-300 focus:border-ink-900 outline-none pb-1 bg-transparent"
+                        placeholder="e.g. Reserve Savings"
+                     />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-6">
+                     <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-ink-400 tracking-widest block mb-1">Type</label>
+                        <select value={vType} onChange={e => setVType(e.target.value as any)}
+                           className="w-full p-2 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none font-serif text-sm">
+                           <option value="bank">Commercial Bank</option>
+                           <option value="cash">Liquid Cash</option>
+                           <option value="digital">Digital Wallet</option>
+                           <option value="savings">Coop Savings</option>
+                        </select>
+                     </div>
+                     <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-ink-400 tracking-widest block mb-1">Starting Balance</label>
+                        <input type="number" required min="0" step="0.01" value={vBalance} onChange={e => setVBalance(e.target.value ? parseFloat(e.target.value) : '')}
+                           className="w-full p-2 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none font-mono text-sm font-bold"
+                        />
+                     </div>
+                  </div>
+
+                  <div className="space-y-1">
+                     <label className="text-[10px] font-black uppercase text-ink-400 tracking-widest block mb-3">Color Identifier</label>
+                     <div className="flex flex-wrap gap-3">
+                        {vaultColors.map(color => (
+                           <button key={color} type="button" onClick={() => setVColor(color)}
+                              className={`w-8 h-8 rounded-full transition-all border-2 ${vColor === color ? 'border-ink-900 ring-2 ring-paper-300 scale-110' : 'border-transparent opacity-60 hover:opacity-100'} ${color}`}
+                           />
+                        ))}
+                     </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-paper-200 flex justify-end gap-3">
+                     <button type="button" onClick={resetVaultForm} className="px-6 py-2 text-xs font-black uppercase tracking-widest text-ink-400">Abort</button>
+                     <button type="submit" disabled={isSubmitting} className="px-8 py-3 bg-ink-900 text-white font-bold uppercase tracking-widest text-xs rounded-sm shadow-xl active:scale-95 transition-all">
+                        {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : 'Instantiate Vault'}
+                     </button>
+                  </div>
+               </form>
+            </div>
+         </div>
+      )}
+
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 border-b border-paper-300 pb-6">
         <div className="space-y-4">
           <div>
@@ -234,6 +340,45 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
          <div className="lg:col-span-4 space-y-8">
+            {/* Ledger Primer Section */}
+            <div className="bg-white border-2 border-paper-200 rounded-sm overflow-hidden shadow-card">
+               <div className="p-5 border-b border-paper-200 bg-paper-50 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                     <Book size={20} className="text-ink-600" />
+                     <h3 className="font-bold text-base uppercase tracking-[0.2em] text-ink-900">Ledger Primer</h3>
+                  </div>
+               </div>
+               <div className="p-6 space-y-8">
+                  <div>
+                     <h4 className="font-serif font-bold text-ink-900 text-2xl mb-2 flex items-center gap-3">
+                        <History size={18} className="text-gold-600" /> 
+                        The Journal
+                     </h4>
+                     <p className="text-ink-600 font-serif italic text-lg leading-relaxed">
+                        The Journal is your chronological audit trail. Every Peso that enters or exits your possession is recorded here as a discrete 'Entry', providing a historical narrative of your financial journey.
+                     </p>
+                  </div>
+                  <div>
+                     <h4 className="font-serif font-bold text-ink-900 text-2xl mb-2 flex items-center gap-3">
+                        <Coins size={18} className="text-gold-600" />
+                        The Vaults
+                     </h4>
+                     <p className="text-ink-600 font-serif italic text-lg leading-relaxed">
+                        Vaults represent the physical or digital location of your capital. By assigning entries to specific Vaults (Cash, Bank, Savings), you maintain a real-time tally of exactly where your liquid assets are currently held.
+                     </p>
+                  </div>
+                  <div>
+                     <h4 className="font-serif font-bold text-ink-900 text-2xl mb-2 flex items-center gap-3">
+                        <LayoutGrid size={18} className="text-gold-600" />
+                        The Analysis
+                     </h4>
+                     <p className="text-ink-600 font-serif italic text-lg leading-relaxed">
+                        Quantitative synthesis of your data. Analysis translates raw entries into actionable intelligence—identifying burn rates, spending categories, and ensuring you remain "Safe to Spend" after all semi-monthly obligations.
+                     </p>
+                  </div>
+               </div>
+            </div>
+
             <div className="bg-paper-50 border-2 border-paper-200 rounded-sm overflow-hidden shadow-card">
                <div className="p-4 bg-leather-900 text-paper-100 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -286,30 +431,6 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                </div>
             </div>
 
-            <div className="bg-white border-2 border-paper-200 rounded-sm overflow-hidden shadow-card">
-               <div className="p-4 border-b border-paper-200 bg-paper-50 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-ink-900">
-                     <Target size={16} />
-                     <h3 className="font-bold text-sm uppercase tracking-widest">Wealth Goals</h3>
-                  </div>
-               </div>
-               <div className="p-5 space-y-6">
-                  {goals.map(goal => {
-                     const pct = Math.min((goal.current_amount / goal.target_amount) * 100, 100);
-                     return (
-                        <div key={goal.id}>
-                           <div className="flex justify-between items-end mb-2">
-                              <span className="text-sm font-serif font-bold text-ink-800">{goal.name}</span>
-                              <span className="text-[10px] font-mono font-bold text-ink-400">{pct.toFixed(0)}%</span>
-                           </div>
-                           <div className="h-2 w-full bg-paper-100 rounded-full overflow-hidden border border-paper-200">
-                              <div className="h-full bg-ink-900 transition-all duration-1000" style={{ width: `${pct}%` }}></div>
-                           </div>
-                        </div>
-                     );
-                  })}
-               </div>
-            </div>
          </div>
 
          <div className="lg:col-span-8 space-y-8">
@@ -451,6 +572,81 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                            </div>
                         </div>
                      ))}
+                  </div>
+               </div>
+            )}
+
+            {activeView === 'vaults' && (
+               <div className="bg-white rounded-sm border-2 border-paper-200 shadow-card p-12">
+                  <div className="text-center mb-12">
+                     <Coins size={64} className="mx-auto text-ink-200 mb-6" />
+                     <h2 className="text-3xl font-serif font-bold text-ink-900 mb-2">Vault Inventory</h2>
+                     <p className="text-ink-500 font-serif italic">Summary of your distinct capital repositories.</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                     {accounts.map(acc => (
+                        <div key={acc.id} className="p-8 border-2 border-paper-200 rounded-sm hover:border-ink-900 transition-all text-left relative group bg-paper-50/30">
+                           <div className="flex items-center justify-between mb-6">
+                              <div className="flex items-center gap-3">
+                                 <div className={`w-3 h-3 rounded-full ${acc.color || 'bg-ink-500'}`}></div>
+                                 <span className="text-[10px] font-black uppercase tracking-widest text-ink-400">{acc.type}</span>
+                              </div>
+                              <div className="p-2 bg-white rounded-sm shadow-sm text-ink-300 group-hover:text-ink-900 transition-colors">
+                                 {acc.type === 'bank' && <Building2 size={18} />}
+                                 {acc.type === 'cash' && <Wallet size={18} />}
+                                 {acc.type === 'digital' && <Smartphone size={18} />}
+                                 {acc.type === 'savings' && <PiggyBank size={18} />}
+                              </div>
+                           </div>
+                           <div className="font-serif font-bold text-3xl text-ink-900">{acc.name}</div>
+                           <div className="font-mono font-bold text-4xl text-ink-900 mt-6 tracking-tighter tabular-nums">₱{acc.balance.toLocaleString()}</div>
+                           
+                           {/* Status line */}
+                           <div className="h-1 w-full bg-paper-200 absolute bottom-0 left-0">
+                              <div className={`h-full ${acc.color || 'bg-ink-900'} w-1/4 opacity-30`}></div>
+                           </div>
+                        </div>
+                     ))}
+                     
+                     <button 
+                        onClick={() => setShowVaultForm(true)}
+                        className="p-8 border-2 border-dashed border-paper-300 rounded-sm hover:border-gold-500 hover:bg-gold-50/30 transition-all text-center group flex flex-col items-center justify-center min-h-[220px]"
+                     >
+                        <div className="w-16 h-16 rounded-full bg-paper-100 flex items-center justify-center text-ink-300 group-hover:bg-gold-500 group-hover:text-white transition-all mb-4">
+                           <Plus size={32} />
+                        </div>
+                        <span className="font-serif font-bold text-xl text-ink-400 group-hover:text-ink-900 transition-colors">Commission New Vault</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-ink-300 mt-2">Add repository</span>
+                     </button>
+                  </div>
+               </div>
+            )}
+
+            {activeView === 'insights' && (
+               <div className="bg-white rounded-sm border-2 border-paper-200 shadow-card p-12 text-center">
+                  <LayoutGrid size={64} className="mx-auto text-ink-200 mb-6" />
+                  <h2 className="text-3xl font-serif font-bold text-ink-900 mb-2">Ledger Analysis</h2>
+                  <p className="text-ink-500 font-serif italic mb-10">Algorithmic synthesis of your financial habits.</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                     <div className="bg-paper-50 p-6 border border-paper-200 rounded-sm">
+                        <div className="text-[10px] font-black uppercase text-ink-400 mb-4 tracking-widest">Inflow Density</div>
+                        <div className="text-4xl font-serif font-bold text-emerald-700">₱{stats.income.toLocaleString()}</div>
+                        <div className="text-xs text-ink-400 mt-2 italic font-serif">Total Credits this month</div>
+                     </div>
+                     <div className="bg-paper-50 p-6 border border-paper-200 rounded-sm">
+                        <div className="text-[10px] font-black uppercase text-ink-400 mb-4 tracking-widest">Outflow Density</div>
+                        <div className="text-4xl font-serif font-bold text-wax-600">₱{stats.expense.toLocaleString()}</div>
+                        <div className="text-xs text-ink-400 mt-2 italic font-serif">Total Debits this month</div>
+                     </div>
+                     <div className="bg-paper-50 p-6 border border-paper-200 rounded-sm">
+                        <div className="text-[10px] font-black uppercase text-ink-400 mb-4 tracking-widest">Retention Rate</div>
+                        <div className="text-4xl font-serif font-bold text-blue-700">
+                           {stats.income > 0 ? Math.round((stats.balance / stats.income) * 100) : 0}%
+                        </div>
+                        <div className="text-xs text-ink-400 mt-2 italic font-serif">Capital retained vs inflow</div>
+                     </div>
                   </div>
                </div>
             )}

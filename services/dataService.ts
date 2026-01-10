@@ -327,7 +327,7 @@ class DataService {
        if (index !== -1) MOCK_ANNOUNCEMENTS[index].is_active = is_active;
        return;
     }
-    const { error } = await this.supabase!.from('announcements').update({ is_active }).eq('id', id);
+    const { error = null } = await this.supabase!.from('announcements').update({ is_active }).eq('id', id);
     if (error) throw error;
   }
 
@@ -482,42 +482,40 @@ class DataService {
     const activeLoans = loans.filter(l => l.status === 'active' || l.status === 'paid');
     const schedules: any[] = [];
     
-    // Process loans concurrently to determine payment coverage
     const loanRepaymentPromises = activeLoans.map(async (loan) => {
       const payments = await this.getLoanPayments(loan.id);
-      const totalRepaid = payments.reduce((sum, p) => sum + p.amount, 0);
+      let remainingRepaymentPool = payments.reduce((sum, p) => sum + p.amount, 0);
       
       const monthlyTotal = (loan.principal / loan.duration_months) + (loan.principal * (loan.interest_rate/100));
       const installmentAmount = monthlyTotal / 2;
       
       const baseDate = loan.start_date ? new Date(loan.start_date) : new Date(loan.created_at);
-      let cumulativeTarget = 0;
 
       for (let i = 1; i <= loan.duration_months; i++) {
         const installmentMonth = new Date(baseDate.getFullYear(), baseDate.getMonth() + i, 1);
         
-        // 10th of Month
-        cumulativeTarget += installmentAmount;
-        schedules.push({
-          date: new Date(installmentMonth.getFullYear(), installmentMonth.getMonth(), 10).toISOString(),
-          title: `Payday Repayment (10th) - ${loan.purpose}`,
-          amount: installmentAmount,
-          borrower_id: loan.borrower_id,
-          borrower_name: loan.borrower.full_name,
-          is_payday: true,
-          is_paid: totalRepaid >= (cumulativeTarget - 0.01) // Margin for float errors
-        });
-        
-        // 25th of Month
-        cumulativeTarget += installmentAmount;
-        schedules.push({
-          date: new Date(installmentMonth.getFullYear(), installmentMonth.getMonth(), 25).toISOString(),
-          title: `Payday Repayment (25th) - ${loan.purpose}`,
-          amount: installmentAmount,
-          borrower_id: loan.borrower_id,
-          borrower_name: loan.borrower.full_name,
-          is_payday: true,
-          is_paid: totalRepaid >= (cumulativeTarget - 0.01)
+        // 10th and 25th Logic
+        [10, 25].forEach(day => {
+          // Track if this coverage came from surplus of a previous large payment
+          // If the pool at the START of this step is significantly larger than what we need, 
+          // it means previous installments were already cleared by a surplus.
+          const wasSurplusAvailable = remainingRepaymentPool > installmentAmount;
+          
+          const amountCovered = Math.min(installmentAmount, remainingRepaymentPool);
+          remainingRepaymentPool = Math.max(0, remainingRepaymentPool - installmentAmount);
+
+          schedules.push({
+            date: new Date(installmentMonth.getFullYear(), installmentMonth.getMonth(), day).toISOString(),
+            title: `Payday Repayment (${day}th) - ${loan.purpose}`,
+            total_amount: installmentAmount,
+            amount_paid: amountCovered,
+            is_paid: amountCovered >= (installmentAmount - 0.01),
+            is_partial: amountCovered > 0.01 && amountCovered < (installmentAmount - 0.01),
+            was_overpaid_previously: wasSurplusAvailable && amountCovered >= (installmentAmount - 0.01),
+            borrower_id: loan.borrower_id,
+            borrower_name: loan.borrower.full_name,
+            is_payday: true
+          });
         });
       }
     });
