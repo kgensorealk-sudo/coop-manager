@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { FolderTree, Copy, Check, Database, Image } from 'lucide-react';
+import { Copy, Check, Database } from 'lucide-react';
 
 // SQL Schema - Updated with Equity Sync Trigger
 const SCHEMA_SQL = `-- 1. INITIAL SETUP

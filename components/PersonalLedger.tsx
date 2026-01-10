@@ -9,9 +9,6 @@ import {
   TrendingDown, 
   Plus, 
   Trash2, 
-  Calendar, 
-  FileText, 
-  Tag, 
   Loader2, 
   Search,
   X,
@@ -28,7 +25,6 @@ import {
   Coins,
   History,
   LayoutGrid,
-  // Fixed: Added missing Edit2 import
   Edit2
 } from 'lucide-react';
 
@@ -165,22 +161,6 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
   };
 
   // --- Visual Insights Logic ---
-  const trendData = useMemo(() => {
-     const results = [];
-     for (let i = 4; i >= 0; i--) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        const mKey = d.toISOString().slice(0, 7);
-        const mLabel = d.toLocaleDateString(undefined, { month: 'short' });
-        
-        const mEntries = entries.filter(e => e.date.startsWith(mKey));
-        const inc = mEntries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
-        const exp = mEntries.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
-        results.push({ label: mLabel, income: inc, expense: exp });
-     }
-     return results;
-  }, [entries]);
-
   const stats = useMemo(() => {
     const filtered = entries.filter(e => e.date.startsWith(selectedMonth));
     const income = filtered.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0);
@@ -454,10 +434,6 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                   </div>
                   
                   <div className="overflow-y-auto max-h-[750px] custom-scrollbar">
-                     {/* 
-                         Fix: Added explicit type cast to ensure dayEntries is recognized as PersonalLedgerEntry[] 
-                         This solves the "Property 'map' does not exist on type 'unknown'" error.
-                     */}
                      {(Object.entries(groupedEntries) as [string, PersonalLedgerEntry[]][]).map(([dateLabel, dayEntries]) => (
                         <div key={dateLabel}>
                            <div className="bg-paper-100/60 px-6 py-2 text-[10px] font-black uppercase text-ink-500 tracking-[0.4em] border-y border-paper-200 sticky top-0 backdrop-blur-sm z-10">{dateLabel}</div>
@@ -489,7 +465,6 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                                              {entry.type === 'income' ? '+' : '-'}₱{entry.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                           </div>
                                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                             {/* Fixed: Added Edit2 icon button */}
                                              <button onClick={() => setEditingEntry(entry)} className="p-2 text-ink-300 hover:text-ink-900 hover:bg-paper-100 border border-paper-200"><Edit2 size={16} /></button>
                                              <button onClick={() => handleDelete(entry.id)} className="p-2 text-ink-300 hover:text-wax-600 hover:bg-wax-50 border border-paper-200"><Trash2 size={16} /></button>
                                           </div>
