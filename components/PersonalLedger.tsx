@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, PersonalLedgerEntry, CategoryBudget, PersonalAccount, SavingGoal } from '../types';
+import { User, PersonalLedgerEntry, PersonalAccount, SavingGoal } from '../types';
 import { dataService } from '../services/dataService';
 import { StatCard } from './StatCard';
 import { 
@@ -151,7 +151,6 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
     setSelectedMonth(current.toISOString().slice(0, 7));
   };
 
-  // --- Visual Insights Logic ---
   const stats = useMemo(() => {
     const filtered = entries.filter(e => e.date.startsWith(selectedMonth));
     const income = filtered.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0);
@@ -168,7 +167,6 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
     };
   }, [entries, selectedMonth, obligations, accounts]);
 
-  // Fixed: Explicitly typed groupedEntries to ensure Object.entries infers correct types on line 458
   const groupedEntries = useMemo<Record<string, PersonalLedgerEntry[]>>(() => {
     const filtered = entries.filter(e => e.date.startsWith(selectedMonth) && 
       (e.description.toLowerCase().includes(searchTerm.toLowerCase()) || e.category.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -186,8 +184,6 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
 
   return (
     <div className="space-y-8 animate-fade-in pb-16">
-      
-      {/* Header with Navigation Views */}
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 border-b border-paper-300 pb-6">
         <div className="space-y-4">
           <div>
@@ -229,7 +225,6 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
         </div>
       </div>
 
-      {/* Sovereign Stats Bar */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard title="Net Worth" value={`₱${stats.totalAssets.toLocaleString()}`} icon={ShieldCheck} trend="Across Vaults" trendUp={true} colorClass="text-ink-900" />
         <StatCard title="Safe to Spend" value={`₱${stats.safeToSpend.toLocaleString()}`} icon={Wallet} trend="After 10th/25th Dues" trendUp={stats.safeToSpend > 0} colorClass="text-emerald-700" />
@@ -238,11 +233,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-         
-         {/* LEFT COLUMN: Vaults, Trends, Goals */}
          <div className="lg:col-span-4 space-y-8">
-            
-            {/* Payday Obligations */}
             <div className="bg-paper-50 border-2 border-paper-200 rounded-sm overflow-hidden shadow-card">
                <div className="p-4 bg-leather-900 text-paper-100 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -256,8 +247,8 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                      <p className="text-ink-400 italic text-sm py-4 text-center">No active payday obligations.</p>
                   ) : (
                      obligations.slice(0, 4).map((o, i) => {
-                        const date = new Date(o.date);
-                        const isPayday = date.getDate() === 10 || date.getDate() === 25;
+                        const dateObj = new Date(o.date);
+                        const isPayday = dateObj.getDate() === 10 || dateObj.getDate() === 25;
                         return (
                            <div key={i} className={`flex justify-between items-center p-3 bg-white border rounded-sm group ${isPayday ? 'border-gold-300 ring-1 ring-gold-100' : 'border-paper-200'}`}>
                               <div>
@@ -265,7 +256,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                                     <div className="text-xs font-bold text-ink-900 leading-tight">{o.title}</div>
                                     {isPayday && <span className="bg-gold-500 text-white text-[8px] font-black px-1 rounded-sm">PAYDAY</span>}
                                  </div>
-                                 <div className="text-[10px] text-ink-400 font-mono mt-0.5">{date.toLocaleDateString(undefined, {month:'short', day:'numeric'})}</div>
+                                 <div className="text-[10px] text-ink-400 font-mono mt-0.5">{dateObj.toLocaleDateString(undefined, {month:'short', day:'numeric'})}</div>
                               </div>
                               <div className="text-sm font-mono font-bold text-wax-600">₱{o.amount.toLocaleString()}</div>
                            </div>
@@ -275,7 +266,6 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                </div>
             </div>
 
-            {/* Vaults (Accounts) */}
             <div className="bg-white border-2 border-paper-200 rounded-sm overflow-hidden shadow-card">
                <div className="p-4 border-b border-paper-200 bg-paper-50 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -296,7 +286,6 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                </div>
             </div>
 
-            {/* Savings Goals */}
             <div className="bg-white border-2 border-paper-200 rounded-sm overflow-hidden shadow-card">
                <div className="p-4 border-b border-paper-200 bg-paper-50 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-ink-900">
@@ -321,12 +310,9 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                   })}
                </div>
             </div>
-
          </div>
 
-         {/* RIGHT COLUMN: Ledger */}
          <div className="lg:col-span-8 space-y-8">
-            
             {showForm && (
                <div className="bg-paper-50 p-8 rounded-sm border-2 border-leather-800/20 shadow-float animate-slide-up relative">
                   <button onClick={resetForm} className="absolute top-6 right-6 text-ink-400 hover:text-ink-600 p-1"><X size={24}/></button>
@@ -409,7 +395,6 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                </div>
             )}
 
-            {/* Main Content Area */}
             {activeView === 'register' && (
                <div className="bg-white rounded-sm border-2 border-paper-200 shadow-card flex flex-col min-h-[600px]">
                   <div className="p-5 border-b border-paper-200 flex flex-col sm:flex-row items-center justify-between gap-4 bg-paper-50/50">
