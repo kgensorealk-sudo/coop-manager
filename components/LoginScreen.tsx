@@ -127,7 +127,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading, erro
                 {isEmailConfirmationError && (
                   <div className="mt-2 text-xs bg-white/50 p-2 rounded border border-gold-200 font-sans italic flex items-start gap-2">
                     <Info size={12} className="shrink-0 mt-0.5 text-gold-600" />
-                    <span>Developer: You can disable this in your Supabase Dashboard under <b>Authentication > Settings > Email Auth</b>. Toggle off "Confirm email".</span>
+                    <span>Developer: You can disable this in your Supabase Dashboard under <b>Authentication &gt; Settings &gt; Email Auth</b>. Toggle off "Confirm email".</span>
                   </div>
                 )}
               </div>
