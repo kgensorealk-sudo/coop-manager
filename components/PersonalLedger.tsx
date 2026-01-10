@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, PersonalLedgerEntry, PersonalAccount, SavingGoal } from '../types';
+import { User, PersonalLedgerEntry, PersonalAccount } from '../types';
 import { dataService } from '../services/dataService';
 import { StatCard } from './StatCard';
 import { 
