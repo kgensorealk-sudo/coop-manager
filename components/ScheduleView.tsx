@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { dataService } from '../services/dataService';
-import { Calendar, Clock, Coins, Landmark } from 'lucide-react';
+import { Calendar, Clock, Coins, Landmark, CheckCircle2 } from 'lucide-react';
 
 interface ScheduleViewProps {
    filterByUserId?: string; // If present, only show schedules for this user
@@ -40,7 +40,6 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
     );
   }
 
-  // Group by month
   const groupedSchedules = schedules.reduce((acc: any, curr) => {
     const monthYear = new Date(curr.date).toLocaleString('default', { month: 'long', year: 'numeric' });
     if (!acc[monthYear]) acc[monthYear] = [];
@@ -58,7 +57,6 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Timeline */}
         <div className="lg:col-span-2 space-y-8">
           {Object.keys(groupedSchedules).length === 0 ? (
             <div className="bg-white p-12 rounded-sm border-2 border-dashed border-slate-200 text-center text-slate-400">
@@ -81,23 +79,31 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
                          const isPast = date < new Date();
                          const day = date.getDate();
                          const isPayday = day === 10 || day === 25;
+                         const isPaid = item.is_paid;
 
                          return (
-                            <div key={idx} className={`bg-white rounded-sm border-2 p-5 flex items-start gap-6 transition-all hover:shadow-card relative overflow-hidden group ${isPast ? 'border-paper-100 opacity-60' : isPayday ? 'border-gold-300 ring-2 ring-gold-50/50 shadow-sm' : 'border-paper-200'}`}>
+                            <div key={idx} className={`bg-white rounded-sm border-2 p-5 flex items-start gap-6 transition-all hover:shadow-card relative overflow-hidden group ${isPaid ? 'border-emerald-200 bg-emerald-50/10' : isPast ? 'border-paper-100 opacity-60' : isPayday ? 'border-gold-300 ring-2 ring-gold-50/50 shadow-sm' : 'border-paper-200'}`}>
                                
-                               {isPayday && !isPast && (
+                               {isPayday && !isPast && !isPaid && (
                                   <div className="absolute top-0 right-0 bg-gold-500 text-leather-900 text-[9px] font-black px-3 py-1 uppercase tracking-widest">Payday Alignment</div>
                                )}
+                               
+                               {isPaid && (
+                                  <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[9px] font-black px-3 py-1 uppercase tracking-widest flex items-center gap-1">
+                                     <CheckCircle2 size={10} />
+                                     <span>Settled</span>
+                                  </div>
+                               )}
 
-                               <div className={`flex flex-col items-center justify-center w-16 h-16 rounded-sm shrink-0 border-2 ${isPast ? 'bg-slate-100 text-slate-400 border-paper-200' : isPayday ? 'bg-gold-50 text-gold-600 border-gold-200' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                               <div className={`flex flex-col items-center justify-center w-16 h-16 rounded-sm shrink-0 border-2 ${isPaid ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : isPast ? 'bg-slate-100 text-slate-400 border-paper-200' : isPayday ? 'bg-gold-50 text-gold-600 border-gold-200' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
                                   <span className="text-[10px] font-black uppercase tracking-tighter">{date.toLocaleString('default', { month: 'short' })}</span>
                                   <span className="text-2xl font-mono font-bold leading-none">{day}</span>
                                </div>
                                
                                <div className="flex-1 pt-1">
                                   <div className="flex items-center gap-2">
-                                     <h3 className={`font-serif font-bold text-xl ${isPast ? 'text-slate-500' : 'text-slate-900'}`}>{item.title}</h3>
-                                     {isPayday && <Coins size={14} className="text-gold-500" />}
+                                     <h3 className={`font-serif font-bold text-xl ${isPaid ? 'text-emerald-800' : isPast ? 'text-slate-500' : 'text-slate-900'}`}>{item.title}</h3>
+                                     {isPayday && <Coins size={14} className={isPaid ? 'text-emerald-400' : 'text-gold-500'} />}
                                   </div>
                                   {!filterByUserId && (
                                      <div className="flex items-center gap-2 text-xs text-ink-400 uppercase font-black tracking-widest mt-1">
@@ -108,11 +114,11 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
                                </div>
                                
                                <div className="text-right pt-1">
-                                  <div className={`font-mono font-bold text-xl ${isPast ? 'text-slate-400' : 'text-emerald-700'}`}>
+                                  <div className={`font-mono font-bold text-xl ${isPaid ? 'text-emerald-700 line-through opacity-50' : isPast ? 'text-slate-400' : 'text-emerald-700'}`}>
                                      ₱{item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                   </div>
-                                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-sm tracking-widest ${isPast ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-700'}`}>
-                                     {isPast ? 'Settled / Past' : 'Installment Due'}
+                                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-sm tracking-widest ${isPaid ? 'bg-emerald-100 text-emerald-700' : isPast ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-700'}`}>
+                                     {isPaid ? 'Paid in Full' : isPast ? 'Settled / Past' : 'Installment Due'}
                                   </span>
                                 </div>
                             </div>
@@ -124,7 +130,6 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
           )}
         </div>
 
-        {/* Sidebar Summary */}
         <div className="space-y-6">
            <div className="bg-white p-8 rounded-sm border-2 border-paper-200 shadow-card">
               <h3 className="font-bold text-ink-900 mb-6 flex items-center gap-3 uppercase tracking-widest text-sm">
@@ -140,7 +145,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
                              const d = new Date(s.date);
                              const now = new Date();
                              const diff = d.getTime() - now.getTime();
-                             return diff > 0 && diff < 30 * 24 * 60 * 60 * 1000;
+                             return !s.is_paid && diff > 0 && diff < 30 * 24 * 60 * 60 * 1000;
                           })
                           .reduce((sum, s) => sum + s.amount, 0)
                           .toLocaleString()}
@@ -148,12 +153,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
                  </div>
                  
                  <div className="pt-4 border-t border-paper-100">
-                    <span className="text-[10px] font-black text-ink-400 uppercase tracking-widest">Next Payday Entry</span>
-                    {schedules.find(s => new Date(s.date) > new Date()) ? (
+                    <span className="text-[10px] font-black text-ink-400 uppercase tracking-widest">Next Pending Entry</span>
+                    {schedules.find(s => !s.is_paid && new Date(s.date) > new Date()) ? (
                        <div className="mt-2 p-3 bg-paper-50 border border-paper-200 rounded-sm">
-                          <div className="text-xs font-bold text-ink-700">{schedules.find(s => new Date(s.date) > new Date()).title}</div>
-                          <div className="text-lg font-mono font-bold text-gold-600 mt-1">₱{schedules.find(s => new Date(s.date) > new Date()).amount.toLocaleString()}</div>
-                          <div className="text-[10px] text-ink-400 font-mono mt-1 uppercase tracking-widest">Due: {new Date(schedules.find(s => new Date(s.date) > new Date()).date).toLocaleDateString()}</div>
+                          <div className="text-xs font-bold text-ink-700">{schedules.find(s => !s.is_paid && new Date(s.date) > new Date()).title}</div>
+                          <div className="text-lg font-mono font-bold text-gold-600 mt-1">₱{schedules.find(s => !s.is_paid && new Date(s.date) > new Date()).amount.toLocaleString()}</div>
+                          <div className="text-[10px] text-ink-400 font-mono mt-1 uppercase tracking-widest">Due: {new Date(schedules.find(s => !s.is_paid && new Date(s.date) > new Date()).date).toLocaleDateString()}</div>
                        </div>
                     ) : (
                        <p className="text-xs text-ink-400 italic">No future entries.</p>

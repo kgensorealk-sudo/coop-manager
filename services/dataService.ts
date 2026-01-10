@@ -203,7 +203,7 @@ class DataService {
         updates.start_date = new Date().toISOString();
         if (customRate !== undefined) updates.interest_rate = customRate;
      }
-     const { error } = await this.supabase!.from('loans').update(updates).eq('id', loanId);
+     const { error = null } = await this.supabase!.from('loans').update(updates).eq('id', loanId);
      if (error) throw error;
   }
   
@@ -214,14 +214,12 @@ class DataService {
         date: new Date().toISOString()
      });
      if (error) throw error;
-     // Manual profile update removed because the SQL Trigger handles it now.
   }
   
   async updateContributionStatus(id: string, status: ContributionStatus): Promise<void> {
      if (this.isMock()) return;
      const { error } = await this.supabase!.from('contributions').update({ status }).eq('id', id);
      if (error) throw error;
-     // Manual profile update removed because the SQL Trigger handles it now.
   }
 
   async getLoanPayments(loanId: string): Promise<Payment[]> {
@@ -424,7 +422,7 @@ class DataService {
 
   async deletePersonalEntry(id: string): Promise<void> {
     if (this.isMock()) return;
-    const { error } = await this.supabase!.from('personal_ledger').delete().eq('id', id);
+    const { error = null } = await this.supabase!.from('personal_ledger').delete().eq('id', id);
     if (error) throw error;
   }
 
@@ -480,55 +478,52 @@ class DataService {
   }
 
   async getUpcomingSchedules(): Promise<any[]> {
-     if (this.isMock()) {
-        const loans = await this.getLoans();
-        const activeLoans = loans.filter(l => l.status === 'active');
-        const schedules: any[] = [];
-        activeLoans.forEach(loan => {
-           const monthlyTotal = (loan.principal / loan.duration_months) + (loan.principal * (loan.interest_rate/100));
-           const paydayAmount = monthlyTotal / 2;
-           
-           for (let i = 0; i < 3; i++) {
-              const d = new Date(); d.setMonth(d.getMonth() + i);
-              const date10 = new Date(d.getFullYear(), d.getMonth(), 10);
-              const date25 = new Date(d.getFullYear(), d.getMonth(), 25);
-              
-              schedules.push({
-                 date: date10.toISOString(), title: `Payday Repayment (10th) - ${loan.purpose}`,
-                 amount: paydayAmount, borrower_id: loan.borrower_id, borrower_name: loan.borrower.full_name, is_payday: true
-              });
-              schedules.push({
-                 date: date25.toISOString(), title: `Payday Repayment (25th) - ${loan.purpose}`,
-                 amount: paydayAmount, borrower_id: loan.borrower_id, borrower_name: loan.borrower.full_name, is_payday: true
-              });
-           }
-        });
-        return schedules.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-     }
-     
-     const loans = await this.getLoans();
-     const activeLoans = loans.filter(l => l.status === 'active');
-     const schedules: any[] = [];
-     activeLoans.forEach(loan => {
-        const monthlyTotal = (loan.principal / loan.duration_months) + (loan.principal * (loan.interest_rate/100));
-        const paydayAmount = monthlyTotal / 2;
+    const loans = await this.getLoans();
+    const activeLoans = loans.filter(l => l.status === 'active' || l.status === 'paid');
+    const schedules: any[] = [];
+    
+    // Process loans concurrently to determine payment coverage
+    const loanRepaymentPromises = activeLoans.map(async (loan) => {
+      const payments = await this.getLoanPayments(loan.id);
+      const totalRepaid = payments.reduce((sum, p) => sum + p.amount, 0);
+      
+      const monthlyTotal = (loan.principal / loan.duration_months) + (loan.principal * (loan.interest_rate/100));
+      const installmentAmount = monthlyTotal / 2;
+      
+      const baseDate = loan.start_date ? new Date(loan.start_date) : new Date(loan.created_at);
+      let cumulativeTarget = 0;
+
+      for (let i = 1; i <= loan.duration_months; i++) {
+        const installmentMonth = new Date(baseDate.getFullYear(), baseDate.getMonth() + i, 1);
         
-        for (let i = 0; i < 3; i++) {
-           const d = new Date(); d.setMonth(d.getMonth() + i);
-           const date10 = new Date(d.getFullYear(), d.getMonth(), 10);
-           const date25 = new Date(d.getFullYear(), d.getMonth(), 25);
-           
-           schedules.push({
-              date: date10.toISOString(), title: `Payday Repayment (10th) - ${loan.purpose}`,
-              amount: paydayAmount, borrower_id: loan.borrower_id, borrower_name: loan.borrower.full_name, is_payday: true
-           });
-           schedules.push({
-              date: date25.toISOString(), title: `Payday Repayment (25th) - ${loan.purpose}`,
-              amount: paydayAmount, borrower_id: loan.borrower_id, borrower_name: loan.borrower.full_name, is_payday: true
-           });
-        }
-     });
-     return schedules.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        // 10th of Month
+        cumulativeTarget += installmentAmount;
+        schedules.push({
+          date: new Date(installmentMonth.getFullYear(), installmentMonth.getMonth(), 10).toISOString(),
+          title: `Payday Repayment (10th) - ${loan.purpose}`,
+          amount: installmentAmount,
+          borrower_id: loan.borrower_id,
+          borrower_name: loan.borrower.full_name,
+          is_payday: true,
+          is_paid: totalRepaid >= (cumulativeTarget - 0.01) // Margin for float errors
+        });
+        
+        // 25th of Month
+        cumulativeTarget += installmentAmount;
+        schedules.push({
+          date: new Date(installmentMonth.getFullYear(), installmentMonth.getMonth(), 25).toISOString(),
+          title: `Payday Repayment (25th) - ${loan.purpose}`,
+          amount: installmentAmount,
+          borrower_id: loan.borrower_id,
+          borrower_name: loan.borrower.full_name,
+          is_payday: true,
+          is_paid: totalRepaid >= (cumulativeTarget - 0.01)
+        });
+      }
+    });
+
+    await Promise.all(loanRepaymentPromises);
+    return schedules.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 }
 
