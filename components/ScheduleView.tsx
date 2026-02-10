@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { dataService } from '../services/dataService';
-import { Calendar, Clock, User as UserIcon, Coins, Landmark, CheckCircle2, AlertCircle, TrendingUp } from 'lucide-react';
+import { Calendar, Clock, Coins, Landmark, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface ScheduleViewProps {
    filterByUserId?: string;

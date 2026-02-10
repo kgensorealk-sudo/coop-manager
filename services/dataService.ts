@@ -1,7 +1,7 @@
 
 import { supabase } from '../lib/supabaseClient';
 import { 
-  User, Loan, LoanWithBorrower, Contribution, ContributionWithMember, 
+  User, LoanWithBorrower, ContributionWithMember, 
   Payment, Announcement, AnnouncementPriority, GalleryItem, PersonalLedgerEntry,
   LoanStatus, ContributionStatus, Role, CategoryBudget, PersonalAccount, SavingGoal
 } from '../types';
@@ -385,11 +385,6 @@ class DataService {
         const monthlyTotal = (loan.principal / loan.duration_months) + (loan.principal * (loan.interest_rate/100));
         const paydayAmount = monthlyTotal / 2;
         const loanStart = new Date(loan.start_date || loan.created_at);
-        
-        // Determination of FIRST repayment date (exactly 1 month deferred alignment)
-        // Rule: Jan 10 -> Feb 10. Jan 25 -> Feb 25.
-        // If borrowed between 11-24, first is 25th of next month.
-        // If borrowed on 25+, first is 10th of second month from now (skipped rest of current).
         
         const startDay = loanStart.getDate();
         let firstMonthOffset = 1;

@@ -1,7 +1,7 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, PersonalLedgerEntry, CategoryBudget, PersonalAccount, SavingGoal } from '../types';
+import { User, PersonalLedgerEntry, PersonalAccount, SavingGoal } from '../types';
 import { dataService } from '../services/dataService';
-// Import StatCard component to resolve 'Cannot find name' errors on lines 261-264
 import { StatCard } from './StatCard';
 import { 
   Wallet, 
@@ -9,9 +9,6 @@ import {
   TrendingDown, 
   Plus, 
   Trash2, 
-  Calendar, 
-  FileText, 
-  Tag, 
   Loader2, 
   Search,
   X,
@@ -19,16 +16,12 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck, 
-  AlertTriangle,
   RefreshCw,
   Target,
-  Clock,
   PiggyBank,
-  ArrowRightLeft,
   Coins,
   History,
   LayoutGrid,
-  // Fixed: Added missing Edit2 import
   Edit2
 } from 'lucide-react';
 
@@ -40,9 +33,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
   const [entries, setEntries] = useState<PersonalLedgerEntry[]>([]);
   const [accounts, setAccounts] = useState<PersonalAccount[]>([]);
   const [goals, setGoals] = useState<SavingGoal[]>([]);
-  const [budgets, setBudgets] = useState<CategoryBudget[]>([]);
   const [obligations, setObligations] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   
   // View State
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); 
@@ -62,9 +53,8 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchAllData = async () => {
-    setLoading(true);
     try {
-      const [entryData, accountData, goalData, budgetData, scheduleData] = await Promise.all([
+      const [entryData, accountData, goalData, , scheduleData] = await Promise.all([
         dataService.getPersonalEntries(currentUser.id),
         dataService.getPersonalAccounts(currentUser.id),
         dataService.getSavingGoals(currentUser.id),
@@ -74,14 +64,11 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
       setEntries(entryData);
       setAccounts(accountData);
       setGoals(goalData);
-      setBudgets(budgetData);
       setObligations(scheduleData.filter(s => s.borrower_id === currentUser.id));
       
       if (accountData.length > 0 && !accountId) setAccountId(accountData[0].id);
     } catch (e) {
       console.error(e);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -164,23 +151,6 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
     setSelectedMonth(current.toISOString().slice(0, 7));
   };
 
-  // --- Visual Insights Logic ---
-  const trendData = useMemo(() => {
-     const results = [];
-     for (let i = 4; i >= 0; i--) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        const mKey = d.toISOString().slice(0, 7);
-        const mLabel = d.toLocaleDateString(undefined, { month: 'short' });
-        
-        const mEntries = entries.filter(e => e.date.startsWith(mKey));
-        const inc = mEntries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
-        const exp = mEntries.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
-        results.push({ label: mLabel, income: inc, expense: exp });
-     }
-     return results;
-  }, [entries]);
-
   const stats = useMemo(() => {
     const filtered = entries.filter(e => e.date.startsWith(selectedMonth));
     const income = filtered.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0);
@@ -197,7 +167,6 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
     };
   }, [entries, selectedMonth, obligations, accounts]);
 
-  // Fixed: Explicitly typed groupedEntries to ensure Object.entries infers correct types on line 458
   const groupedEntries = useMemo<Record<string, PersonalLedgerEntry[]>>(() => {
     const filtered = entries.filter(e => e.date.startsWith(selectedMonth) && 
       (e.description.toLowerCase().includes(searchTerm.toLowerCase()) || e.category.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -271,11 +240,11 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
          {/* LEFT COLUMN: Vaults, Trends, Goals */}
          <div className="lg:col-span-4 space-y-8">
             
-            {/* Payday Obligations */}
+            {/* Repayment Deadlines */}
             <div className="bg-paper-50 border-2 border-paper-200 rounded-sm overflow-hidden shadow-card">
                <div className="p-4 bg-leather-900 text-paper-100 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                     <AlertTriangle size={16} className="text-gold-500" />
+                     <Target size={16} className="text-gold-500" />
                      <h3 className="font-bold text-sm uppercase tracking-widest">Repayment Deadlines</h3>
                   </div>
                   <span className="text-[10px] font-mono text-paper-400">SEMI-MONTHLY</span>
@@ -454,7 +423,6 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                   </div>
                   
                   <div className="overflow-y-auto max-h-[750px] custom-scrollbar">
-                     {/* Fixed: Explicitly typed dayEntries to ensure map is available on line 614 */}
                      {(Object.entries(groupedEntries) as [string, PersonalLedgerEntry[]][]).map(([dateLabel, dayEntries]) => (
                         <div key={dateLabel}>
                            <div className="bg-paper-100/60 px-6 py-2 text-[10px] font-black uppercase text-ink-500 tracking-[0.4em] border-y border-paper-200 sticky top-0 backdrop-blur-sm z-10">{dateLabel}</div>
