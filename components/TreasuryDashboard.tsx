@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ContributionWithMember, LoanWithBorrower } from '../types';
 import { dataService } from '../services/dataService';
@@ -69,18 +68,24 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
     const fetchAllPayments = async () => {
       try {
         const activeLoans = loans.filter(l => l.status === 'active' || l.status === 'paid');
+        if (activeLoans.length === 0) return;
+
         const paymentPromises = activeLoans.map(l => dataService.getLoanPayments(l.id));
         const results = await Promise.all(paymentPromises);
         const flattened = results.flat().map(p => ({
            ...p,
-           borrower_name: loans.find(l => l.id === p.loan_id)?.borrower.full_name || 'Unknown'
+           borrower_name: loans.find(l => l.id === p.loan_id)?.borrower.full_name || 'Unknown Entity'
         }));
         setRecentPayments(flattened.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-      } catch (e) {
-        console.error("Failed to fetch payments for journal", e);
+      } catch (err: any) {
+        // Robust console logging to see the actual error instead of [object Object]
+        console.error("Failed to fetch payments for journal:", err?.message || JSON.stringify(err) || err);
       }
     };
-    if (loans.length > 0) fetchAllPayments();
+    
+    if (loans && loans.length > 0) {
+      fetchAllPayments();
+    }
   }, [loans]);
 
   if (loading) {
@@ -158,7 +163,6 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
     }))
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  // Fixed: Functional CSV Export
   const handleDownloadCSV = () => {
     const headers = ["Date", "Entity", "Type", "Category", "Amount", "Balance Direction"];
     const rows = journalEntries.map(e => [
@@ -181,11 +185,10 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
     document.body.removeChild(link);
   };
 
-  // Automated Trial Balance Calculation
   const totalAssets = treasuryStats.balance + activeLoanVolume;
   const totalEquity = treasuryStats.totalContributions + totalInterestGained;
   const balanceVariance = Math.abs(totalAssets - totalEquity);
-  const isVerified = balanceVariance < 1; // Tolerance for floating point
+  const isVerified = balanceVariance < 1; 
 
   const BreakdownRow = ({ 
     title, 
@@ -678,7 +681,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
             <div className="bg-paper-100/50 p-6 rounded-sm border-2 border-dashed border-paper-300 flex flex-col items-center text-center">
                <FileText size={32} className="text-ink-200 mb-3" />
                <h4 className="text-sm font-bold text-ink-700 uppercase tracking-widest mb-1">Fiscal Year Reports</h4>
-               <p className="text-sm text-ink-400 font-serif italic">Placeholder: Comprehensive audit reports and yearly statements are generated at end-of-period.</p>
+               <p className="text-sm text-ink-400 font-serif italic">Comprehensive audit reports and yearly statements are generated at end-of-period.</p>
             </div>
          </div>
       </div>

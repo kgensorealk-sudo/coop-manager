@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { StatCard } from './components/StatCard';
@@ -37,30 +36,44 @@ import {
   X
 } from 'lucide-react';
 
-// Helper to extract clean error message
+/**
+ * Robust Error Message Extractor
+ * Prevents [object Object] by digging into common error structures (Supabase, API, etc.)
+ */
 const getErrorMessage = (err: any): string => {
   if (!err) return "Unknown error";
-  if (typeof err === 'string') return err === '[object Object]' ? "An unexpected error occurred." : err;
-  if (err instanceof Error) {
-     if (err.message === '[object Object]') return "An unexpected error occurred.";
-     return err.message;
+  
+  // 1. Handle strings
+  if (typeof err === 'string') {
+    return err === '[object Object]' ? "An unexpected system error occurred." : err;
   }
-  if (typeof err === 'object') {
-     if (err.message) {
-       const msg = getErrorMessage(err.message);
-       if (msg !== "An unexpected error occurred.") return msg;
-     }
-     if (err.error_description) return getErrorMessage(err.error_description);
-     if (err.error) return getErrorMessage(err.error);
-     if (Array.isArray(err)) return err.map(e => getErrorMessage(e)).join(', ');
-     try {
-       const json = JSON.stringify(err);
-       return json === '{}' ? "An unexpected error occurred." : json;
-     } catch {
-       return "An error occurred.";
-     }
+
+  // 2. Handle Supabase / standard Error objects
+  if (err.message && typeof err.message === 'string') {
+    return err.message === '[object Object]' ? "System error (Object format)" : err.message;
   }
-  return String(err);
+
+  // 3. Handle specific Supabase error fields
+  if (err.error_description) return String(err.error_description);
+  if (err.error && typeof err.error === 'string') return err.error;
+  
+  // 4. Handle nested data.error (Axios/API style)
+  if (err.response?.data?.error) return getErrorMessage(err.response.data.error);
+  if (err.data?.error) return getErrorMessage(err.data.error);
+
+  // 5. Handle arrays of errors
+  if (Array.isArray(err) && err.length > 0) return getErrorMessage(err[0]);
+
+  // 6. Final fallback: Stringify if possible, but avoid empty objects or [object Object]
+  try {
+    const stringified = JSON.stringify(err);
+    if (stringified === '{}' || stringified === '[]' || !stringified) {
+      return "An unspecified error occurred (Empty response).";
+    }
+    return stringified;
+  } catch {
+    return "A critical error occurred that could not be parsed.";
+  }
 };
 
 const App: React.FC = () => {
@@ -93,7 +106,6 @@ const App: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Removed unused authLoading state as initialLoading covers the login transition
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   
@@ -323,7 +335,7 @@ const App: React.FC = () => {
       } else {
         await dataService.createAnnouncement(title, message, currentUser.id, priority, start, end);
       }
-      await refreshData(); // Refresh to ensure synchronization
+      await refreshData(); 
       setEditingAnnouncement(null);
     } catch (e) {
       throw e;
@@ -370,12 +382,12 @@ const App: React.FC = () => {
           <div className="mx-auto w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-700 border border-red-100">
             <AlertTriangle size={32} />
           </div>
-          <h2 className="text-2xl font-serif font-bold text-ink-900">Connection Failed</h2>
-          <div className="text-sm text-ink-600 bg-red-50 p-4 rounded-sm border-l-4 border-wax-500 text-left font-mono">{error}</div>
-          <p className="text-ink-500 text-sm">Ensure SQL setup is complete.</p>
+          <h2 className="text-2xl font-serif font-bold text-ink-900">Database Connection Error</h2>
+          <div className="text-sm text-ink-600 bg-red-50 p-4 rounded-sm border-l-4 border-wax-500 text-left font-mono break-words">{error}</div>
+          <p className="text-ink-500 text-sm italic">Ensure your Supabase URL and Key are correct, and all tables are initialized via the SQL Editor.</p>
           <button onClick={refreshData} className="flex items-center gap-2 px-6 py-2.5 bg-ink-800 hover:bg-ink-900 text-white rounded-sm font-bold uppercase tracking-wide text-sm mx-auto mt-4 transition-colors">
              <RefreshCw size={16} />
-             <span>Retry Connection</span>
+             <span>Try Again</span>
            </button>
         </div>
       </div>
@@ -575,7 +587,6 @@ const App: React.FC = () => {
   const renderLoansTab = () => {
     if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ink-600"></div></div>;
     
-    // Updated: Multi-criteria filtering logic
     const filteredLoans = loans.filter(l => {
       const matchesSearch = l.borrower.full_name.toLowerCase().includes(loanSearchTerm.toLowerCase()) ||
                           l.purpose.toLowerCase().includes(loanSearchTerm.toLowerCase());
@@ -663,7 +674,6 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Active Filter Badge */}
         {loanFilterStatus !== 'all' && (
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black text-ink-400 uppercase tracking-widest">Active Constraint:</span>

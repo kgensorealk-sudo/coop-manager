@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Lock, Mail, Loader2, AlertCircle, User, ArrowRight, CheckCircle, Settings, Feather, Info } from 'lucide-react';
+import { Lock, Mail, Loader2, AlertCircle, User, ArrowRight, CheckCircle, Settings, Feather } from 'lucide-react';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import ConnectionModal from './ConnectionModal';
 
@@ -42,7 +42,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading, erro
   };
 
   const displayError = error || localError;
-  const isEmailConfirmationError = displayError?.toLowerCase().includes("email not confirmed");
 
   return (
     <div className="min-h-screen bg-paper-100 flex flex-col items-center justify-center p-4 animate-fade-in relative selection:bg-gold-500/30 selection:text-ink-900">
@@ -119,17 +118,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading, erro
             )}
 
             {displayError && (
-              <div className={`p-4 rounded-sm text-sm flex flex-col gap-2 ${isEmailConfirmationError ? 'bg-amber-50 text-amber-900 border-l-4 border-gold-500' : 'bg-red-50 text-red-800 border-l-4 border-red-500'} animate-shake font-medium font-serif`}>
-                <div className="flex items-start gap-3">
-                  <AlertCircle size={18} className="shrink-0 mt-0.5" />
-                  <span>{displayError}</span>
-                </div>
-                {isEmailConfirmationError && (
-                  <div className="mt-2 text-xs bg-white/50 p-2 rounded border border-gold-200 font-sans italic flex items-start gap-2">
-                    <Info size={12} className="shrink-0 mt-0.5 text-gold-600" />
-                    <span>Developer: You can disable this in your Supabase Dashboard under <b>Authentication &gt; Settings &gt; Email Auth</b>. Toggle off "Confirm email".</span>
-                  </div>
-                )}
+              <div className="p-4 rounded-sm text-sm flex items-start gap-3 bg-red-50 text-red-800 border-l-4 border-red-500 animate-shake font-medium font-serif">
+                <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                <span>{displayError}</span>
               </div>
             )}
 
@@ -145,7 +136,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading, erro
                     onChange={(e) => setFullName(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 bg-transparent border-b border-paper-300 focus:border-ink-900 outline-none transition-all placeholder:text-paper-300 font-serif text-lg text-ink-900 focus:bg-paper-100"
                     placeholder="John Doe"
-                    style={{ paddingLeft: '2.5rem' }} 
+                    style={{ paddingLeft: '2.5rem' }} // Forcing padding via inline style as backup
                   />
                 </div>
               </div>
