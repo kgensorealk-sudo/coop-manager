@@ -54,7 +54,6 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
   const [monthlyGoal, setMonthlyGoal] = useState<number>(10000);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [newGoalInput, setNewGoalInput] = useState('');
-  const [recentPayments, setRecentPayments] = useState<any[]>([]);
 
   // Advanced Calculations for True Cooperative Value
   const financialMetrics = useMemo(() => {
@@ -90,28 +89,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
 
   useEffect(() => {
     dataService.getMonthlyGoal().then(setMonthlyGoal);
-    
-    const fetchAllPayments = async () => {
-      try {
-        const activeLoans = loans.filter(l => l.status === 'active' || l.status === 'paid');
-        if (activeLoans.length === 0) return;
-
-        const paymentPromises = activeLoans.map(l => dataService.getLoanPayments(l.id));
-        const results = await Promise.all(paymentPromises);
-        const flattened = results.flat().map(p => ({
-           ...p,
-           borrower_name: loans.find(l => l.id === p.loan_id)?.borrower.full_name || 'Unknown Entity'
-        }));
-        setRecentPayments(flattened.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-      } catch (err: any) {
-        console.error("Failed to fetch payments for journal:", err?.message || JSON.stringify(err) || err);
-      }
-    };
-    
-    if (loans && loans.length > 0) {
-      fetchAllPayments();
-    }
-  }, [loans]);
+  }, []);
 
   if (loading) {
     return (
