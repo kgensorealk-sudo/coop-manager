@@ -12,7 +12,7 @@ export const MOCK_USERS: User[] = [
     email: 'admin@coop.com',
     role: 'admin',
     is_coop_member: true,
-    equity: 15000, // Increased to provide initial liquidity
+    equity: 15000, 
     avatar_url: 'https://picsum.photos/id/1/200/200'
   },
   {
@@ -38,7 +38,7 @@ export const MOCK_USERS: User[] = [
     full_name: 'Robert External',
     email: 'robert@external.com',
     role: 'member',
-    is_coop_member: false, // Non-member borrower
+    is_coop_member: false, 
     equity: 0,
     avatar_url: 'https://picsum.photos/id/4/200/200'
   }
@@ -54,8 +54,8 @@ export const MOCK_LOANS: Loan[] = [
     status: 'active',
     start_date: '2023-10-01',
     purpose: 'Home Renovation',
-    remaining_principal: 3000,
-    interest_accrued: 0,
+    remaining_principal: 3500, // 5000 - 500 - 1000 from payments
+    interest_accrued: 2000,    // Total (3000) - 500 - 500 from payments
     created_at: '2023-09-28T10:00:00Z'
   },
   {
@@ -72,9 +72,9 @@ export const MOCK_LOANS: Loan[] = [
   },
   {
     id: 'l3',
-    borrower_id: 'u4', // Non-member
+    borrower_id: 'u4',
     principal: 2000,
-    interest_rate: 15, // Higher rate example
+    interest_rate: 15, 
     duration_months: 3,
     status: 'pending',
     purpose: 'Emergency Fund',
@@ -85,12 +85,9 @@ export const MOCK_LOANS: Loan[] = [
 ];
 
 export const MOCK_CONTRIBUTIONS: Contribution[] = [
-  // Initial Capital Injection by Admin
   { id: 'c1', member_id: 'u1', amount: 15000, date: '2023-01-01', type: 'one_time', status: 'approved' },
-  // Member Contributions
   { id: 'c2', member_id: 'u2', amount: 2500, date: '2023-02-15', type: 'monthly_deposit', status: 'approved' },
   { id: 'c3', member_id: 'u3', amount: 2500, date: '2023-03-01', type: 'monthly_deposit', status: 'approved' },
-  // A pending contribution
   { id: 'c4', member_id: 'u2', amount: 500, date: '2023-10-25', type: 'monthly_deposit', status: 'pending' },
 ];
 
@@ -100,7 +97,7 @@ export const MOCK_PAYMENTS: Payment[] = [
     loan_id: 'l1', 
     amount: 1000, 
     date: '2023-11-01', 
-    interest_paid: 500, // 10% of 5000
+    interest_paid: 500, 
     principal_paid: 500 
   },
   { 
@@ -108,7 +105,7 @@ export const MOCK_PAYMENTS: Payment[] = [
     loan_id: 'l1', 
     amount: 1500, 
     date: '2023-12-01', 
-    interest_paid: 500, // Flat rate based on original principal (5000 * 10%)
+    interest_paid: 500, 
     principal_paid: 1000 
   }
 ];

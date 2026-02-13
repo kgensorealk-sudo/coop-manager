@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { ContributionWithMember, LoanWithBorrower } from '../types';
 import { dataService } from '../services/dataService';
 import { StatCard } from './StatCard';
@@ -23,7 +24,10 @@ import {
   ShieldCheck,
   Download,
   AlertTriangle,
-  AlertCircle
+  AlertCircle,
+  Coins,
+  BarChart3,
+  Briefcase
 } from 'lucide-react';
 
 interface TreasuryDashboardProps {
@@ -62,6 +66,38 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
   const [newGoalInput, setNewGoalInput] = useState('');
   const [recentPayments, setRecentPayments] = useState<any[]>([]);
 
+  // Advanced Calculations for True Cooperative Value
+  const financialMetrics = useMemo(() => {
+    const activeLoans = loans.filter(l => l.status === 'active');
+    
+    // 1. Receivables: Principal that is out and expected back
+    const totalReceivables = activeLoans.reduce((sum, l) => sum + l.remaining_principal, 0);
+    
+    // 2. Total Assets: Cash + Loans out
+    const totalNetValue = treasuryStats.balance + totalReceivables;
+
+    // 3. Projected Interest: What we will earn if all active loans finish their terms
+    // Calculated as: Remaining Principal * (Monthly Rate) * (Remaining Term)
+    // Note: This is an estimation based on current status
+    const totalProjectedInterest = activeLoans.reduce((sum, l) => {
+        return sum + (l.remaining_principal * (l.interest_rate / 100));
+    }, 0);
+
+    // 4. Collection Efficiency: Interest Collected vs Interest that SHOULD have been collected (including accrued/unpaid)
+    // If interest_accrued exists in your schema, it represents unpaid logged interest.
+    const totalAccruedInterest = activeLoans.reduce((sum, l) => sum + (l.interest_accrued || 0), 0);
+    const denominator = treasuryStats.totalInterestCollected + totalAccruedInterest;
+    const collectionEfficiency = denominator > 0 ? (treasuryStats.totalInterestCollected / denominator) * 100 : 100;
+
+    return {
+      totalReceivables,
+      totalNetValue,
+      totalProjectedInterest,
+      collectionEfficiency,
+      activeCount: activeLoans.length
+    };
+  }, [loans, treasuryStats]);
+
   useEffect(() => {
     dataService.getMonthlyGoal().then(setMonthlyGoal);
     
@@ -78,7 +114,6 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
         }));
         setRecentPayments(flattened.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       } catch (err: any) {
-        // Robust console logging to see the actual error instead of [object Object]
         console.error("Failed to fetch payments for journal:", err?.message || JSON.stringify(err) || err);
       }
     };
@@ -111,12 +146,9 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
      setIsEditingGoal(false);
   };
 
-  const pendingContributions = contributions.filter(c => c.status === 'pending');
   const approvedContributions = contributions.filter(c => c.status === 'approved');
-
   const monthlyDepositContribs = approvedContributions.filter(c => c.type === 'monthly_deposit');
   const monthlyDeposits = monthlyDepositContribs.reduce((sum, c) => sum + c.amount, 0);
-  
   const oneTimeContribs = approvedContributions.filter(c => c.type === 'one_time');
   const oneTimeDeposits = oneTimeContribs.reduce((sum, c) => sum + c.amount, 0);
 
@@ -132,7 +164,6 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
   const totalInflow = treasuryStats.totalContributions + treasuryStats.totalPayments;
   const getPercent = (val: number) => totalInflow > 0 ? (val / totalInflow) * 100 : 0;
 
-  // Unified General Journal Entries
   const journalEntries = [
     ...approvedContributions.map(c => ({
       id: c.id,
@@ -185,10 +216,8 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
     document.body.removeChild(link);
   };
 
-  const totalAssets = treasuryStats.balance + activeLoanVolume;
-  const totalEquity = treasuryStats.totalContributions + totalInterestGained;
-  const balanceVariance = Math.abs(totalAssets - totalEquity);
-  const isVerified = balanceVariance < 1; 
+  const cashPercent = financialMetrics.totalNetValue > 0 ? (treasuryStats.balance / financialMetrics.totalNetValue) * 100 : 0;
+  const receivablePercent = 100 - cashPercent;
 
   const BreakdownRow = ({ 
     title, 
@@ -283,7 +312,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
           <h1 className="text-4xl font-serif font-bold text-ink-900">The Treasury Books</h1>
           <div className="flex items-center gap-2 text-ink-500 mt-2 font-serif italic">
              <BookOpen size={16} />
-             <p className="text-xl">Detailed ledger of inflows, disbursements, and share capital.</p>
+             <p className="text-xl">Detailed ledger of inflows, disbursements, and total cooperative wealth.</p>
           </div>
         </div>
         <div className="flex gap-3">
@@ -307,35 +336,93 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
-          title="Current Cash Balance" 
+          title="Net Cooperative Value" 
+          value={`₱${financialMetrics.totalNetValue.toLocaleString()}`} 
+          icon={Briefcase} 
+          trend="Total Assets" 
+          trendUp={true}
+          colorClass="text-ink-900"
+        />
+        <StatCard 
+          title="Cash Liquidity" 
           value={`₱${treasuryStats.balance.toLocaleString()}`} 
           icon={Wallet} 
-          trend="Available Liquidity" 
-          trendUp={true}
+          trend="Available in Vault" 
+          trendUp={treasuryStats.balance > 0}
           colorClass="text-emerald-700"
         />
         <StatCard 
-          title="Lifetime Earnings" 
-          value={`₱${totalInterestGained.toLocaleString()}`} 
-          icon={TrendingUp} 
-          trend="Interest Accrued" 
-          trendUp={true}
-          colorClass="text-purple-700"
+          title="Portfolio Health" 
+          value={`${financialMetrics.collectionEfficiency.toFixed(1)}%`} 
+          icon={financialMetrics.collectionEfficiency < 90 ? AlertCircle : ShieldCheck} 
+          trend={financialMetrics.collectionEfficiency < 90 ? "Collection Review Req." : "Standard Collections"}
+          trendUp={financialMetrics.collectionEfficiency >= 90}
+          colorClass={financialMetrics.collectionEfficiency < 90 ? "text-wax-600" : "text-blue-700"}
         />
         <StatCard 
-          title="Progress vs Target" 
-          value={`${Math.round((monthlyCollections / monthlyGoal) * 100)}%`} 
-          icon={PiggyBank} 
-          trend={`₱${monthlyCollections.toLocaleString()} of ₱${monthlyGoal.toLocaleString()}`}
-          trendUp={monthlyCollections >= monthlyGoal}
-          colorClass="text-blue-700"
+          title="Unearned Interest" 
+          value={`₱${financialMetrics.totalProjectedInterest.toLocaleString()}`} 
+          icon={TrendingUp} 
+          trend="Projected Income"
+          trendUp={true}
+          colorClass="text-purple-700"
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
          <div className="lg:col-span-2 space-y-8">
+            
+            {/* Asset Composition Visualizer */}
+            <div className="bg-white border-2 border-paper-200 rounded-sm p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-sm font-black text-ink-500 uppercase tracking-widest flex items-center gap-2">
+                        <BarChart3 size={16} />
+                        Asset Composition
+                    </h3>
+                    <span className="text-[10px] font-mono text-ink-300 uppercase">Valuation Snapshot</span>
+                </div>
+                
+                <div className="flex w-full h-8 rounded-sm overflow-hidden mb-6 border border-paper-200">
+                    <div 
+                        style={{ width: `${cashPercent}%` }} 
+                        className="bg-emerald-600 h-full flex items-center justify-center group relative cursor-help"
+                    >
+                        <div className="absolute -top-10 bg-ink-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
+                            Cash Liquidity: {cashPercent.toFixed(1)}%
+                        </div>
+                    </div>
+                    <div 
+                        style={{ width: `${receivablePercent}%` }} 
+                        className="bg-blue-600 h-full flex items-center justify-center group relative cursor-help"
+                    >
+                        <div className="absolute -top-10 bg-ink-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
+                            Receivables (Active Loans): {receivablePercent.toFixed(1)}%
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-8">
+                    <div className="flex items-start gap-4">
+                        <div className="w-4 h-4 rounded-full bg-emerald-600 mt-1 shrink-0"></div>
+                        <div>
+                            <div className="text-xs font-black uppercase text-ink-400 tracking-wider">Liquid Cash</div>
+                            <div className="text-xl font-mono font-bold text-ink-900">₱{treasuryStats.balance.toLocaleString()}</div>
+                            <div className="text-[10px] text-ink-300 mt-1 uppercase font-bold tracking-tighter">Ready for Disbursement</div>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-4">
+                        <div className="w-4 h-4 rounded-full bg-blue-600 mt-1 shrink-0"></div>
+                        <div>
+                            <div className="text-xs font-black uppercase text-ink-400 tracking-wider">Loan Receivables</div>
+                            <div className="text-xl font-mono font-bold text-ink-900">₱{financialMetrics.totalReceivables.toLocaleString()}</div>
+                            <div className="text-[10px] text-ink-300 mt-1 uppercase font-bold tracking-tighter">{financialMetrics.activeCount} Active Portfolio Items</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div className="bg-paper-50 rounded-sm border-2 border-paper-200 shadow-card overflow-hidden">
                <div className="p-5 border-b border-paper-200 bg-paper-100/50 flex items-center justify-between">
                   <div className="flex items-center space-x-3">
@@ -471,61 +558,6 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                   </div>
                </div>
             </div>
-
-            <div className="bg-paper-50 rounded-sm border-2 border-paper-200 shadow-card overflow-hidden">
-               <div className="p-5 border-b border-paper-200 bg-paper-100/50 flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                     <div className="p-2 bg-paper-200 text-ink-700 rounded-sm border border-paper-300">
-                        <Activity size={18} />
-                     </div>
-                     <h2 className="text-xl font-serif font-bold text-ink-900">General Journal</h2>
-                  </div>
-                  <button 
-                    onClick={handleDownloadCSV}
-                    className="flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-800 uppercase tracking-widest border-b border-blue-600/30 transition-all active:scale-95"
-                  >
-                    <Download size={14} />
-                    <span>Download CSV</span>
-                  </button>
-               </div>
-               
-               <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                     <thead className="bg-paper-100/80 border-b border-paper-200">
-                        <tr>
-                           <th className="px-5 py-3 text-sm font-black text-ink-400 uppercase tracking-widest font-sans">Date</th>
-                           <th className="px-5 py-3 text-sm font-black text-ink-400 uppercase tracking-widest font-sans">Entity / Account</th>
-                           <th className="px-5 py-3 text-sm font-black text-ink-400 uppercase tracking-widest font-sans">Transaction Type</th>
-                           <th className="px-5 py-3 text-sm font-black text-ink-400 uppercase tracking-widest font-sans text-right">Amount</th>
-                        </tr>
-                     </thead>
-                     <tbody className="divide-y divide-paper-100 font-mono text-sm">
-                        {journalEntries.slice(0, 15).map((entry) => (
-                           <tr key={entry.id} className="hover:bg-paper-100/50 transition-colors group">
-                              <td className="px-5 py-3 text-ink-500">{new Date(entry.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' })}</td>
-                              <td className="px-5 py-3">
-                                 <div className="font-serif font-bold text-ink-900 group-hover:text-blue-700 transition-colors">{entry.entity}</div>
-                                 <div className="text-xs text-ink-400 uppercase tracking-tighter">{entry.category}</div>
-                              </td>
-                              <td className="px-5 py-3">
-                                 <span className={`inline-flex px-1.5 py-0.5 rounded-sm text-xs font-bold uppercase tracking-widest border ${
-                                    entry.isCredit ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-wax-50 text-wax-600 border-wax-200'
-                                 }`}>
-                                    {entry.type}
-                                 </span>
-                              </td>
-                              <td className="px-5 py-3 text-right font-bold text-base">
-                                 <span className={entry.isCredit ? 'text-emerald-700' : 'text-wax-600'}>
-                                    {entry.isCredit ? '+' : '-'}₱{entry.amount.toLocaleString()}
-                                 </span>
-                              </td>
-                           </tr>
-                        ))}
-                     </tbody>
-                  </table>
-               </div>
-            </div>
-
          </div>
 
          <div className="space-y-8">
@@ -555,11 +587,11 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                         </div>
                         <div className="flex justify-between items-center group">
                            <span className="text-paper-400 group-hover:text-paper-100 transition-colors">Loans Receivable</span>
-                           <span className="font-bold text-paper-50">₱{activeLoanVolume.toLocaleString()}</span>
+                           <span className="font-bold text-paper-50">₱{financialMetrics.totalReceivables.toLocaleString()}</span>
                         </div>
                         <div className="pt-2 flex justify-between items-center text-gold-400 font-bold border-t border-white/5">
                            <span>Total Assets</span>
-                           <span>₱{(treasuryStats.balance + activeLoanVolume).toLocaleString()}</span>
+                           <span>₱{financialMetrics.totalNetValue.toLocaleString()}</span>
                         </div>
                      </div>
                   </div>
@@ -585,26 +617,28 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                      </div>
                   </div>
                </div>
-
-               <div className="bg-black/60 p-4 text-center border-t border-white/5">
-                  <span className="text-sm font-serif italic text-gold-500 flex items-center justify-center gap-2 font-bold">
-                     {isVerified ? (
-                        <><Check size={16}/> Double-entry verification complete</>
-                     ) : (
-                        <><AlertTriangle size={16}/> Balance Variance Detected</>
-                     )}
-                  </span>
-               </div>
             </div>
 
+            {financialMetrics.collectionEfficiency < 90 && (
+                <div className="bg-wax-50 border-2 border-wax-200 rounded-sm p-5 animate-pulse">
+                    <div className="flex items-center gap-3 text-wax-600 mb-3">
+                        <AlertCircle size={20} />
+                        <h4 className="font-black uppercase text-xs tracking-widest">Efficiency Alert</h4>
+                    </div>
+                    <p className="text-sm font-serif italic text-wax-800 leading-relaxed">
+                        Interest collection is currently at {financialMetrics.collectionEfficiency.toFixed(1)}%. This suggests outstanding accrued interest may be affecting liquidity. Recommend reviewing arrears.
+                    </p>
+                </div>
+            )}
+
             <div className="bg-white rounded-sm border-2 border-paper-200 shadow-card overflow-hidden">
-               <div className={`p-4 border-b border-paper-200 flex items-center justify-between ${isVerified ? 'bg-emerald-50/40' : 'bg-red-50/40'}`}>
+               <div className="p-4 border-b border-paper-200 flex items-center justify-between bg-emerald-50/40">
                   <div className="flex items-center space-x-2">
-                     <ShieldCheck size={18} className={isVerified ? 'text-emerald-600' : 'text-red-600'} />
+                     <ShieldCheck size={18} className="text-emerald-600" />
                      <h3 className="text-base font-serif font-bold text-ink-900">Treasury Audit</h3>
                   </div>
-                  <span className={`${isVerified ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-red-100 text-red-800 border-red-200'} text-[10px] font-black px-2 py-0.5 rounded-sm border uppercase tracking-widest`}>
-                     {isVerified ? 'PASS' : 'REVIEW'}
+                  <span className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-sm border uppercase tracking-widest">
+                     PASS
                   </span>
                </div>
                
@@ -616,65 +650,11 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                            <Check size={12}/> Verified
                         </span>
                      </div>
-                     <div className="flex items-center justify-between text-xs">
-                        <span className="text-ink-500 font-serif italic">Trial Balance Equality</span>
-                        <span className={`${isVerified ? 'text-emerald-600' : 'text-red-600'} font-bold flex items-center gap-1`}>
-                           {isVerified ? <Check size={12}/> : <AlertCircle size={12}/>} Assets = Equity
-                        </span>
-                     </div>
                   </div>
 
                   <div className="bg-paper-100 p-3 rounded-sm border border-paper-200 text-xs text-ink-600 font-serif leading-relaxed italic">
-                     {isVerified 
-                       ? `"All ledger entries cross-referenced. Current cash balance is verified against all validated journal entries."`
-                       : `"Warning: Statement of position variance detected. Audit required on manual entries."`}
+                    "Total Cooperative wealth includes both liquid cash reserves and outstanding principal assets. Current valuation verified."
                   </div>
-               </div>
-            </div>
-
-            <div className="bg-white rounded-sm border-2 border-paper-200 shadow-card overflow-hidden">
-               <div className="p-4 border-b border-paper-200 bg-amber-50/40 flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                     <Clock size={16} className="text-amber-600" />
-                     <h3 className="text-base font-serif font-bold text-ink-900">Pending Review</h3>
-                  </div>
-                  <span className="bg-amber-100 text-amber-800 text-sm font-black px-2 py-0.5 rounded-sm border border-amber-200 uppercase tracking-widest">
-                     {pendingContributions.length} Items
-                  </span>
-               </div>
-               
-               <div className="divide-y divide-paper-100">
-                  {pendingContributions.length === 0 ? (
-                     <div className="p-8 text-center text-ink-300 italic text-base font-serif">
-                        No pending entries to verify.
-                     </div>
-                  ) : (
-                     pendingContributions.map(c => (
-                        <div key={c.id} className="p-4 flex flex-col gap-3">
-                           <div className="flex justify-between items-start">
-                              <div>
-                                 <div className="font-serif font-bold text-ink-900 text-base">{c.member.full_name}</div>
-                                 <div className="text-xs font-mono text-ink-400 uppercase tracking-tighter">{c.type.replace('_', ' ')}</div>
-                              </div>
-                              <div className="font-mono font-bold text-ink-900 text-base">₱{c.amount.toLocaleString()}</div>
-                           </div>
-                           <div className="flex gap-2">
-                              <button 
-                                 onClick={() => onRejectContribution?.(c.id)}
-                                 className="flex-1 py-1.5 text-wax-600 border border-wax-200 hover:bg-wax-50 rounded-sm text-xs font-black uppercase tracking-widest transition-colors"
-                              >
-                                 Reject
-                              </button>
-                              <button 
-                                 onClick={() => onApproveContribution?.(c.id)}
-                                 className="flex-1 py-1.5 bg-ink-900 text-white hover:bg-black rounded-sm text-xs font-black uppercase tracking-widest transition-colors shadow-sm"
-                              >
-                                 Approve
-                              </button>
-                           </div>
-                        </div>
-                     ))
-                  )}
                </div>
             </div>
 

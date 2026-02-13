@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { StatCard } from './components/StatCard';
@@ -38,41 +39,18 @@ import {
 
 /**
  * Robust Error Message Extractor
- * Prevents [object Object] by digging into common error structures (Supabase, API, etc.)
  */
 const getErrorMessage = (err: any): string => {
   if (!err) return "Unknown error";
-  
-  // 1. Handle strings
-  if (typeof err === 'string') {
-    return err === '[object Object]' ? "An unexpected system error occurred." : err;
-  }
-
-  // 2. Handle Supabase / standard Error objects
-  if (err.message && typeof err.message === 'string') {
-    return err.message === '[object Object]' ? "System error (Object format)" : err.message;
-  }
-
-  // 3. Handle specific Supabase error fields
+  if (typeof err === 'string') return err === '[object Object]' ? "An unexpected system error occurred." : err;
+  if (err.message && typeof err.message === 'string') return err.message === '[object Object]' ? "System error" : err.message;
   if (err.error_description) return String(err.error_description);
   if (err.error && typeof err.error === 'string') return err.error;
-  
-  // 4. Handle nested data.error (Axios/API style)
-  if (err.response?.data?.error) return getErrorMessage(err.response.data.error);
-  if (err.data?.error) return getErrorMessage(err.data.error);
-
-  // 5. Handle arrays of errors
-  if (Array.isArray(err) && err.length > 0) return getErrorMessage(err[0]);
-
-  // 6. Final fallback: Stringify if possible, but avoid empty objects or [object Object]
   try {
     const stringified = JSON.stringify(err);
-    if (stringified === '{}' || stringified === '[]' || !stringified) {
-      return "An unspecified error occurred (Empty response).";
-    }
-    return stringified;
+    return stringified === '{}' ? "An unspecified error occurred." : stringified;
   } catch {
-    return "A critical error occurred that could not be parsed.";
+    return "A critical error occurred.";
   }
 };
 
@@ -86,7 +64,6 @@ const App: React.FC = () => {
   const [members, setMembers] = useState<User[]>([]);
   const [contributions, setContributions] = useState<ContributionWithMember[]>([]);
   
-  // Search and Filter state for Loan Ledger
   const [loanSearchTerm, setLoanSearchTerm] = useState('');
   const [loanFilterStatus, setLoanFilterStatus] = useState<LoanStatus | 'all'>('all');
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
@@ -120,7 +97,6 @@ const App: React.FC = () => {
   const [activeVolume, setActiveVolume] = useState(0);
   const [totalInterestGained, setTotalInterestGained] = useState(0);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target as Node)) {
@@ -194,9 +170,7 @@ const App: React.FC = () => {
       }
       
       const updatedCurrentUser = fetchedUsers.find(u => u.id === currentUser.id);
-      if (updatedCurrentUser && JSON.stringify(updatedCurrentUser) !== JSON.stringify(currentUser)) {
-        setCurrentUser(updatedCurrentUser);
-      }
+      if (updatedCurrentUser) setCurrentUser(updatedCurrentUser);
       
       if (selectedLoan) {
          const updatedSelectedLoan = fetchedLoans.find(l => l.id === selectedLoan.id);
@@ -216,12 +190,10 @@ const App: React.FC = () => {
     setAuthSuccess(null);
     const minLoginTime = new Promise(resolve => setTimeout(resolve, 1500));
     try {
-      let user: User;
       const loginAction = isSignup && fullName 
           ? dataService.signUp(email, pass, fullName)
           : dataService.login(email, pass);
-      const [result] = await Promise.all([loginAction, minLoginTime]);
-      user = result;
+      const [user] = await Promise.all([loginAction, minLoginTime]);
       setCurrentUser(user);
       setActiveTab(user.role === 'admin' ? 'dashboard' : 'my-dashboard');
     } catch (err: any) {
@@ -369,11 +341,7 @@ const App: React.FC = () => {
     );
   }
 
-  if (!currentUser) {
-    return (
-      <LoginScreen onLogin={handleLogin} loading={false} error={authError} success={authSuccess} />
-    );
-  }
+  if (!currentUser) return <LoginScreen onLogin={handleLogin} loading={false} error={authError} success={authSuccess} />;
 
   if (error) {
     return (
@@ -384,7 +352,6 @@ const App: React.FC = () => {
           </div>
           <h2 className="text-2xl font-serif font-bold text-ink-900">Database Connection Error</h2>
           <div className="text-sm text-ink-600 bg-red-50 p-4 rounded-sm border-l-4 border-wax-500 text-left font-mono break-words">{error}</div>
-          <p className="text-ink-500 text-sm italic">Ensure your Supabase URL and Key are correct, and all tables are initialized via the SQL Editor.</p>
           <button onClick={refreshData} className="flex items-center gap-2 px-6 py-2.5 bg-ink-800 hover:bg-ink-900 text-white rounded-sm font-bold uppercase tracking-wide text-sm mx-auto mt-4 transition-colors">
              <RefreshCw size={16} />
              <span>Try Again</span>
@@ -398,13 +365,7 @@ const App: React.FC = () => {
     const pendingLoans = loans.filter(l => l.status === 'pending');
     const pendingContributions = contributions.filter(c => c.status === 'pending');
 
-    if (loading) {
-      return (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ink-600"></div>
-        </div>
-      );
-    }
+    if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ink-600"></div></div>;
 
     return (
       <div className="space-y-8 animate-fade-in">
@@ -413,16 +374,13 @@ const App: React.FC = () => {
             <h1 className="text-4xl font-serif font-bold text-ink-900">Executive Summary</h1>
             <p className="text-ink-600 mt-2 font-serif italic text-2xl">Welcome to the Registry, Administrator {currentUser.full_name.split(' ')[0]}.</p>
           </div>
-          
-          <div className="flex gap-3">
-             <button 
-               onClick={handleOpenAnnouncementCreate}
-               className="flex items-center space-x-2 px-5 py-2.5 bg-paper-50 text-ink-800 hover:bg-paper-100 border border-paper-300 rounded-sm text-sm font-black uppercase tracking-[0.15em] transition-all shadow-sm"
-             >
-               <Megaphone size={16} />
-               <span>Broadcast Notice</span>
-             </button>
-          </div>
+          <button 
+            onClick={handleOpenAnnouncementCreate}
+            className="flex items-center space-x-2 px-5 py-2.5 bg-paper-50 text-ink-800 hover:bg-paper-100 border border-paper-300 rounded-sm text-sm font-black uppercase tracking-[0.15em] transition-all shadow-sm"
+          >
+            <Megaphone size={16} />
+            <span>Broadcast Notice</span>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -432,7 +390,7 @@ const App: React.FC = () => {
           <StatCard title="Assessments Due" value={`${pendingLoans.length + pendingContributions.length}`} icon={ClipboardCheck} colorClass={pendingLoans.length > 0 ? "text-wax-600" : "text-ink-600"} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
+        <div className="grid grid-cols-1 gap-8">
            <div className="space-y-6">
               <div className="flex items-center justify-between border-b border-paper-300 pb-4">
                  <div className="flex items-center gap-3">
@@ -449,7 +407,7 @@ const App: React.FC = () => {
               {pendingLoans.length === 0 ? (
                  <div className="bg-paper-50/50 border-2 border-dashed border-paper-300 rounded-sm p-12 text-center">
                     <Activity size={48} className="mx-auto text-ink-200 mb-4" />
-                    <p className="text-xl font-serif italic text-ink-400">All applications have been processed. The inbox is clear.</p>
+                    <p className="text-xl font-serif italic text-ink-400">All applications have been processed.</p>
                  </div>
               ) : (
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -457,23 +415,17 @@ const App: React.FC = () => {
                        const monthlyInterest = loan.principal * (loan.interest_rate / 100);
                        const totalInterest = monthlyInterest * loan.duration_months;
                        const totalResp = loan.principal + totalInterest;
-
                        return (
                           <div key={loan.id} className="bg-paper-50 rounded-sm border-2 border-paper-200 shadow-card hover:border-ink-400 transition-all p-6 group relative overflow-hidden">
-                             <div className="absolute top-0 right-0 px-3 py-1 bg-ink-900 text-gold-500 text-[10px] font-black uppercase tracking-widest rotate-0">New Request</div>
-                             
                              <div className="flex items-center gap-4 mb-6">
                                 <div className="w-14 h-14 rounded-sm bg-white p-1 shadow-sm border border-paper-200">
                                    <img src={loan.borrower.avatar_url} className="w-full h-full object-cover grayscale" alt="" />
                                 </div>
                                 <div>
                                    <h3 className="text-xl font-serif font-bold text-ink-900">{loan.borrower.full_name}</h3>
-                                   <div className="flex items-center gap-2">
-                                      <span className="text-xs font-mono text-ink-400 uppercase">{loan.borrower.email}</span>
-                                   </div>
+                                   <span className="text-xs font-mono text-ink-400 uppercase">{loan.borrower.email}</span>
                                 </div>
                              </div>
-
                              <div className="space-y-4 mb-8">
                                 <div className="grid grid-cols-2 gap-4 bg-paper-100 p-4 rounded-sm border border-paper-200">
                                    <div>
@@ -485,31 +437,14 @@ const App: React.FC = () => {
                                       <span className="text-lg font-mono font-bold text-ink-900">{loan.duration_months} Mo.</span>
                                    </div>
                                 </div>
-
-                                <div className="border-t border-dashed border-paper-300 pt-4">
-                                   <div className="flex justify-between items-center mb-1">
-                                      <span className="text-xs font-serif italic text-ink-500">Responsibility Calculation:</span>
-                                      <span className="text-xs font-mono text-ink-400">P + (I × T)</span>
-                                   </div>
-                                   <div className="flex justify-between items-end">
-                                      <div className="text-xs text-ink-500">
-                                         ₱{loan.principal.toLocaleString()} + (₱{monthlyInterest.toLocaleString()} × {loan.duration_months})
-                                      </div>
-                                      <div className="text-lg font-mono font-black text-emerald-700">
-                                         = ₱{totalResp.toLocaleString()}
-                                      </div>
-                                   </div>
+                                <div className="flex justify-between items-end border-t border-dashed border-paper-300 pt-4">
+                                   <div className="text-xs text-ink-500 italic">Expected Total:</div>
+                                   <div className="text-lg font-mono font-black text-emerald-700">₱{totalResp.toLocaleString()}</div>
                                 </div>
                              </div>
-
-                             <div className="flex gap-3">
-                                <button 
-                                   onClick={() => handleReviewLoan(loan)}
-                                   className="flex-1 py-3 bg-ink-900 text-white rounded-sm text-xs font-black uppercase tracking-[0.2em] shadow-lg hover:bg-black transition-all flex items-center justify-center gap-2 group-hover:scale-[1.02]"
-                                >
-                                   Perform Assessment <ArrowRight size={14} />
-                                </button>
-                             </div>
+                             <button onClick={() => handleReviewLoan(loan)} className="w-full py-3 bg-ink-900 text-white rounded-sm text-xs font-black uppercase tracking-[0.2em] shadow-lg hover:bg-black transition-all flex items-center justify-center gap-2 group-hover:scale-[1.02]">
+                                Perform Assessment <ArrowRight size={14} />
+                             </button>
                           </div>
                        );
                     })}
@@ -526,57 +461,36 @@ const App: React.FC = () => {
                     <h2 className="text-2xl font-serif font-bold text-ink-900">Contribution Verification</h2>
                  </div>
               </div>
-
               <div className="bg-paper-50 rounded-sm border-2 border-paper-200 shadow-card overflow-hidden">
-                 <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                       <thead className="bg-paper-100 border-b border-paper-200 text-sm font-bold text-ink-500 uppercase tracking-[0.1em]">
-                          <tr>
-                             <th className="px-6 py-4">Sender</th>
-                             <th className="px-6 py-4">Deposit Type</th>
-                             <th className="px-6 py-4">Amount</th>
-                             <th className="px-6 py-4 text-right">Actions</th>
-                          </tr>
-                       </thead>
-                       <tbody className="divide-y divide-paper-200">
-                          {pendingContributions.length === 0 ? (
-                             <tr><td colSpan={4} className="px-6 py-12 text-center text-ink-400 font-serif italic text-lg">No pending deposits to verify.</td></tr>
-                          ) : (
-                             pendingContributions.map((c) => (
-                                <tr key={c.id} className="hover:bg-paper-100/50 transition-colors group">
-                                   <td className="px-6 py-4">
-                                      <div className="font-serif font-bold text-ink-900 text-lg">{c.member.full_name}</div>
-                                   </td>
-                                   <td className="px-6 py-4">
-                                      <span className="text-xs font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-sm border border-blue-100">
-                                         {c.type.replace('_', ' ')}
-                                      </span>
-                                   </td>
-                                   <td className="px-6 py-4">
-                                      <div className="font-mono font-bold text-emerald-700 text-lg">+₱{c.amount.toLocaleString()}</div>
-                                   </td>
-                                   <td className="px-6 py-4 text-right">
-                                      <div className="flex justify-end gap-2">
-                                         <button 
-                                            onClick={() => handleRejectContribution(c.id)}
-                                            className="px-3 py-1.5 text-wax-600 hover:bg-wax-50 rounded-sm text-xs font-black uppercase tracking-widest transition-colors border border-transparent hover:border-wax-200"
-                                         >
-                                            Decline
-                                         </button>
-                                         <button 
-                                            onClick={() => handleApproveContribution(c.id)}
-                                            className="px-4 py-1.5 bg-ink-900 text-white hover:bg-black rounded-sm text-xs font-black uppercase tracking-widest transition-all shadow-md active:scale-95"
-                                         >
-                                            Confirm
-                                         </button>
-                                      </div>
-                                   </td>
-                                </tr>
-                             ))
-                          )}
-                       </tbody>
-                    </table>
-                 </div>
+                 <table className="w-full text-left">
+                    <thead className="bg-paper-100 border-b border-paper-200 text-sm font-bold text-ink-500 uppercase">
+                       <tr>
+                          <th className="px-6 py-4">Sender</th>
+                          <th className="px-6 py-4">Type</th>
+                          <th className="px-6 py-4">Amount</th>
+                          <th className="px-6 py-4 text-right">Actions</th>
+                       </tr>
+                    </thead>
+                    <tbody className="divide-y divide-paper-200">
+                       {pendingContributions.length === 0 ? (
+                          <tr><td colSpan={4} className="px-6 py-12 text-center text-ink-400 font-serif italic text-lg">No pending deposits.</td></tr>
+                       ) : (
+                          pendingContributions.map((c) => (
+                             <tr key={c.id} className="hover:bg-paper-100/50 transition-colors">
+                                <td className="px-6 py-4 font-serif font-bold text-ink-900 text-lg">{c.member.full_name}</td>
+                                <td className="px-6 py-4"><span className="text-xs font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-sm border border-blue-100">{c.type.replace('_', ' ')}</span></td>
+                                <td className="px-6 py-4 font-mono font-bold text-emerald-700 text-lg">+₱{c.amount.toLocaleString()}</td>
+                                <td className="px-6 py-4 text-right">
+                                   <div className="flex justify-end gap-2">
+                                      <button onClick={() => handleRejectContribution(c.id)} className="px-3 py-1.5 text-wax-600 hover:bg-wax-50 rounded-sm text-xs font-black uppercase transition-colors">Decline</button>
+                                      <button onClick={() => handleApproveContribution(c.id)} className="px-4 py-1.5 bg-ink-900 text-white hover:bg-black rounded-sm text-xs font-black transition-all">Confirm</button>
+                                   </div>
+                                </td>
+                             </tr>
+                          ))
+                       )}
+                    </tbody>
+                 </table>
               </div>
            </div>
         </div>
@@ -588,19 +502,10 @@ const App: React.FC = () => {
     if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ink-600"></div></div>;
     
     const filteredLoans = loans.filter(l => {
-      const matchesSearch = l.borrower.full_name.toLowerCase().includes(loanSearchTerm.toLowerCase()) ||
-                          l.purpose.toLowerCase().includes(loanSearchTerm.toLowerCase());
+      const matchesSearch = l.borrower.full_name.toLowerCase().includes(loanSearchTerm.toLowerCase()) || l.purpose.toLowerCase().includes(loanSearchTerm.toLowerCase());
       const matchesStatus = loanFilterStatus === 'all' || l.status === loanFilterStatus;
       return matchesSearch && matchesStatus;
     });
-
-    const statusFilters: { id: LoanStatus | 'all', label: string }[] = [
-      { id: 'all', label: 'All Entries' },
-      { id: 'pending', label: 'Pending' },
-      { id: 'active', label: 'Active' },
-      { id: 'paid', label: 'Settled' },
-      { id: 'rejected', label: 'Rejected' },
-    ];
 
     return (
       <div className="space-y-6 animate-fade-in">
@@ -615,57 +520,21 @@ const App: React.FC = () => {
         <div className="bg-paper-50 p-4 rounded-sm shadow-sm border border-paper-200 flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="relative w-full md:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search by name or purpose..." 
-              value={loanSearchTerm}
-              onChange={(e) => setLoanSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-transparent border-b border-paper-300 focus:border-ink-900 outline-none font-serif placeholder:text-ink-300 text-ink-800" 
-            />
+            <input type="text" placeholder="Search by name or purpose..." value={loanSearchTerm} onChange={(e) => setLoanSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-transparent border-b border-paper-300 focus:border-ink-900 outline-none font-serif placeholder:text-ink-300 text-ink-800" />
           </div>
 
           <div className="relative" ref={filterDropdownRef}>
-            <button 
-              onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-              className={`flex items-center space-x-2 px-4 py-2 border rounded-sm text-sm font-bold uppercase tracking-widest transition-all ${
-                loanFilterStatus !== 'all' 
-                  ? 'bg-ink-900 text-white border-ink-900 shadow-md' 
-                  : 'border-paper-300 text-ink-600 hover:bg-paper-100'
-              }`}
-            >
+            <button onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)} className={`flex items-center space-x-2 px-4 py-2 border rounded-sm text-sm font-bold uppercase tracking-widest transition-all ${loanFilterStatus !== 'all' ? 'bg-ink-900 text-white border-ink-900 shadow-md' : 'border-paper-300 text-ink-600 hover:bg-paper-100'}`}>
               <Filter size={16} />
               <span>{loanFilterStatus === 'all' ? 'Filter' : `Status: ${loanFilterStatus}`}</span>
             </button>
-
             {isFilterDropdownOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white border border-paper-300 shadow-float z-30 rounded-sm overflow-hidden animate-zoom-in">
-                <div className="p-2 border-b border-paper-100 bg-paper-50 flex justify-between items-center">
-                  <span className="text-[10px] font-black uppercase text-ink-400 tracking-widest px-2">Categorize By</span>
-                  {loanFilterStatus !== 'all' && (
-                    <button 
-                      onClick={() => {setLoanFilterStatus('all'); setIsFilterDropdownOpen(false);}}
-                      className="text-[10px] font-bold text-wax-600 hover:underline uppercase"
-                    >
-                      Reset
-                    </button>
-                  )}
-                </div>
+                <div className="p-2 border-b border-paper-100 bg-paper-50 flex justify-between items-center text-[10px] font-black uppercase text-ink-400 px-2 tracking-widest">Criteria</div>
                 <div className="py-1">
-                  {statusFilters.map((filter) => (
-                    <button
-                      key={filter.id}
-                      onClick={() => {
-                        setLoanFilterStatus(filter.id);
-                        setIsFilterDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-2.5 text-sm font-serif transition-colors flex items-center justify-between ${
-                        loanFilterStatus === filter.id 
-                          ? 'bg-paper-100 text-ink-900 font-bold' 
-                          : 'text-ink-600 hover:bg-paper-50'
-                      }`}
-                    >
-                      <span>{filter.label}</span>
-                      {loanFilterStatus === filter.id && <div className="w-1.5 h-1.5 rounded-full bg-gold-500"></div>}
+                  {['all', 'pending', 'active', 'paid', 'rejected'].map((f) => (
+                    <button key={f} onClick={() => {setLoanFilterStatus(f as any); setIsFilterDropdownOpen(false);}} className={`w-full text-left px-4 py-2.5 text-sm font-serif transition-colors ${loanFilterStatus === f ? 'bg-paper-100 text-ink-900 font-bold' : 'text-ink-600 hover:bg-paper-50'}`}>
+                      {f === 'all' ? 'All Entries' : f.charAt(0).toUpperCase() + f.slice(1)}
                     </button>
                   ))}
                 </div>
@@ -674,83 +543,65 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {loanFilterStatus !== 'all' && (
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-ink-400 uppercase tracking-widest">Active Constraint:</span>
-            <div className="bg-ink-900 text-gold-500 px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-              Status: {loanFilterStatus}
-              <X 
-                size={10} 
-                className="cursor-pointer hover:text-white" 
-                onClick={() => setLoanFilterStatus('all')}
-              />
-            </div>
-          </div>
-        )}
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredLoans.map(loan => (
-            <div key={loan.id} onClick={() => loan.status !== 'pending' && handleViewLoanDetails(loan)} className={`bg-paper-50 rounded-sm border-2 shadow-card hover:shadow-float transition-all duration-300 p-6 flex flex-col relative overflow-hidden group ${loan.status !== 'pending' ? 'cursor-pointer border-paper-200 hover:border-ink-300' : 'border-amber-200 bg-amber-50/20'}`}>
-              <div className="absolute top-0 left-0 w-1 h-full bg-paper-200 group-hover:bg-ink-400 transition-colors"></div>
-              <div className="flex justify-between items-start mb-5 pl-3">
-                 <div className="flex items-center space-x-3">
-                    <img src={loan.borrower.avatar_url} className="w-10 h-10 rounded-sm object-cover border border-paper-300 grayscale" alt="" />
-                    <div>
-                       <h3 className="font-serif font-bold text-ink-900 text-lg leading-tight">{loan.borrower.full_name}</h3>
-                       <p className="text-xs text-ink-500 font-mono mt-0.5">{loan.status === 'active' ? 'Active Account' : loan.status === 'pending' ? 'Pending Approval' : loan.status}</p>
-                    </div>
-                 </div>
-                 <div className={`px-2 py-1 rounded-sm text-xs font-bold uppercase tracking-widest border ${loan.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : loan.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : loan.status === 'paid' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-paper-100 text-ink-500 border-paper-200'}`}>
-                   {loan.status}
-                 </div>
+          {filteredLoans.map(loan => {
+            // UI FALLBACK LOGIC: If interest_accrued is 0 and loan is active/paid, estimate it for the UI
+            // This fixes the "Interest Due = 0" issue for legacy/mock data without requiring database edits.
+            const displayInterest = (loan.interest_accrued && loan.interest_accrued > 0) 
+                ? loan.interest_accrued 
+                : (loan.status === 'active' || loan.status === 'paid' 
+                    ? (loan.principal * (loan.interest_rate / 100)) * loan.duration_months 
+                    : 0);
+
+            return (
+              <div key={loan.id} onClick={() => loan.status !== 'pending' && handleViewLoanDetails(loan)} className={`bg-paper-50 rounded-sm border-2 shadow-card hover:shadow-float transition-all duration-300 p-6 flex flex-col relative overflow-hidden group ${loan.status !== 'pending' ? 'cursor-pointer border-paper-200 hover:border-ink-300' : 'border-amber-200 bg-amber-50/20'}`}>
+                <div className="absolute top-0 left-0 w-1 h-full bg-paper-200 group-hover:bg-ink-400 transition-colors"></div>
+                <div className="flex justify-between items-start mb-5 pl-3">
+                   <div className="flex items-center space-x-3">
+                      <img src={loan.borrower.avatar_url} className="w-10 h-10 rounded-sm object-cover border border-paper-300 grayscale" alt="" />
+                      <div>
+                         <h3 className="font-serif font-bold text-ink-900 text-lg leading-tight">{loan.borrower.full_name}</h3>
+                         <p className="text-xs text-ink-500 font-mono mt-0.5">{loan.status === 'active' ? 'Active Account' : loan.status === 'pending' ? 'Pending Approval' : loan.status}</p>
+                      </div>
+                   </div>
+                   <div className={`px-2 py-1 rounded-sm text-xs font-bold uppercase tracking-widest border ${loan.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : loan.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : loan.status === 'paid' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-paper-100 text-ink-500 border-paper-200'}`}>
+                     {loan.status}
+                   </div>
+                </div>
+                <div className="space-y-3 mb-6 pl-3 border-l border-dashed border-paper-300 ml-0.5 font-mono text-sm">
+                   <div className="flex justify-between">
+                     <span className="text-ink-500 font-serif italic">Principal Due</span>
+                     <span className="font-bold text-ink-900">₱{loan.remaining_principal.toLocaleString()}</span>
+                   </div>
+                   <div className="flex justify-between">
+                     <span className="text-ink-500 font-serif italic">Interest Due</span>
+                     <span className="font-bold text-amber-700">₱{displayInterest.toLocaleString()}</span>
+                   </div>
+                   <div className="flex justify-between border-t border-paper-200 pt-1">
+                     <span className="text-ink-500 font-serif font-bold">Total Payoff</span>
+                     <span className="font-bold text-ink-900">₱{(loan.remaining_principal + displayInterest).toLocaleString()}</span>
+                   </div>
+                </div>
+                <div className="mt-auto pt-4 border-t border-paper-200 flex gap-2 pl-3">
+                   {loan.status === 'pending' ? (
+                     <button onClick={(e) => { e.stopPropagation(); handleReviewLoan(loan); }} className="w-full py-2 bg-ink-800 text-white rounded-sm text-xs font-bold uppercase tracking-widest hover:bg-ink-900 shadow-sm transition-colors">Review Request</button>
+                   ) : (
+                     <button className="w-full py-2 bg-transparent text-ink-600 rounded-sm text-xs font-bold uppercase tracking-widest hover:bg-paper-100 transition-colors border border-paper-300">View Details</button>
+                   )}
+                </div>
               </div>
-              <div className="space-y-3 mb-6 pl-3 border-l border-dashed border-paper-300 ml-0.5 font-mono text-sm">
-                 <div className="flex justify-between">
-                   <span className="text-ink-500 font-serif italic">Principal Due</span>
-                   <span className="font-bold text-ink-900">₱{loan.remaining_principal.toLocaleString()}</span>
-                 </div>
-                 <div className="flex justify-between">
-                   <span className="text-ink-500 font-serif italic">Interest Due</span>
-                   <span className="font-bold text-amber-700">₱{(loan.interest_accrued || 0).toLocaleString()}</span>
-                 </div>
-                 <div className="flex justify-between border-t border-paper-200 pt-1">
-                   <span className="text-ink-500 font-serif font-bold">Total Payoff</span>
-                   <span className="font-bold text-ink-900">₱{((loan.remaining_principal || 0) + (loan.interest_accrued || 0)).toLocaleString()}</span>
-                 </div>
-              </div>
-              <div className="mt-auto pt-4 border-t border-paper-200 flex gap-2 pl-3">
-                 {loan.status === 'pending' ? (
-                   <button onClick={(e) => { e.stopPropagation(); handleReviewLoan(loan); }} className="w-full py-2 bg-ink-800 text-white rounded-sm text-xs font-bold uppercase tracking-widest hover:bg-ink-900 shadow-sm transition-colors">Review Request</button>
-                 ) : (
-                   <button className="w-full py-2 bg-transparent text-ink-600 rounded-sm text-xs font-bold uppercase tracking-widest hover:bg-paper-100 transition-colors border border-paper-300">View Details</button>
-                 )}
-              </div>
-            </div>
-          ))}
-          {filteredLoans.length === 0 && (
-            <div className="col-span-full py-16 text-center text-ink-400 flex flex-col items-center bg-paper-50 border-2 border-dashed border-paper-300 rounded-sm">
-              <Activity size={48} className="opacity-20 mb-4" />
-              <p className="text-lg font-serif font-bold text-ink-600">No records found matching your selection.</p>
-              {(loanSearchTerm || loanFilterStatus !== 'all') && (
-                <button 
-                  onClick={() => {setLoanSearchTerm(''); setLoanFilterStatus('all');}}
-                  className="mt-4 text-xs font-black uppercase text-blue-600 hover:underline tracking-widest"
-                >
-                  Clear all search parameters
-                </button>
-              )}
-            </div>
-          )}
+            );
+          })}
         </div>
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <div className="flex min-h-screen bg-paper-100 font-sans selection:bg-gold-500/30 selection:text-ink-900">
       <AnnouncementModal isOpen={isSystemAnnouncementOpen} onClose={() => setIsSystemAnnouncementOpen(false)} announcements={systemAnnouncements} />
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} currentUser={currentUser} onLogout={handleLogout} />
-      <main className="flex-1 lg:ml-72 min-h-screen relative p-8 md:p-12">
+      <main className="flex-1 lg:ml-72 min-h-screen p-8 md:p-12">
         <div className="max-w-7xl mx-auto">
           {activeTab === 'dashboard' && renderAdminDashboard()}
           {activeTab === 'loans' && renderLoansTab()}
