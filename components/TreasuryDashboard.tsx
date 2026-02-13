@@ -18,7 +18,7 @@ import {
   BookOpen,
   ArrowRightLeft,
   FileText,
-  ShieldCheck,
+  ShieldCheck, 
   BarChart3,
   Briefcase
 } from 'lucide-react';
@@ -57,23 +57,28 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
 
   // Advanced Calculations for True Cooperative Value
   const financialMetrics = useMemo(() => {
+    // 1. Strictly consider only 'active' loans for all calculations
+    // This prevents 'rejected' or 'pending' loans from affecting interest stats
     const activeLoans = loans.filter(l => l.status === 'active');
     
-    // 1. Receivables: Principal that is out and expected back
+    // 2. Receivables: Principal that is out and expected back
     const totalReceivables = activeLoans.reduce((sum, l) => sum + l.remaining_principal, 0);
     
-    // 2. Total Assets: Cash + Loans out
+    // 3. Total Assets: Cash + Loans out
     const totalNetValue = treasuryStats.balance + totalReceivables;
 
-    // 3. Projected Interest: What we will earn if all active loans finish their terms
-    // Calculated as: Remaining Principal * (Monthly Rate) * (Remaining Term)
-    // Note: This is an estimation based on current status
-    const totalProjectedInterest = activeLoans.reduce((sum, l) => {
-        return sum + (l.remaining_principal * (l.interest_rate / 100));
+    // 4. Projected Interest (Unearned Interest):
+    // Sum of (Original Principal * Monthly Rate * Duration) for all active loans
+    // minus the interest already collected globally.
+    const totalPotentialInterest = activeLoans.reduce((sum, l) => {
+        const fullTermInterest = (l.principal * (l.interest_rate / 100)) * l.duration_months;
+        return sum + fullTermInterest;
     }, 0);
 
-    // 4. Collection Efficiency: Interest Collected vs Interest that SHOULD have been collected (including accrued/unpaid)
-    // If interest_accrued exists in your schema, it represents unpaid logged interest.
+    // Final result is the total profit still sitting in active contracts
+    const totalProjectedInterest = Math.max(0, totalPotentialInterest - treasuryStats.totalInterestCollected);
+
+    // 5. Collection Efficiency: Interest Collected vs Interest that SHOULD have been collected (including accrued/unpaid)
     const totalAccruedInterest = activeLoans.reduce((sum, l) => sum + (l.interest_accrued || 0), 0);
     const denominator = treasuryStats.totalInterestCollected + totalAccruedInterest;
     const collectionEfficiency = denominator > 0 ? (treasuryStats.totalInterestCollected / denominator) * 100 : 100;
