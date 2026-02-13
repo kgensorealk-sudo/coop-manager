@@ -18,7 +18,7 @@ class DataService {
   }
 
   private async ensureProfileExists(authUser: any): Promise<User> {
-    const { data, error } = await this.supabase!.from('profiles').select('*').eq('auth_id', authUser.id).single();
+    const { data } = await this.supabase!.from('profiles').select('*').eq('auth_id', authUser.id).single();
     if (data) return data as User;
 
     const newProfile = {

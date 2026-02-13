@@ -17,8 +17,7 @@ import {
   Users, 
   ChevronDown,
   Activity,
-  CheckCircle2,
-  X
+  CheckCircle2
 } from 'lucide-react';
 import MemberModal from './MemberModal';
 import { StatCard } from './StatCard';

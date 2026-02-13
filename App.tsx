@@ -33,8 +33,7 @@ import {
   Feather,
   ArrowRight,
   ClipboardCheck,
-  Coins,
-  X
+  Coins
 } from 'lucide-react';
 
 /**

@@ -4,9 +4,7 @@ import { LoanWithBorrower, Payment } from '../types';
 import { dataService } from '../services/dataService';
 import { 
   X, 
-  DollarSign, 
   TrendingDown, 
-  History, 
   CreditCard, 
   Loader2, 
   Calculator, 
@@ -16,9 +14,7 @@ import {
   CheckCircle2,
   Clock,
   Receipt,
-  Scale,
-  ArrowUpRight,
-  ChevronRight
+  Scale
 } from 'lucide-react';
 
 interface LoanDetailsModalProps {
@@ -37,7 +33,6 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
   const [payments, setPayments] = useState<Payment[]>([]);
   const [amount, setAmount] = useState<number | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loadingHistory, setLoadingHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'history' | 'schedule'>('history');
 
@@ -64,14 +59,11 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
 
   const fetchHistory = async () => {
     if (!loan) return;
-    setLoadingHistory(true);
     try {
       const history = await dataService.getLoanPayments(loan.id);
       setPayments(history);
     } catch (error) {
       console.error(error);
-    } finally {
-      setLoadingHistory(false);
     }
   };
 
@@ -363,7 +355,7 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                     {historyWithRunningBalance.length === 0 ? (
                        <tr><td colSpan={4} className="px-6 py-16 text-center text-ink-300 italic font-serif text-xl">The registry is currently clear. No payments recorded for this account.</td></tr>
                     ) : (
-                        historyWithRunningBalance.map((payment, idx) => (
+                        historyWithRunningBalance.map((payment) => (
                         <tr key={payment.id} className="hover:bg-paper-50 transition-colors group">
                             <td className="px-6 py-5 text-ink-600 font-serif italic text-base">
                                 {new Date(payment.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}

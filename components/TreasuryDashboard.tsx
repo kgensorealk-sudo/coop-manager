@@ -5,15 +5,12 @@ import { dataService } from '../services/dataService';
 import { StatCard } from './StatCard';
 import { 
   Wallet, 
-  PiggyBank, 
   ArrowUpRight, 
   Plus, 
   Check, 
-  Clock, 
   TrendingUp, 
   ArrowDownRight, 
   Scale, 
-  Activity, 
   ChevronDown, 
   ChevronUp, 
   Target, 
@@ -22,10 +19,6 @@ import {
   ArrowRightLeft,
   FileText,
   ShieldCheck,
-  Download,
-  AlertTriangle,
-  AlertCircle,
-  Coins,
   BarChart3,
   Briefcase
 } from 'lucide-react';
@@ -53,11 +46,8 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
   treasuryStats, 
   contributions,
   loans, 
-  activeLoanVolume,
   totalInterestGained,
   onAddContribution,
-  onApproveContribution,
-  onRejectContribution,
   loading 
 }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -152,69 +142,8 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
   const oneTimeContribs = approvedContributions.filter(c => c.type === 'one_time');
   const oneTimeDeposits = oneTimeContribs.reduce((sum, c) => sum + c.amount, 0);
 
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-  const monthlyCollections = approvedContributions
-    .filter(c => {
-      const d = new Date(c.date);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-    })
-    .reduce((sum, c) => sum + c.amount, 0);
-
   const totalInflow = treasuryStats.totalContributions + treasuryStats.totalPayments;
   const getPercent = (val: number) => totalInflow > 0 ? (val / totalInflow) * 100 : 0;
-
-  const journalEntries = [
-    ...approvedContributions.map(c => ({
-      id: c.id,
-      date: c.date,
-      entity: c.member.full_name,
-      type: 'Contribution',
-      category: c.type.replace('_', ' '),
-      amount: c.amount,
-      isCredit: true
-    })),
-    ...recentPayments.map(p => ({
-      id: p.id,
-      date: p.date,
-      entity: p.borrower_name,
-      type: 'Loan Payment',
-      category: 'Repayment',
-      amount: p.amount,
-      isCredit: true
-    })),
-    ...loans.filter(l => l.status === 'active' || l.status === 'paid').map(l => ({
-      id: l.id,
-      date: l.start_date || l.created_at,
-      entity: l.borrower.full_name,
-      type: 'Disbursement',
-      category: 'Loan Principal',
-      amount: l.principal,
-      isCredit: false
-    }))
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-  const handleDownloadCSV = () => {
-    const headers = ["Date", "Entity", "Type", "Category", "Amount", "Balance Direction"];
-    const rows = journalEntries.map(e => [
-      new Date(e.date).toLocaleDateString(),
-      e.entity,
-      e.type,
-      e.category,
-      e.amount,
-      e.isCredit ? "INFLOW (CR)" : "OUTFLOW (DR)"
-    ]);
-    
-    const csvContent = [headers, ...rows].map(row => row.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `General_Journal_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   const cashPercent = financialMetrics.totalNetValue > 0 ? (treasuryStats.balance / financialMetrics.totalNetValue) * 100 : 0;
   const receivablePercent = 100 - cashPercent;
@@ -356,7 +285,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
         <StatCard 
           title="Portfolio Health" 
           value={`${financialMetrics.collectionEfficiency.toFixed(1)}%`} 
-          icon={financialMetrics.collectionEfficiency < 90 ? AlertCircle : ShieldCheck} 
+          icon={ShieldCheck} 
           trend={financialMetrics.collectionEfficiency < 90 ? "Collection Review Req." : "Standard Collections"}
           trendUp={financialMetrics.collectionEfficiency >= 90}
           colorClass={financialMetrics.collectionEfficiency < 90 ? "text-wax-600" : "text-blue-700"}
@@ -618,18 +547,6 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                   </div>
                </div>
             </div>
-
-            {financialMetrics.collectionEfficiency < 90 && (
-                <div className="bg-wax-50 border-2 border-wax-200 rounded-sm p-5 animate-pulse">
-                    <div className="flex items-center gap-3 text-wax-600 mb-3">
-                        <AlertCircle size={20} />
-                        <h4 className="font-black uppercase text-xs tracking-widest">Efficiency Alert</h4>
-                    </div>
-                    <p className="text-sm font-serif italic text-wax-800 leading-relaxed">
-                        Interest collection is currently at {financialMetrics.collectionEfficiency.toFixed(1)}%. This suggests outstanding accrued interest may be affecting liquidity. Recommend reviewing arrears.
-                    </p>
-                </div>
-            )}
 
             <div className="bg-white rounded-sm border-2 border-paper-200 shadow-card overflow-hidden">
                <div className="p-4 border-b border-paper-200 flex items-center justify-between bg-emerald-50/40">

@@ -1,9 +1,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { dataService } from '../services/dataService';
-import { LoanWithBorrower, Payment } from '../types';
+import { LoanWithBorrower } from '../types';
 import { 
-  Calendar, 
   Clock, 
   Coins, 
   Landmark, 
@@ -15,8 +14,6 @@ import {
   List, 
   Bell, 
   CreditCard,
-  ChevronRight,
-  Filter,
   BarChart3,
   CalendarDays
 } from 'lucide-react';
@@ -268,7 +265,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
         </div>
         <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
            <div className="space-y-1">
-              <div className="text-xs font-black uppercase tracking-[0.25em] text-gold-500 mb-2">Quarterly Outlook</div>
+              <div className="text-xs font-black uppercase tracking-[0.2em] text-gold-500 mb-2">Quarterly Outlook</div>
               <h3 className="text-4xl font-serif font-bold italic tracking-tight">3-Month Forecast</h3>
            </div>
            
