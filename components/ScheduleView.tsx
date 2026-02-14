@@ -8,12 +8,9 @@ import {
   Landmark, 
   CheckCircle2, 
   AlertCircle, 
-  TrendingUp, 
   ArrowUpRight, 
   LayoutGrid, 
   List, 
-  Bell, 
-  CreditCard,
   BarChart3,
   CalendarDays
 } from 'lucide-react';
@@ -84,7 +81,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
       // NOTE: We rely on the payments collection logic for higher accuracy, but here we track by cumulative principal
       let cumulativeExpectedPrincipal = 0;
 
-      scheduleDates.forEach((paydayDate, index) => {
+      scheduleDates.forEach((paydayDate) => {
         cumulativeExpectedPrincipal += installmentPrincipal;
 
         // Strict date-based overdue check (ignoring hours)
@@ -148,11 +145,6 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
       count: upcomingItems.length
     };
   }, [allInstallments]);
-
-  const handleAction = (loan: LoanWithBorrower) => {
-    setSelectedLoan(loan);
-    setIsPaymentModalOpen(true);
-  };
 
   if (loading) {
     return (

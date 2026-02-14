@@ -16,8 +16,7 @@ import {
   Receipt,
   Scale,
   History,
-  AlertTriangle,
-  GanttChartSquare
+  AlertTriangle
 } from 'lucide-react';
 
 interface LoanDetailsModalProps {

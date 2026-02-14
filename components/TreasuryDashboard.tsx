@@ -10,18 +10,15 @@ import {
   Check, 
   TrendingUp, 
   ArrowDownRight, 
-  Scale, 
   ChevronDown, 
   ChevronUp, 
   Target, 
   Equal,
   BookOpen,
   ArrowRightLeft,
-  FileText,
   ShieldCheck, 
   BarChart3,
   Briefcase,
-  Info,
   LineChart,
   PieChart,
   GanttChartSquare
@@ -52,7 +49,6 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
   contributions,
   loans, 
   allPayments,
-  totalInterestGained,
   onAddContribution,
   loading 
 }) => {
@@ -231,7 +227,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                      <input 
                         autoFocus
                         type="number" 
-                        min="0"
+                        min="0" 
                         step="100"
                         value={newGoalInput}
                         onChange={(e) => setNewGoalInput(e.target.value)}

@@ -16,7 +16,6 @@ import {
   TrendingUp, 
   Users, 
   ChevronDown,
-  Activity,
   CheckCircle2
 } from 'lucide-react';
 import MemberModal from './MemberModal';
