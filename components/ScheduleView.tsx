@@ -14,7 +14,6 @@ import {
   BarChart3,
   CalendarDays
 } from 'lucide-react';
-import LoanDetailsModal from './LoanDetailsModal';
 
 interface ScheduleViewProps {
    filterByUserId?: string;
@@ -33,8 +32,6 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
   const [loans, setLoans] = useState<LoanWithBorrower[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
-  const [selectedLoan, setSelectedLoan] = useState<LoanWithBorrower | null>(null);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -331,16 +328,6 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
            </p>
         </div>
       </div>
-
-      <LoanDetailsModal 
-        isOpen={isPaymentModalOpen} 
-        onClose={() => setIsPaymentModalOpen(false)} 
-        loan={selectedLoan} 
-        onPaymentSuccess={() => {
-          fetchData();
-          setIsPaymentModalOpen(false);
-        }}
-      />
     </div>
   );
 };
