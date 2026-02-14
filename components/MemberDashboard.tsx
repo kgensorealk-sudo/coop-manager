@@ -1,13 +1,14 @@
 
 import React from 'react';
-import { User, LoanWithBorrower, ContributionWithMember } from '../types';
+import { User, LoanWithBorrower, ContributionWithMember, SavingGoal } from '../types';
 import { StatCard } from './StatCard';
-import { Wallet, CreditCard, Calendar, Clock, AlertCircle, Plus, PiggyBank, Lock, TrendingDown, CheckCircle2, XCircle, ArrowRightLeft } from 'lucide-react';
+import { Wallet, CreditCard, Calendar, Clock, AlertCircle, Plus, PiggyBank, Lock, TrendingDown, CheckCircle2, XCircle, ArrowRightLeft, Target } from 'lucide-react';
 
 interface MemberDashboardProps {
   user: User;
   memberLoans: LoanWithBorrower[];
   memberContributions: ContributionWithMember[];
+  memberSavingGoals: SavingGoal[];
   onApplyLoan: () => void;
   onAddContribution: () => void;
 }
@@ -15,7 +16,8 @@ interface MemberDashboardProps {
 export const MemberDashboard: React.FC<MemberDashboardProps> = ({ 
   user, 
   memberLoans, 
-  memberContributions, 
+  memberContributions,
+  memberSavingGoals,
   onApplyLoan, 
   onAddContribution 
 }) => {
@@ -224,6 +226,70 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* NEW: Savings Goals Summary Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+            <h2 className="text-xl font-serif font-bold text-slate-900 flex items-center gap-2">
+                <Target size={20} className="text-gold-600" />
+                Wealth Milestones & Objectives
+            </h2>
+        </div>
+        
+        {memberSavingGoals.length === 0 ? (
+           <div className="bg-white p-12 text-center flex flex-col items-center justify-center rounded-sm border border-slate-200 border-dashed text-slate-400">
+              <PiggyBank size={48} className="mb-3 opacity-20" strokeWidth={1} />
+              <p className="font-serif italic text-lg">No active savings objectives established.</p>
+           </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {memberSavingGoals.map((goal) => {
+               const progressPct = Math.min((goal.current_amount / goal.target_amount) * 100, 100);
+               return (
+                  <div key={goal.id} className="bg-white p-6 rounded-sm border-2 border-paper-200 shadow-card hover:border-gold-500/50 transition-all group">
+                     <div className="flex justify-between items-start mb-4">
+                        <div>
+                           <h3 className="font-serif font-bold text-xl text-slate-900 leading-tight">{goal.name}</h3>
+                           {goal.deadline && (
+                              <p className="text-[10px] font-mono text-slate-400 uppercase mt-1">Due: {new Date(goal.deadline).toLocaleDateString()}</p>
+                           )}
+                        </div>
+                        <div className={`p-2 rounded-sm bg-gold-50 text-gold-600 group-hover:rotate-12 transition-transform`}>
+                           <Target size={18} />
+                        </div>
+                     </div>
+                     
+                     <div className="space-y-4">
+                        <div className="flex justify-between text-sm">
+                           <div className="space-y-1">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Balance</p>
+                              <p className="font-mono font-bold text-emerald-700 text-lg">₱{goal.current_amount.toLocaleString()}</p>
+                           </div>
+                           <div className="space-y-1 text-right">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Target Goal</p>
+                              <p className="font-mono font-bold text-slate-900 text-lg">₱{goal.target_amount.toLocaleString()}</p>
+                           </div>
+                        </div>
+                        
+                        <div className="space-y-1">
+                           <div className="flex justify-between items-center mb-1">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{progressPct.toFixed(0)}% Completed</span>
+                              <span className="text-[10px] font-mono text-slate-400">₱{(goal.target_amount - goal.current_amount).toLocaleString()} Remaining</span>
+                           </div>
+                           <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                              <div 
+                                 className="h-full bg-gold-500 transition-all duration-1000 shadow-[0_0_8px_rgba(197,160,40,0.3)]" 
+                                 style={{ width: `${progressPct}%` }}
+                              ></div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               );
+            })}
           </div>
         )}
       </div>

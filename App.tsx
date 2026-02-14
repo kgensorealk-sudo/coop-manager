@@ -18,7 +18,7 @@ import { ScheduleView } from './components/ScheduleView';
 import { GalleryView } from './components/GalleryView';
 import { PersonalLedger } from './components/PersonalLedger';
 import { dataService } from './services/dataService';
-import { LoanWithBorrower, User, ContributionWithMember, ContributionStatus, Announcement, AnnouncementPriority, LoanStatus, Payment } from './types';
+import { LoanWithBorrower, User, ContributionWithMember, ContributionStatus, Announcement, AnnouncementPriority, LoanStatus, Payment, SavingGoal } from './types';
 import { 
   CreditCard, 
   Wallet, 
@@ -59,6 +59,7 @@ const App: React.FC = () => {
   const [loans, setLoans] = useState<LoanWithBorrower[]>([]);
   const [members, setMembers] = useState<User[]>([]);
   const [contributions, setContributions] = useState<ContributionWithMember[]>([]);
+  const [savingGoals, setSavingGoals] = useState<SavingGoal[]>([]);
   const [allPayments, setAllPayments] = useState<Payment[]>([]);
   
   const [loanSearchTerm, setLoanSearchTerm] = useState('');
@@ -141,14 +142,15 @@ const App: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [fetchedLoans, fetchedMetrics, fetchedVolume, fetchedInterest, fetchedUsers, fetchedContributions, fetchedAnnouncements] = await Promise.all([
+      const [fetchedLoans, fetchedMetrics, fetchedVolume, fetchedInterest, fetchedUsers, fetchedContributions, fetchedAnnouncements, fetchedSavingGoals] = await Promise.all([
         dataService.getLoans(),
         dataService.getTreasuryMetrics(),
         dataService.getActiveLoanVolume(),
         dataService.getTotalInterestGained(),
         dataService.getUsers(),
         dataService.getContributions(),
-        dataService.getActiveAnnouncements()
+        dataService.getActiveAnnouncements(),
+        dataService.getSavingGoals(currentUser.id)
       ]);
 
       setLoans(fetchedLoans);
@@ -157,6 +159,7 @@ const App: React.FC = () => {
       setTotalInterestGained(fetchedInterest);
       setMembers(fetchedUsers);
       setContributions(fetchedContributions);
+      setSavingGoals(fetchedSavingGoals);
       
       const { data: payments, error: payError } = await (dataService as any).supabase.from('payments').select('*');
       if (payError) throw payError;
@@ -221,12 +224,14 @@ const App: React.FC = () => {
       setLoans([]);
       setMembers([]);
       setContributions([]);
+      setSavingGoals([]);
       setHasShownAnnouncement(false);
       setSystemAnnouncements([]);
       setIsSystemAnnouncementOpen(false);
     } catch (e) {
     } finally {
-      setInitialLoading(false);
+      setInitialLoading(initialLoading);
+      window.location.reload(); // Hard refresh to clear all states
     }
   };
 
@@ -601,7 +606,7 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           {activeTab === 'dashboard' && renderAdminDashboard()}
           {activeTab === 'loans' && renderLoansTab()}
-          {activeTab === 'my-dashboard' && <MemberDashboard user={currentUser} memberLoans={loans.filter(l => l.borrower_id === currentUser.id)} memberContributions={contributions.filter(c => c.member_id === currentUser.id)} onApplyLoan={() => setIsApplicationModalOpen(true)} onAddContribution={() => setIsContributionModalOpen(true)} />}
+          {activeTab === 'my-dashboard' && <MemberDashboard user={currentUser} memberLoans={loans.filter(l => l.borrower_id === currentUser.id)} memberContributions={contributions.filter(c => c.member_id === currentUser.id)} memberSavingGoals={savingGoals} onApplyLoan={() => setIsApplicationModalOpen(true)} onAddContribution={() => setIsContributionModalOpen(true)} />}
           {activeTab === 'members' && <MemberDirectory members={members} loans={loans} onRefresh={refreshData} currentUserRole={currentUser.role} />}
           {activeTab === 'treasury' && <TreasuryDashboard treasuryStats={treasuryStats} contributions={contributions} loans={loans} allPayments={allPayments} activeLoanVolume={activeVolume} totalInterestGained={totalInterestGained} onAddContribution={() => setIsContributionModalOpen(true)} onApproveContribution={handleApproveContribution} onRejectContribution={handleRejectContribution} loading={loading} />}
           {activeTab === 'announcements' && <AnnouncementHistory onOpenCreate={handleOpenAnnouncementCreate} onEdit={handleOpenAnnouncementEdit} readOnly={currentUser.role === 'member'} />}

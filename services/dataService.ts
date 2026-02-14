@@ -18,10 +18,10 @@ class DataService {
   }
 
   /**
-   * Helper: Generate the 4 installment dates for a loan based on its start date.
-   * Jan 25 -> Feb 25, Mar 10, Mar 25, Apr 10.
+   * Helper: Generate the installment dates for a loan based on its start date.
+   * count = months * 2 (bi-monthly payments)
    */
-  getInstallmentDates(startDate: Date): Date[] {
+  getInstallmentDates(startDate: Date, count: number = 4): Date[] {
     const dates: Date[] = [];
     const startDay = startDate.getDate();
     
@@ -37,7 +37,7 @@ class DataService {
     let tempMonth = curMonth;
     let tempYear = curYear;
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < count; i++) {
        dates.push(new Date(tempYear, tempMonth, tempIs10th ? 10 : 25));
        
        if (tempIs10th) {
@@ -52,29 +52,27 @@ class DataService {
   }
 
   /**
-   * REWRITTEN: Financial Logic Engine
-   * Strictly 2-month cycle (4 installments).
-   * Penalty triggers ONLY AFTER the 4th installment date.
+   * Financial Logic Engine
+   * Penalty triggers ONLY AFTER the final installment date.
    */
   calculateDetailedDebt(loan: LoanWithBorrower | any, payments: Payment[]) {
     const startDate = new Date(loan.start_date || loan.created_at);
     const now = new Date();
     
-    // 1. Core Term Math
-    const baseInterest = (loan.principal * 0.10) * 2; // Fixed 20% interest
+    // 1. Core Term Math: 10% interest per month
+    const totalInstallments = loan.duration_months * 2;
+    const baseInterest = (loan.principal * 0.10) * loan.duration_months;
     const totalTermDebt = loan.principal + baseInterest;
     
     // 2. Installment Schedule
-    const schedule = this.getInstallmentDates(startDate);
-    const termEndDate = schedule[3]; // Penalty starts after the 4th payment
+    const schedule = this.getInstallmentDates(startDate, totalInstallments);
+    const termEndDate = schedule[totalInstallments - 1]; // Penalty starts after the last payment
     
     let penaltyTotal = 0;
     let monthsOverdue = 0;
 
     if (now > termEndDate) {
-      // Calculate how many months passed since the 4th installment date
       monthsOverdue = (now.getFullYear() - termEndDate.getFullYear()) * 12 + (now.getMonth() - termEndDate.getMonth());
-      // If we are even 1 day into the next month relative to the term end, it counts as a penalty month
       if (now.getDate() > termEndDate.getDate()) monthsOverdue += 1;
       
       const basePenaltyPerMonth = loan.principal * 0.10;
@@ -87,13 +85,12 @@ class DataService {
     const totalInterestPaid = payments.reduce((sum, p) => sum + p.interest_paid, 0);
     const totalPrincipalPaid = payments.reduce((sum, p) => sum + p.principal_paid, 0);
     
-    // Live burden
     const remainingTermInterest = Math.max(0, baseInterest - totalInterestPaid);
     const remainingPrincipal = Math.max(0, loan.principal - totalPrincipalPaid);
     
     return {
       totalTermDebt,
-      installmentAmount: totalTermDebt / 4,
+      installmentAmount: totalTermDebt / totalInstallments,
       penaltyTotal,
       monthsOverdue,
       remainingPrincipal,
@@ -271,7 +268,7 @@ class DataService {
         borrower_id: data.borrower_id,
         principal: data.principal,
         interest_rate: 10,
-        duration_months: 2, // Forced to 2
+        duration_months: data.duration_months,
         status: 'pending',
         purpose: data.purpose,
         remaining_principal: data.principal,
@@ -282,7 +279,6 @@ class DataService {
     }
     const { error } = await this.supabase!.from('loans').insert({
       ...data,
-      duration_months: 2, // Forced to 2
       remaining_principal: data.principal,
       interest_rate: 10,
       status: 'pending',
@@ -309,7 +305,7 @@ class DataService {
     if (status === 'active') {
       const { data: currentLoan } = await this.supabase!.from('loans').select('*').eq('id', loanId).single();
       if (currentLoan) {
-        updates.interest_rate = 10; // Forced to 10
+        updates.interest_rate = 10;
         updates.interest_accrued = 0;
         updates.start_date = new Date().toISOString();
       }
@@ -372,18 +368,14 @@ class DataService {
 
      const debt = this.calculateDetailedDebt(loan, payments);
      
-     // Splitting logic: Penalties first -> Interest -> Principal
      let remainingToDistribute = amount;
      
-     // 1. Clear Penalty
      const penaltyPaid = Math.min(remainingToDistribute, debt.penaltyTotal);
      remainingToDistribute -= penaltyPaid;
      
-     // 2. Clear Interest
      const interestPaid = Math.min(remainingToDistribute, debt.remainingTermInterest);
      remainingToDistribute -= interestPaid;
      
-     // 3. Clear Principal
      const principalPaid = remainingToDistribute; 
 
      if (this.isMock()) {
@@ -391,7 +383,7 @@ class DataService {
           id: `p${MOCK_PAYMENTS.length + 1}`, 
           loan_id: loanId, 
           amount, 
-          interest_paid: interestPaid + penaltyPaid, // Penalties logged as interest for simplicity in reports
+          interest_paid: interestPaid + penaltyPaid,
           principal_paid: principalPaid, 
           date: new Date().toISOString() 
         });
@@ -581,7 +573,7 @@ class DataService {
         const debt = this.calculateDetailedDebt(loan, payments);
         const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
 
-        const installmentDates = this.getInstallmentDates(new Date(loan.start_date || loan.created_at));
+        const installmentDates = this.getInstallmentDates(new Date(loan.start_date || loan.created_at), loan.duration_months * 2);
         let cumulativeRequired = 0;
 
         for (let i = 0; i < installmentDates.length; i++) {
@@ -598,7 +590,7 @@ class DataService {
            schedules.push({ 
              loan_id: loan.id, 
              date: targetDate.toISOString(), 
-             title: `Pay ${i + 1}/4 - ${loan.purpose}`, 
+             title: `Pay ${i + 1}/${installmentDates.length} - ${loan.purpose}`, 
              amount: debt.installmentAmount, 
              borrower_id: loan.borrower_id, 
              borrower_name: loan.borrower.full_name, 
