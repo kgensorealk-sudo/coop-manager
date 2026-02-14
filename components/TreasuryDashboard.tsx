@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ContributionWithMember, LoanWithBorrower } from '../types';
+import { ContributionWithMember, LoanWithBorrower, Payment } from '../types';
 import { dataService } from '../services/dataService';
 import { StatCard } from './StatCard';
 import { 
@@ -20,7 +20,11 @@ import {
   FileText,
   ShieldCheck, 
   BarChart3,
-  Briefcase
+  Briefcase,
+  Info,
+  LineChart,
+  PieChart,
+  GanttChartSquare
 } from 'lucide-react';
 
 interface TreasuryDashboardProps {
@@ -34,6 +38,7 @@ interface TreasuryDashboardProps {
   };
   contributions: ContributionWithMember[];
   loans: LoanWithBorrower[];
+  allPayments: Payment[];
   activeLoanVolume: number;
   totalInterestGained: number;
   onAddContribution: () => void;
@@ -46,6 +51,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
   treasuryStats, 
   contributions,
   loans, 
+  allPayments,
   totalInterestGained,
   onAddContribution,
   loading 
@@ -55,42 +61,57 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [newGoalInput, setNewGoalInput] = useState('');
 
-  // Advanced Calculations for True Cooperative Value
+  // Advanced Calculations for True Cooperative Wealth & Full Interest Pipeline
   const financialMetrics = useMemo(() => {
-    // 1. Strictly consider only 'active' loans for all calculations
-    // This prevents 'rejected' or 'pending' loans from affecting interest stats
     const activeLoans = loans.filter(l => l.status === 'active');
     
-    // 2. Receivables: Principal that is out and expected back
+    // 1. Principal Receivables
     const totalReceivables = activeLoans.reduce((sum, l) => sum + l.remaining_principal, 0);
     
-    // 3. Total Assets: Cash + Loans out
+    // 2. Comprehensive Interest Analysis
+    let totalContractInterest = 0; // The theoretical maximum interest from all current active contracts
+    let totalArrearsInterest = 0;  // Materialized interest that passed its date but wasn't paid
+    let totalPaidFromActive = 0;   // Interest already collected specifically from these active loans
+
+    activeLoans.forEach(l => {
+        const loanPayments = allPayments.filter(p => p.loan_id === l.id);
+        const interestPaidOnLoan = loanPayments.reduce((s, p) => s + p.interest_paid, 0);
+        
+        const fullTermInterest = (l.principal * (l.interest_rate / 100)) * l.duration_months;
+        const liveArrears = dataService.calculateLiveInterest(l, loanPayments);
+
+        totalContractInterest += fullTermInterest;
+        totalArrearsInterest += liveArrears;
+        totalPaidFromActive += interestPaidOnLoan;
+    });
+
+    // TOTAL UNEARNED: Everything we haven't touched yet (Arrears + Future)
+    const totalUnearnedInterest = Math.max(0, totalContractInterest - totalPaidFromActive);
+    
+    // FUTURE ONLY: Interest not even materialized yet
+    const futureOnlyInterest = Math.max(0, totalUnearnedInterest - totalArrearsInterest);
+
+    // 3. Valuation
+    const totalProjectedValuation = treasuryStats.balance + totalReceivables + totalUnearnedInterest;
     const totalNetValue = treasuryStats.balance + totalReceivables;
 
-    // 4. Projected Interest (Unearned Interest):
-    // Sum of (Original Principal * Monthly Rate * Duration) for all active loans
-    // minus the interest already collected globally.
-    const totalPotentialInterest = activeLoans.reduce((sum, l) => {
-        const fullTermInterest = (l.principal * (l.interest_rate / 100)) * l.duration_months;
-        return sum + fullTermInterest;
-    }, 0);
-
-    // Final result is the total profit still sitting in active contracts
-    const totalProjectedInterest = Math.max(0, totalPotentialInterest - treasuryStats.totalInterestCollected);
-
-    // 5. Collection Efficiency: Interest Collected vs Interest that SHOULD have been collected (including accrued/unpaid)
-    const totalAccruedInterest = activeLoans.reduce((sum, l) => sum + (l.interest_accrued || 0), 0);
-    const denominator = treasuryStats.totalInterestCollected + totalAccruedInterest;
-    const collectionEfficiency = denominator > 0 ? (treasuryStats.totalInterestCollected / denominator) * 100 : 100;
+    // 4. Harvest Efficiency (How much of the interest we SHOULD have by now is actually in the bank)
+    const materializedTarget = totalPaidFromActive + totalArrearsInterest;
+    const activeHarvestRate = materializedTarget > 0 ? (totalPaidFromActive / materializedTarget) * 100 : 100;
 
     return {
       totalReceivables,
       totalNetValue,
-      totalProjectedInterest,
-      collectionEfficiency,
+      totalContractInterest,
+      totalPaidFromActive,
+      totalArrearsInterest,
+      totalUnearnedInterest,
+      futureOnlyInterest,
+      totalProjectedValuation,
+      activeHarvestRate,
       activeCount: activeLoans.length
     };
-  }, [loans, treasuryStats]);
+  }, [loans, treasuryStats, allPayments]);
 
   useEffect(() => {
     dataService.getMonthlyGoal().then(setMonthlyGoal);
@@ -128,8 +149,16 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
   const totalInflow = treasuryStats.totalContributions + treasuryStats.totalPayments;
   const getPercent = (val: number) => totalInflow > 0 ? (val / totalInflow) * 100 : 0;
 
-  const cashPercent = financialMetrics.totalNetValue > 0 ? (treasuryStats.balance / financialMetrics.totalNetValue) * 100 : 0;
-  const receivablePercent = 100 - cashPercent;
+  // Chart Percentages
+  const cashPercent = financialMetrics.totalProjectedValuation > 0 
+    ? (treasuryStats.balance / financialMetrics.totalProjectedValuation) * 100 
+    : 0;
+  const receivablePercent = financialMetrics.totalProjectedValuation > 0 
+    ? (financialMetrics.totalReceivables / financialMetrics.totalProjectedValuation) * 100 
+    : 0;
+  const unearnedPercent = financialMetrics.totalProjectedValuation > 0 
+    ? (financialMetrics.totalUnearnedInterest / financialMetrics.totalProjectedValuation) * 100 
+    : 0;
 
   const BreakdownRow = ({ 
     title, 
@@ -253,7 +282,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
           title="Net Cooperative Value" 
           value={`₱${financialMetrics.totalNetValue.toLocaleString()}`} 
           icon={Briefcase} 
-          trend="Total Assets" 
+          trend="Total Hard Assets" 
           trendUp={true}
           colorClass="text-ink-900"
         />
@@ -266,302 +295,338 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
           colorClass="text-emerald-700"
         />
         <StatCard 
-          title="Portfolio Health" 
-          value={`${financialMetrics.collectionEfficiency.toFixed(1)}%`} 
+          title="Active Harvest Rate" 
+          value={`${financialMetrics.activeHarvestRate.toFixed(1)}%`} 
           icon={ShieldCheck} 
-          trend={financialMetrics.collectionEfficiency < 90 ? "Collection Review Req." : "Standard Collections"}
-          trendUp={financialMetrics.collectionEfficiency >= 90}
-          colorClass={financialMetrics.collectionEfficiency < 90 ? "text-wax-600" : "text-blue-700"}
+          trend={financialMetrics.activeHarvestRate < 90 ? "Collection Review Req." : "Standard Collections"}
+          trendUp={financialMetrics.activeHarvestRate >= 90}
+          colorClass={financialMetrics.activeHarvestRate < 90 ? "text-wax-600" : "text-blue-700"}
         />
         <StatCard 
           title="Unearned Interest" 
-          value={`₱${financialMetrics.totalProjectedInterest.toLocaleString()}`} 
+          value={`₱${financialMetrics.totalUnearnedInterest.toLocaleString()}`} 
           icon={TrendingUp} 
-          trend="Projected Income"
+          trend="Total Projected Yield"
           trendUp={true}
           colorClass="text-purple-700"
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-         <div className="lg:col-span-2 space-y-8">
-            
-            {/* Asset Composition Visualizer */}
-            <div className="bg-white border-2 border-paper-200 rounded-sm p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-sm font-black text-ink-500 uppercase tracking-widest flex items-center gap-2">
-                        <BarChart3 size={16} />
-                        Asset Composition
-                    </h3>
-                    <span className="text-[10px] font-mono text-ink-300 uppercase">Valuation Snapshot</span>
-                </div>
-                
-                <div className="flex w-full h-8 rounded-sm overflow-hidden mb-6 border border-paper-200">
-                    <div 
-                        style={{ width: `${cashPercent}%` }} 
-                        className="bg-emerald-600 h-full flex items-center justify-center group relative cursor-help"
-                    >
-                        <div className="absolute -top-10 bg-ink-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
-                            Cash Liquidity: {cashPercent.toFixed(1)}%
-                        </div>
-                    </div>
-                    <div 
-                        style={{ width: `${receivablePercent}%` }} 
-                        className="bg-blue-600 h-full flex items-center justify-center group relative cursor-help"
-                    >
-                        <div className="absolute -top-10 bg-ink-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
-                            Receivables (Active Loans): {receivablePercent.toFixed(1)}%
-                        </div>
-                    </div>
-                </div>
+      {/* REFINED: Interest Realization Stack Analysis */}
+      <div className="bg-paper-50 border-4 border-double border-paper-300 rounded-sm p-8 shadow-card relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-5">
+             <PieChart size={160} />
+          </div>
+          
+          <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-8 border-b border-paper-200 pb-4">
+                  <div className="p-2 bg-ink-900 text-gold-500 rounded-sm">
+                      <LineChart size={20} />
+                  </div>
+                  <div>
+                      <h2 className="text-2xl font-serif font-bold text-ink-900">Interest Lifecycle Analysis</h2>
+                      <p className="text-sm text-ink-500 font-serif italic uppercase tracking-widest">Tracking the Realization of Cooperative Profit</p>
+                  </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-8">
-                    <div className="flex items-start gap-4">
-                        <div className="w-4 h-4 rounded-full bg-emerald-600 mt-1 shrink-0"></div>
-                        <div>
-                            <div className="text-xs font-black uppercase text-ink-400 tracking-wider">Liquid Cash</div>
-                            <div className="text-xl font-mono font-bold text-ink-900">₱{treasuryStats.balance.toLocaleString()}</div>
-                            <div className="text-[10px] text-ink-300 mt-1 uppercase font-bold tracking-tighter">Ready for Disbursement</div>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-4">
-                        <div className="w-4 h-4 rounded-full bg-blue-600 mt-1 shrink-0"></div>
-                        <div>
-                            <div className="text-xs font-black uppercase text-ink-400 tracking-wider">Loan Receivables</div>
-                            <div className="text-xl font-mono font-bold text-ink-900">₱{financialMetrics.totalReceivables.toLocaleString()}</div>
-                            <div className="text-[10px] text-ink-300 mt-1 uppercase font-bold tracking-tighter">{financialMetrics.activeCount} Active Portfolio Items</div>
-                        </div>
-                    </div>
-                </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                  {/* Left: 3-Stage Pipeline Breakdown */}
+                  <div className="space-y-6">
+                      <div className="bg-white p-5 border border-paper-200 rounded-sm shadow-sm group hover:border-emerald-300 transition-colors">
+                          <div className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-1 flex items-center gap-2">
+                             <Check size={12}/> 1. Realized Cash (Paid)
+                          </div>
+                          <div className="text-3xl font-mono font-bold text-ink-900">₱{treasuryStats.totalInterestCollected.toLocaleString()}</div>
+                          <p className="text-xs text-ink-400 mt-2 font-serif italic">Profit already collected and sitting in the vault.</p>
+                      </div>
+
+                      <div className="bg-white p-5 border border-paper-200 rounded-sm shadow-sm group hover:border-amber-300 transition-colors">
+                          <div className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1 flex items-center gap-2">
+                             <TrendingUp size={12}/> 2. Arrears Burden (Accrued)
+                          </div>
+                          <div className="text-3xl font-mono font-bold text-ink-900">₱{financialMetrics.totalArrearsInterest.toLocaleString()}</div>
+                          <p className="text-xs text-ink-400 mt-2 font-serif italic">Interest that has matured based on time but is not yet paid.</p>
+                      </div>
+
+                      <div className="bg-white p-5 border border-paper-200 rounded-sm shadow-sm group hover:border-violet-300 transition-colors">
+                          <div className="text-[10px] font-black text-violet-700 uppercase tracking-widest mb-1 flex items-center gap-2">
+                             <LineChart size={12}/> 3. Pipeline Forecast (Future)
+                          </div>
+                          <div className="text-3xl font-mono font-bold text-ink-900">₱{financialMetrics.futureOnlyInterest.toLocaleString()}</div>
+                          <p className="text-xs text-ink-400 mt-2 font-serif italic">Contracted profit that will materialize in future months.</p>
+                      </div>
+                  </div>
+
+                  {/* Middle: Visualization & Projection */}
+                  <div className="lg:col-span-2 space-y-10">
+                      <div className="space-y-4">
+                          <div className="flex justify-between items-end">
+                              <h3 className="text-sm font-black text-ink-800 uppercase tracking-[0.2em]">Total Interest Contracted</h3>
+                              <span className="text-lg font-mono font-bold text-violet-700">₱{financialMetrics.totalContractInterest.toLocaleString()}</span>
+                          </div>
+                          <div className="h-6 w-full bg-paper-200 rounded-sm border border-paper-300 overflow-hidden flex shadow-inner">
+                              <div 
+                                style={{ width: `${(financialMetrics.totalPaidFromActive / financialMetrics.totalContractInterest) * 100}%` }} 
+                                className="h-full bg-emerald-600 border-r border-white/20"
+                                title="Realized"
+                              ></div>
+                              <div 
+                                style={{ width: `${(financialMetrics.totalArrearsInterest / financialMetrics.totalContractInterest) * 100}%` }} 
+                                className="h-full bg-amber-500 border-r border-white/20"
+                                title="Arrears"
+                              ></div>
+                              <div 
+                                style={{ width: `${(financialMetrics.futureOnlyInterest / financialMetrics.totalContractInterest) * 100}%` }} 
+                                className="h-full bg-violet-500"
+                                title="Future"
+                              ></div>
+                          </div>
+                          <div className="flex justify-between text-[10px] font-mono text-ink-400 uppercase">
+                              <span className="flex items-center gap-1"><div className="w-2 h-2 bg-emerald-600"></div> Realized</span>
+                              <span className="flex items-center gap-1"><div className="w-2 h-2 bg-amber-500"></div> Arrears</span>
+                              <span className="flex items-center gap-1"><div className="w-2 h-2 bg-violet-500"></div> Future Pipeline</span>
+                          </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div className="space-y-4 border-l-2 border-paper-200 pl-6">
+                              <h4 className="text-xs font-black text-ink-500 uppercase tracking-widest flex items-center gap-2">
+                                 <GanttChartSquare size={14}/> Where is the profit?
+                              </h4>
+                              <ul className="space-y-3 text-sm font-serif italic text-ink-700">
+                                  <li className="flex items-start gap-2">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5"></div>
+                                      <span>₱{treasuryStats.totalInterestCollected.toLocaleString()} is fully liquid cash.</span>
+                                  </li>
+                                  <li className="flex items-start gap-2">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5"></div>
+                                      <span>₱{financialMetrics.totalArrearsInterest.toLocaleString()} is owed and 'up' on borrower ledgers.</span>
+                                  </li>
+                                  <li className="flex items-start gap-2">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-violet-500 mt-1.5"></div>
+                                      <span>₱{financialMetrics.futureOnlyInterest.toLocaleString()} is expected yield from active term lengths.</span>
+                                  </li>
+                              </ul>
+                          </div>
+
+                          <div className="bg-ink-900 rounded-sm p-6 text-paper-50 relative overflow-hidden">
+                              <div className="absolute top-0 right-0 p-2 opacity-10">
+                                 <ShieldCheck size={48} />
+                              </div>
+                              <h4 className="text-[10px] font-black text-gold-500 uppercase tracking-widest mb-4">True Value Projection</h4>
+                              <div className="space-y-2">
+                                  <div className="text-xs text-paper-400 font-serif italic">Full Equity + Future Pipeline:</div>
+                                  <div className="text-4xl font-mono font-bold text-white tracking-tighter">₱{financialMetrics.totalProjectedValuation.toLocaleString()}</div>
+                                  <div className="pt-4 border-t border-white/10 mt-4">
+                                      <p className="text-[10px] text-paper-500 leading-relaxed font-sans uppercase font-bold tracking-tighter">
+                                          Total wealth represents cash, principal out in the field, and all contracted future interest.
+                                      </p>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      {/* Composition Visualizer */}
+      <div className="bg-white border-2 border-paper-200 rounded-sm p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sm font-black text-ink-500 uppercase tracking-widest flex items-center gap-2">
+                  <BarChart3 size={16} />
+                  Asset Composition
+              </h3>
+              <div className="flex items-center gap-1.5 text-[10px] font-mono text-ink-300 uppercase">
+                  <span>Gross Valuation:</span>
+                  <span className="font-bold text-ink-900 italic">₱{financialMetrics.totalProjectedValuation.toLocaleString()}</span>
+              </div>
+          </div>
+          
+          <div className="flex w-full h-10 rounded-sm overflow-hidden mb-8 border border-paper-200 shadow-inner">
+              <div 
+                  style={{ width: `${cashPercent}%` }} 
+                  className="bg-emerald-600 h-full flex items-center justify-center group relative cursor-help transition-all duration-700"
+              >
+                  <div className="absolute -top-10 bg-ink-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
+                      Vault Cash: {cashPercent.toFixed(1)}%
+                  </div>
+              </div>
+              <div 
+                  style={{ width: `${receivablePercent}%` }} 
+                  className="bg-blue-600 h-full flex items-center justify-center group relative cursor-help transition-all duration-700 border-x border-white/10"
+              >
+                  <div className="absolute -top-10 bg-ink-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
+                      Receivable Principal: {receivablePercent.toFixed(1)}%
+                  </div>
+              </div>
+              <div 
+                  style={{ width: `${unearnedPercent}%` }} 
+                  className="bg-violet-500 h-full flex items-center justify-center group relative cursor-help transition-all duration-700"
+              >
+                  <div className="absolute -top-10 bg-ink-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
+                      Unearned Pipeline: {unearnedPercent.toFixed(1)}%
+                  </div>
+              </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="flex items-start gap-4">
+                  <div className="w-4 h-4 rounded-full bg-emerald-600 mt-1 shrink-0"></div>
+                  <div>
+                      <div className="text-xs font-black uppercase text-ink-400 tracking-wider">Vault Liquidity</div>
+                      <div className="text-xl font-mono font-bold text-ink-900">₱{treasuryStats.balance.toLocaleString()}</div>
+                  </div>
+              </div>
+              <div className="flex items-start gap-4 border-l border-paper-100 md:pl-6">
+                  <div className="w-4 h-4 rounded-full bg-blue-600 mt-1 shrink-0"></div>
+                  <div>
+                      <div className="text-xs font-black uppercase text-ink-400 tracking-wider">Principal Out</div>
+                      <div className="text-xl font-mono font-bold text-ink-900">₱{financialMetrics.totalReceivables.toLocaleString()}</div>
+                  </div>
+              </div>
+              <div className="flex items-start gap-4 border-l border-paper-100 md:pl-6">
+                  <div className="w-4 h-4 rounded-full bg-violet-500 mt-1 shrink-0"></div>
+                  <div>
+                      <div className="text-xs font-black uppercase text-ink-400 tracking-wider">Future Interest</div>
+                      <div className="text-xl font-mono font-bold text-violet-700">₱{financialMetrics.totalUnearnedInterest.toLocaleString()}</div>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      <div className="bg-paper-50 rounded-sm border-2 border-paper-200 shadow-card overflow-hidden">
+         <div className="p-5 border-b border-paper-200 bg-paper-100/50 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+               <div className="p-2 bg-ink-900 text-gold-500 rounded-sm">
+                  <ArrowRightLeft size={18} />
+               </div>
+               <h2 className="text-xl font-serif font-bold text-ink-900">Cash Flow Breakdown</h2>
+            </div>
+            <div className="text-sm font-mono text-ink-400 uppercase tracking-widest">Bookkeeping View</div>
+         </div>
+
+         <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-paper-200">
+            <div className="p-6 space-y-6">
+               <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-black text-emerald-700 uppercase tracking-[0.2em] flex items-center gap-2">
+                     <ArrowUpRight size={14} />
+                     Source of Funds
+                  </h3>
+                  <span className="text-sm text-ink-300 font-mono">CR (Credit)</span>
+               </div>
+
+               <div className="space-y-6">
+                  <div>
+                     <div className="text-sm text-ink-400 font-bold uppercase mb-3 border-b border-paper-200 pb-1">Capital Receipts</div>
+                     <BreakdownRow 
+                        title="Monthly Member Equity"
+                        amount={monthlyDeposits}
+                        color="green"
+                        percent={getPercent(monthlyDeposits)}
+                        id="br-monthly"
+                        items={monthlyDepositContribs.slice(0, 5).map(c => (
+                           <div key={c.id} className="flex justify-between py-1 border-b border-paper-100 border-dashed">
+                              <span>{c.member.full_name}</span>
+                              <span className="font-mono">₱{c.amount.toLocaleString()}</span>
+                           </div>
+                        ))}
+                     />
+                     <BreakdownRow 
+                        title="Direct Share Capital"
+                        amount={oneTimeDeposits}
+                        color="emerald"
+                        percent={getPercent(oneTimeDeposits)}
+                        id="br-onetime"
+                        items={oneTimeContribs.slice(0, 5).map(c => (
+                           <div key={c.id} className="flex justify-between py-1 border-b border-paper-100 border-dashed">
+                              <span>{c.member.full_name}</span>
+                              <span className="font-mono">₱{c.amount.toLocaleString()}</span>
+                           </div>
+                        ))}
+                     />
+                  </div>
+
+                  <div className="pt-2">
+                     <div className="text-sm text-ink-400 font-bold uppercase mb-3 border-b border-paper-200 pb-1">Operating Receipts</div>
+                     <BreakdownRow 
+                        title="Principal Recovery" 
+                        amount={treasuryStats.totalPrincipalRepaid}
+                        color="blue"
+                        percent={getPercent(treasuryStats.totalPrincipalRepaid)}
+                        id="br-principal"
+                     />
+                     <BreakdownRow 
+                        title="Net Interest Income"
+                        amount={treasuryStats.totalInterestCollected}
+                        color="purple"
+                        percent={getPercent(treasuryStats.totalInterestCollected)}
+                        id="br-interest"
+                     />
+                  </div>
+               </div>
             </div>
 
-            <div className="bg-paper-50 rounded-sm border-2 border-paper-200 shadow-card overflow-hidden">
-               <div className="p-5 border-b border-paper-200 bg-paper-100/50 flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                     <div className="p-2 bg-ink-900 text-gold-500 rounded-sm">
-                        <ArrowRightLeft size={18} />
-                     </div>
-                     <h2 className="text-xl font-serif font-bold text-ink-900">Cash Flow Breakdown</h2>
-                  </div>
-                  <div className="text-sm font-mono text-ink-400 uppercase tracking-widest">Bookkeeping View</div>
+            <div className="p-6 space-y-6 bg-paper-100/20">
+               <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-black text-wax-600 uppercase tracking-[0.2em] flex items-center gap-2">
+                     <ArrowDownRight size={14} />
+                     Application of Funds
+                  </h3>
+                  <span className="text-sm text-ink-300 font-mono">DR (Debit)</span>
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-paper-200">
-                  <div className="p-6 space-y-6">
-                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-black text-emerald-700 uppercase tracking-[0.2em] flex items-center gap-2">
-                           <ArrowUpRight size={14} />
-                           Source of Funds
-                        </h3>
-                        <span className="text-sm text-ink-300 font-mono">CR (Credit)</span>
-                     </div>
-
-                     <div className="space-y-6">
-                        <div>
-                           <div className="text-sm text-ink-400 font-bold uppercase mb-3 border-b border-paper-200 pb-1">Capital Receipts</div>
-                           <BreakdownRow 
-                              title="Monthly Member Equity"
-                              amount={monthlyDeposits}
-                              color="green"
-                              percent={getPercent(monthlyDeposits)}
-                              id="br-monthly"
-                              items={monthlyDepositContribs.slice(0, 5).map(c => (
-                                 <div key={c.id} className="flex justify-between py-1 border-b border-paper-100 border-dashed">
-                                    <span>{c.member.full_name}</span>
-                                    <span className="font-mono">₱{c.amount.toLocaleString()}</span>
-                                 </div>
-                              ))}
-                           />
-                           <BreakdownRow 
-                              title="Direct Share Capital"
-                              amount={oneTimeDeposits}
-                              color="emerald"
-                              percent={getPercent(oneTimeDeposits)}
-                              id="br-onetime"
-                              items={oneTimeContribs.slice(0, 5).map(c => (
-                                 <div key={c.id} className="flex justify-between py-1 border-b border-paper-100 border-dashed">
-                                    <span>{c.member.full_name}</span>
-                                    <span className="font-mono">₱{c.amount.toLocaleString()}</span>
-                                 </div>
-                              ))}
-                           />
-                        </div>
-
-                        <div className="pt-2">
-                           <div className="text-sm text-ink-400 font-bold uppercase mb-3 border-b border-paper-200 pb-1">Operating Receipts</div>
-                           <BreakdownRow 
-                              title="Principal Recovery" 
-                              amount={treasuryStats.totalPrincipalRepaid}
-                              color="blue"
-                              percent={getPercent(treasuryStats.totalPrincipalRepaid)}
-                              id="br-principal"
-                           />
-                           <BreakdownRow 
-                              title="Net Interest Income"
-                              amount={treasuryStats.totalInterestCollected}
-                              color="purple"
-                              percent={getPercent(treasuryStats.totalInterestCollected)}
-                              id="br-interest"
-                           />
-                        </div>
-                     </div>
-                  </div>
-
-                  <div className="p-6 space-y-6 bg-paper-100/20">
-                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-black text-wax-600 uppercase tracking-[0.2em] flex items-center gap-2">
-                           <ArrowDownRight size={14} />
-                           Application of Funds
-                        </h3>
-                        <span className="text-sm text-ink-300 font-mono">DR (Debit)</span>
-                     </div>
-
-                     <div className="space-y-6">
-                        <div>
-                           <div className="text-sm text-ink-400 font-bold uppercase mb-3 border-b border-paper-200 pb-1">Investing Outflows</div>
-                           <BreakdownRow 
-                              title="Loan Disbursements"
-                              amount={treasuryStats.totalDisbursed}
-                              color="wax"
-                              percent={100}
-                              id="br-disbursed"
-                              items={loans.filter(l => l.status === 'active' || l.status === 'paid').slice(0, 5).map(l => (
-                                 <div key={l.id} className="flex justify-between py-1 border-b border-paper-100 border-dashed">
-                                    <span>{l.borrower.full_name}</span>
-                                    <span className="font-mono text-wax-600">₱{l.principal.toLocaleString()}</span>
-                                 </div>
-                              ))}
-                           />
-                        </div>
-
-                        <div className="pt-2 opacity-50">
-                           <div className="text-sm text-ink-400 font-bold uppercase mb-3 border-b border-paper-200 pb-1">Operating Outflows</div>
-                           <div className="p-4 rounded-sm border-2 border-dashed border-paper-300 flex flex-col items-center justify-center">
-                              <span className="text-base font-serif italic text-ink-400">No active operating expenses</span>
+               <div className="space-y-6">
+                  <div>
+                     <div className="text-sm text-ink-400 font-bold uppercase mb-3 border-b border-paper-200 pb-1">Investing Outflows</div>
+                     <BreakdownRow 
+                        title="Loan Disbursements"
+                        amount={treasuryStats.totalDisbursed}
+                        color="wax"
+                        percent={100}
+                        id="br-disbursed"
+                        items={loans.filter(l => l.status === 'active' || l.status === 'paid').slice(0, 5).map(l => (
+                           <div key={l.id} className="flex justify-between py-1 border-b border-paper-100 border-dashed">
+                              <span>{l.borrower.full_name}</span>
+                              <span className="font-mono text-wax-600">₱{l.principal.toLocaleString()}</span>
                            </div>
-                        </div>
-                     </div>
+                        ))}
+                     />
                   </div>
-               </div>
 
-               <div className="bg-paper-200 p-5 flex flex-col md:flex-row justify-between items-center border-t-2 border-paper-300 gap-4">
-                  <div className="flex items-center gap-2 text-ink-700">
-                     <div className="w-8 h-8 rounded-full bg-ink-900 flex items-center justify-center text-paper-50 font-bold text-xs shadow-md">
-                        <Equal size={14} />
-                     </div>
-                     <span className="text-sm font-black uppercase tracking-[0.2em]">Net Treasury Position</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-6 font-mono text-sm">
-                     <div className="flex flex-col items-end">
-                        <span className="text-emerald-700 font-bold">+ ₱{totalInflow.toLocaleString()}</span>
-                        <span className="text-xs uppercase text-ink-400 font-bold">Total In</span>
-                     </div>
-                     <span className="text-ink-300">-</span>
-                     <div className="flex flex-col items-end">
-                        <span className="text-wax-600 font-bold">₱{treasuryStats.totalDisbursed.toLocaleString()}</span>
-                        <span className="text-xs uppercase text-ink-400 font-bold">Total Out</span>
-                     </div>
-                     <span className="text-ink-300">=</span>
-                     <div className="flex flex-col items-end bg-paper-50 px-4 py-2 rounded-sm border border-paper-300 shadow-sm">
-                        <span className="text-xl font-bold text-ink-900 tracking-tighter">₱{treasuryStats.balance.toLocaleString()}</span>
-                        <span className="text-xs uppercase text-ink-400 font-bold">Balance</span>
+                  <div className="pt-2 opacity-50">
+                     <div className="text-sm text-ink-400 font-bold uppercase mb-3 border-b border-paper-200 pb-1">Operating Outflows</div>
+                     <div className="p-4 rounded-sm border-2 border-dashed border-paper-300 flex flex-col items-center justify-center">
+                        <span className="text-base font-serif italic text-ink-400">No active operating expenses</span>
                      </div>
                   </div>
                </div>
             </div>
          </div>
 
-         <div className="space-y-8">
-            <div className="bg-leather-900 rounded-sm text-paper-200 shadow-2xl overflow-hidden border border-leather-800 relative group">
-               <div className="absolute top-0 right-0 w-32 h-32 bg-gold-500 opacity-5 blur-[80px] rounded-full"></div>
-               
-               <div className="p-5 border-b border-white/10 flex items-center space-x-3 bg-black/30">
-                  <div className="p-2 bg-leather-800 rounded-sm text-gold-500 border border-white/5">
-                     <Scale size={18} />
-                  </div>
-                  <div>
-                     <h2 className="text-lg font-serif font-bold text-paper-50">Trial Balance</h2>
-                     <p className="text-gold-600 text-sm font-black uppercase tracking-[0.2em]">Statement of Position</p>
-                  </div>
+         <div className="bg-paper-200 p-5 flex flex-col md:flex-row justify-between items-center border-t-2 border-paper-300 gap-4">
+            <div className="flex items-center gap-2 text-ink-700">
+               <div className="w-8 h-8 rounded-full bg-ink-900 flex items-center justify-center text-paper-50 font-bold text-xs shadow-md">
+                  <Equal size={14} />
                </div>
-               
-               <div className="p-6 space-y-6">
-                  <div>
-                     <h3 className="text-sm font-black text-ink-400 uppercase tracking-[0.2em] mb-4 font-sans flex items-center justify-between">
-                        <span>Current Assets</span>
-                        <div className="h-px bg-white/5 flex-1 ml-4"></div>
-                     </h3>
-                     <div className="space-y-4 font-mono text-sm">
-                        <div className="flex justify-between items-center group">
-                           <span className="text-paper-400 group-hover:text-paper-100 transition-colors">Treasury Cash</span>
-                           <span className="font-bold text-paper-50">₱{treasuryStats.balance.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center group">
-                           <span className="text-paper-400 group-hover:text-paper-100 transition-colors">Loans Receivable</span>
-                           <span className="font-bold text-paper-50">₱{financialMetrics.totalReceivables.toLocaleString()}</span>
-                        </div>
-                        <div className="pt-2 flex justify-between items-center text-gold-400 font-bold border-t border-white/5">
-                           <span>Total Assets</span>
-                           <span>₱{financialMetrics.totalNetValue.toLocaleString()}</span>
-                        </div>
-                     </div>
-                  </div>
-
-                  <div>
-                     <h3 className="text-sm font-black text-ink-400 uppercase tracking-[0.2em] mb-4 font-sans flex items-center justify-between">
-                        <span>Equity Pool</span>
-                        <div className="h-px bg-white/5 flex-1 ml-4"></div>
-                     </h3>
-                     <div className="space-y-4 font-mono text-sm">
-                        <div className="flex justify-between items-center group">
-                           <span className="text-paper-400 group-hover:text-paper-100 transition-colors">Paid-in Capital</span>
-                           <span className="font-bold text-paper-50">₱{treasuryStats.totalContributions.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center group">
-                           <span className="text-paper-400 group-hover:text-paper-100 transition-colors">Coop Interest Bank</span>
-                           <span className="font-bold text-emerald-400">₱{totalInterestGained.toLocaleString()}</span>
-                        </div>
-                        <div className="pt-2 flex justify-between items-center text-emerald-400 font-bold border-t border-white/5">
-                           <span>Total Liability/Equity</span>
-                           <span>₱{(treasuryStats.totalContributions + totalInterestGained).toLocaleString()}</span>
-                        </div>
-                     </div>
-                  </div>
-               </div>
+               <span className="text-sm font-black uppercase tracking-[0.2em]">Net Treasury Position</span>
             </div>
-
-            <div className="bg-white rounded-sm border-2 border-paper-200 shadow-card overflow-hidden">
-               <div className="p-4 border-b border-paper-200 flex items-center justify-between bg-emerald-50/40">
-                  <div className="flex items-center space-x-2">
-                     <ShieldCheck size={18} className="text-emerald-600" />
-                     <h3 className="text-base font-serif font-bold text-ink-900">Treasury Audit</h3>
-                  </div>
-                  <span className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-sm border uppercase tracking-widest">
-                     PASS
-                  </span>
+            
+            <div className="flex items-center gap-6 font-mono text-sm">
+               <div className="flex flex-col items-end">
+                  <span className="text-emerald-700 font-bold">+ ₱{totalInflow.toLocaleString()}</span>
+                  <span className="text-xs uppercase text-ink-400 font-bold">Total In</span>
                </div>
-               
-               <div className="p-5 space-y-4">
-                  <div className="space-y-2">
-                     <div className="flex items-center justify-between text-xs">
-                        <span className="text-ink-500 font-serif italic">Inflow/Outflow Check</span>
-                        <span className="text-emerald-600 font-bold flex items-center gap-1">
-                           <Check size={12}/> Verified
-                        </span>
-                     </div>
-                  </div>
-
-                  <div className="bg-paper-100 p-3 rounded-sm border border-paper-200 text-xs text-ink-600 font-serif leading-relaxed italic">
-                    "Total Cooperative wealth includes both liquid cash reserves and outstanding principal assets. Current valuation verified."
-                  </div>
+               <span className="text-ink-300">-</span>
+               <div className="flex flex-col items-end">
+                  <span className="text-wax-600 font-bold">₱{treasuryStats.totalDisbursed.toLocaleString()}</span>
+                  <span className="text-xs uppercase text-ink-400 font-bold">Total Out</span>
                </div>
-            </div>
-
-            <div className="bg-paper-100/50 p-6 rounded-sm border-2 border-dashed border-paper-300 flex flex-col items-center text-center">
-               <FileText size={32} className="text-ink-200 mb-3" />
-               <h4 className="text-sm font-bold text-ink-700 uppercase tracking-widest mb-1">Fiscal Year Reports</h4>
-               <p className="text-sm text-ink-400 font-serif italic">Comprehensive audit reports and yearly statements are generated at end-of-period.</p>
+               <span className="text-ink-300">=</span>
+               <div className="flex flex-col items-end bg-paper-50 px-4 py-2 rounded-sm border border-paper-300 shadow-sm">
+                  <span className="text-xl font-bold text-ink-900 tracking-tighter">₱{treasuryStats.balance.toLocaleString()}</span>
+                  <span className="text-xs uppercase text-ink-400 font-bold">Balance</span>
+               </div>
             </div>
          </div>
       </div>

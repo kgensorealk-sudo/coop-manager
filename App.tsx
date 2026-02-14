@@ -18,7 +18,7 @@ import { ScheduleView } from './components/ScheduleView';
 import { GalleryView } from './components/GalleryView';
 import { PersonalLedger } from './components/PersonalLedger';
 import { dataService } from './services/dataService';
-import { LoanWithBorrower, User, ContributionWithMember, ContributionStatus, Announcement, AnnouncementPriority, LoanStatus } from './types';
+import { LoanWithBorrower, User, ContributionWithMember, ContributionStatus, Announcement, AnnouncementPriority, LoanStatus, Payment } from './types';
 import { 
   CreditCard, 
   Wallet, 
@@ -36,9 +36,6 @@ import {
   Coins
 } from 'lucide-react';
 
-/**
- * Robust Error Message Extractor
- */
 const getErrorMessage = (err: any): string => {
   if (!err) return "Unknown error";
   if (typeof err === 'string') return err === '[object Object]' ? "An unexpected system error occurred." : err;
@@ -62,6 +59,7 @@ const App: React.FC = () => {
   const [loans, setLoans] = useState<LoanWithBorrower[]>([]);
   const [members, setMembers] = useState<User[]>([]);
   const [contributions, setContributions] = useState<ContributionWithMember[]>([]);
+  const [allPayments, setAllPayments] = useState<Payment[]>([]);
   
   const [loanSearchTerm, setLoanSearchTerm] = useState('');
   const [loanFilterStatus, setLoanFilterStatus] = useState<LoanStatus | 'all'>('all');
@@ -159,6 +157,10 @@ const App: React.FC = () => {
       setTotalInterestGained(fetchedInterest);
       setMembers(fetchedUsers);
       setContributions(fetchedContributions);
+      
+      const { data: payments, error: payError } = await (dataService as any).supabase.from('payments').select('*');
+      if (payError) throw payError;
+      setAllPayments(payments || []);
       
       if (fetchedAnnouncements && fetchedAnnouncements.length > 0 && !hasShownAnnouncement) {
         setSystemAnnouncements(fetchedAnnouncements);
@@ -384,7 +386,7 @@ const App: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <StatCard title="Treasury Balance" value={`₱${treasuryStats.balance.toLocaleString()}`} icon={Wallet} trend="Liquid Assets" trendUp={true} colorClass="text-emerald-700" />
-          <StatCard title="Interest Income" value={`₱${totalInterestGained.toLocaleString()}`} icon={TrendingUp} trend="Gross Earnings" trendUp={true} colorClass="text-purple-700" />
+          <StatCard title="Interest Realized" value={`₱${treasuryStats.totalInterestCollected.toLocaleString()}`} icon={TrendingUp} trend="Gross Cash Earnings" trendUp={true} colorClass="text-purple-700" />
           <StatCard title="Loan Volume" value={`₱${activeVolume.toLocaleString()}`} icon={Coins} trend="Deployed Capital" trendUp={true} colorClass="text-blue-700" />
           <StatCard title="Assessments Due" value={`${pendingLoans.length + pendingContributions.length}`} icon={ClipboardCheck} colorClass={pendingLoans.length > 0 ? "text-wax-600" : "text-ink-600"} />
         </div>
@@ -544,14 +546,9 @@ const App: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredLoans.map(loan => {
-            // UI FALLBACK LOGIC: If interest_accrued is 0 and loan is active/paid, estimate it for the UI
-            // This fixes the "Interest Due = 0" issue for legacy/mock data without requiring database edits.
-            const displayInterest = (loan.interest_accrued && loan.interest_accrued > 0) 
-                ? loan.interest_accrued 
-                : (loan.status === 'active' || loan.status === 'paid' 
-                    ? (loan.principal * (loan.interest_rate / 100)) * loan.duration_months 
-                    : 0);
-
+            const loanPayments = allPayments.filter(p => p.loan_id === loan.id);
+            const liveInterestDue = dataService.calculateLiveInterest(loan, loanPayments);
+            
             return (
               <div key={loan.id} onClick={() => loan.status !== 'pending' && handleViewLoanDetails(loan)} className={`bg-paper-50 rounded-sm border-2 shadow-card hover:shadow-float transition-all duration-300 p-6 flex flex-col relative overflow-hidden group ${loan.status !== 'pending' ? 'cursor-pointer border-paper-200 hover:border-ink-300' : 'border-amber-200 bg-amber-50/20'}`}>
                 <div className="absolute top-0 left-0 w-1 h-full bg-paper-200 group-hover:bg-ink-400 transition-colors"></div>
@@ -569,23 +566,23 @@ const App: React.FC = () => {
                 </div>
                 <div className="space-y-3 mb-6 pl-3 border-l border-dashed border-paper-300 ml-0.5 font-mono text-sm">
                    <div className="flex justify-between">
-                     <span className="text-ink-500 font-serif italic">Principal Due</span>
+                     <span className="text-ink-500 font-serif italic">Principal Rem.</span>
                      <span className="font-bold text-ink-900">₱{loan.remaining_principal.toLocaleString()}</span>
                    </div>
                    <div className="flex justify-between">
-                     <span className="text-ink-500 font-serif italic">Interest Due</span>
-                     <span className="font-bold text-amber-700">₱{displayInterest.toLocaleString()}</span>
+                     <span className="text-ink-500 font-serif italic">Live Interest</span>
+                     <span className={`font-bold ${liveInterestDue > (loan.principal * (loan.interest_rate/100)) ? 'text-wax-600 animate-pulse' : 'text-amber-700'}`}>₱{liveInterestDue.toLocaleString()}</span>
                    </div>
                    <div className="flex justify-between border-t border-paper-200 pt-1">
                      <span className="text-ink-500 font-serif font-bold">Total Payoff</span>
-                     <span className="font-bold text-ink-900">₱{(loan.remaining_principal + displayInterest).toLocaleString()}</span>
+                     <span className="font-bold text-ink-900">₱{(loan.remaining_principal + liveInterestDue).toLocaleString()}</span>
                    </div>
                 </div>
                 <div className="mt-auto pt-4 border-t border-paper-200 flex gap-2 pl-3">
                    {loan.status === 'pending' ? (
                      <button onClick={(e) => { e.stopPropagation(); handleReviewLoan(loan); }} className="w-full py-2 bg-ink-800 text-white rounded-sm text-xs font-bold uppercase tracking-widest hover:bg-ink-900 shadow-sm transition-colors">Review Request</button>
                    ) : (
-                     <button className="w-full py-2 bg-transparent text-ink-600 rounded-sm text-xs font-bold uppercase tracking-widest hover:bg-paper-100 transition-colors border border-paper-300">View Details</button>
+                     <button className="w-full py-2 bg-transparent text-ink-600 rounded-sm text-xs font-bold uppercase tracking-widest hover:bg-paper-100 transition-colors border border-paper-300">Detailed Ledger</button>
                    )}
                 </div>
               </div>
@@ -606,7 +603,7 @@ const App: React.FC = () => {
           {activeTab === 'loans' && renderLoansTab()}
           {activeTab === 'my-dashboard' && <MemberDashboard user={currentUser} memberLoans={loans.filter(l => l.borrower_id === currentUser.id)} memberContributions={contributions.filter(c => c.member_id === currentUser.id)} onApplyLoan={() => setIsApplicationModalOpen(true)} onAddContribution={() => setIsContributionModalOpen(true)} />}
           {activeTab === 'members' && <MemberDirectory members={members} loans={loans} onRefresh={refreshData} currentUserRole={currentUser.role} />}
-          {activeTab === 'treasury' && <TreasuryDashboard treasuryStats={treasuryStats} contributions={contributions} loans={loans} activeLoanVolume={activeVolume} totalInterestGained={totalInterestGained} onAddContribution={() => setIsContributionModalOpen(true)} onApproveContribution={handleApproveContribution} onRejectContribution={handleRejectContribution} loading={loading} />}
+          {activeTab === 'treasury' && <TreasuryDashboard treasuryStats={treasuryStats} contributions={contributions} loans={loans} allPayments={allPayments} activeLoanVolume={activeVolume} totalInterestGained={totalInterestGained} onAddContribution={() => setIsContributionModalOpen(true)} onApproveContribution={handleApproveContribution} onRejectContribution={handleRejectContribution} loading={loading} />}
           {activeTab === 'announcements' && <AnnouncementHistory onOpenCreate={handleOpenAnnouncementCreate} onEdit={handleOpenAnnouncementEdit} readOnly={currentUser.role === 'member'} />}
           {activeTab === 'gallery' && <GalleryView currentUser={currentUser} />}
           {activeTab === 'personal-ledger' && <PersonalLedger currentUser={currentUser} />}

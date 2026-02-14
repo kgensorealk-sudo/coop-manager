@@ -22,7 +22,8 @@ import {
   Coins,
   History,
   LayoutGrid,
-  Edit2
+  Edit2,
+  AlertCircle
 } from 'lucide-react';
 
 interface PersonalLedgerProps {
@@ -51,6 +52,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [isRecurring, setIsRecurring] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const fetchAllData = async () => {
     try {
@@ -85,6 +87,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
       setAccountId(editingEntry.account_id || '');
       setDate(new Date(editingEntry.date).toISOString().split('T')[0]);
       setIsRecurring(editingEntry.is_recurring || false);
+      setFormError(null);
       setShowForm(true);
     }
   }, [editingEntry]);
@@ -97,12 +100,24 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
     setDate(new Date().toISOString().split('T')[0]);
     setIsRecurring(false);
     setEditingEntry(null);
+    setFormError(null);
     setShowForm(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+    
     if (!description || !amount || amount <= 0 || !accountId) return;
+
+    // VALIDATION: Prevent expense greater than vault balance
+    if (type === 'expense') {
+      const selectedAcc = accounts.find(a => a.id === accountId);
+      if (selectedAcc && amount > selectedAcc.balance) {
+        setFormError(`Insufficient funds in ${selectedAcc.name}. Current balance is ₱${selectedAcc.balance.toLocaleString()}.`);
+        return;
+      }
+    }
 
     setIsSubmitting(true);
     try {
@@ -129,7 +144,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
       fetchAllData();
     } catch (e) {
       console.error(e);
-      alert("Failed to save entry");
+      setFormError("A system error occurred while posting to the ledger.");
     } finally {
       setIsSubmitting(false);
     }
@@ -276,7 +291,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
             {/* Vaults (Accounts) */}
             <div className="bg-white border-2 border-paper-200 rounded-sm overflow-hidden shadow-card">
                <div className="p-4 border-b border-paper-200 bg-paper-50 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                      <Coins size={16} className="text-ink-600" />
                      <h3 className="font-bold text-sm uppercase tracking-widest text-ink-900">Vault Balances</h3>
                   </div>
@@ -334,11 +349,19 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                   </h3>
                   
                   <form onSubmit={handleSubmit} className="space-y-8">
+                     {/* Validation Error Display */}
+                     {formError && (
+                        <div className="bg-wax-50 border border-wax-200 p-4 rounded-sm flex items-start gap-3 animate-fade-in">
+                           <AlertCircle className="text-wax-600 shrink-0 mt-0.5" size={18} />
+                           <p className="text-sm text-wax-900 font-serif italic">{formError}</p>
+                        </div>
+                     )}
+
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                         <div className="space-y-8">
                            <div className="space-y-1">
                               <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Description / Particulars</label>
-                              <input autoFocus required value={description} onChange={e => setDescription(e.target.value)}
+                              <input autoFocus required value={description} onChange={e => { setDescription(e.target.value); setFormError(null); }}
                                  className="w-full text-3xl font-serif text-ink-900 border-b-2 border-paper-300 focus:border-ink-900 outline-none pb-2 bg-transparent"
                                  placeholder="e.g. Payday Repayment (10th)"
                               />
@@ -347,11 +370,11 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                            <div>
                               <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-3">Transaction Mode</label>
                               <div className="flex gap-4">
-                                 <button type="button" onClick={() => setType('expense')}
+                                 <button type="button" onClick={() => { setType('expense'); setFormError(null); }}
                                     className={`flex-1 py-4 border-2 text-xs font-bold uppercase tracking-[0.2em] transition-all ${type === 'expense' ? 'bg-wax-50 text-wax-600 border-wax-600 shadow-sm' : 'bg-white text-ink-400 border-paper-300'}`}>
                                     Debit (DR)
                                  </button>
-                                 <button type="button" onClick={() => setType('income')}
+                                 <button type="button" onClick={() => { setType('income'); setFormError(null); }}
                                     className={`flex-1 py-4 border-2 text-xs font-bold uppercase tracking-[0.2em] transition-all ${type === 'income' ? 'bg-emerald-50 text-emerald-700 border-emerald-600 shadow-sm' : 'bg-white text-ink-400 border-paper-300'}`}>
                                     Credit (CR)
                                  </button>
@@ -363,7 +386,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                            <div className="grid grid-cols-2 gap-6">
                               <div className="space-y-1">
                                  <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Amount (₱)</label>
-                                 <input type="number" required min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value ? parseFloat(e.target.value) : '')}
+                                 <input type="number" required min="0.01" step="0.01" value={amount} onChange={e => { setAmount(e.target.value ? parseFloat(e.target.value) : ''); setFormError(null); }}
                                     className="w-full p-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none text-2xl font-mono font-bold"
                                  />
                               </div>
@@ -378,7 +401,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                            <div className="grid grid-cols-2 gap-6">
                               <div className="space-y-1">
                                  <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Vault (Source)</label>
-                                 <select required value={accountId} onChange={e => setAccountId(e.target.value)}
+                                 <select required value={accountId} onChange={e => { setAccountId(e.target.value); setFormError(null); }}
                                     className="w-full p-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none text-sm font-serif appearance-none">
                                     {accounts.map(a => <option key={a.id} value={a.id}>{a.name} (₱{a.balance.toLocaleString()})</option>)}
                                  </select>

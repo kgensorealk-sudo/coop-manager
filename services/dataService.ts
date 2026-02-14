@@ -17,6 +17,105 @@ class DataService {
     return !this.supabase;
   }
 
+  /**
+   * Helper: Generate the 4 installment dates for a loan based on its start date.
+   * Jan 25 -> Feb 25, Mar 10, Mar 25, Apr 10.
+   */
+  getInstallmentDates(startDate: Date): Date[] {
+    const dates: Date[] = [];
+    const startDay = startDate.getDate();
+    
+    // Determine the "Cycle Type" based on the window rules
+    let cycleIs10th = (startDay >= 3 && startDay <= 17);
+    
+    // First payment is ALWAYS in the following month
+    let curYear = startDate.getFullYear();
+    let curMonth = startDate.getMonth() + 1;
+    if (curMonth > 11) { curMonth = 0; curYear++; }
+
+    let tempIs10th = cycleIs10th;
+    let tempMonth = curMonth;
+    let tempYear = curYear;
+
+    for (let i = 0; i < 4; i++) {
+       dates.push(new Date(tempYear, tempMonth, tempIs10th ? 10 : 25));
+       
+       if (tempIs10th) {
+          tempIs10th = false; // Move from 10th to 25th of same month
+       } else {
+          tempIs10th = true; // Move from 25th to 10th of NEXT month
+          tempMonth++;
+          if (tempMonth > 11) { tempMonth = 0; tempYear++; }
+       }
+    }
+    return dates;
+  }
+
+  /**
+   * REWRITTEN: Financial Logic Engine
+   * Strictly 2-month cycle (4 installments).
+   * Penalty triggers ONLY AFTER the 4th installment date.
+   */
+  calculateDetailedDebt(loan: LoanWithBorrower | any, payments: Payment[]) {
+    const startDate = new Date(loan.start_date || loan.created_at);
+    const now = new Date();
+    
+    // 1. Core Term Math
+    const baseInterest = (loan.principal * 0.10) * 2; // Fixed 20% interest
+    const totalTermDebt = loan.principal + baseInterest;
+    
+    // 2. Installment Schedule
+    const schedule = this.getInstallmentDates(startDate);
+    const termEndDate = schedule[3]; // Penalty starts after the 4th payment
+    
+    let penaltyTotal = 0;
+    let monthsOverdue = 0;
+
+    if (now > termEndDate) {
+      // Calculate how many months passed since the 4th installment date
+      monthsOverdue = (now.getFullYear() - termEndDate.getFullYear()) * 12 + (now.getMonth() - termEndDate.getMonth());
+      // If we are even 1 day into the next month relative to the term end, it counts as a penalty month
+      if (now.getDate() > termEndDate.getDate()) monthsOverdue += 1;
+      
+      const basePenaltyPerMonth = loan.principal * 0.10;
+      const surchargePerMonth = basePenaltyPerMonth * 0.10;
+      const totalMonthlyPenalty = basePenaltyPerMonth + surchargePerMonth;
+      
+      penaltyTotal = Math.max(0, monthsOverdue * totalMonthlyPenalty);
+    }
+
+    const totalInterestPaid = payments.reduce((sum, p) => sum + p.interest_paid, 0);
+    const totalPrincipalPaid = payments.reduce((sum, p) => sum + p.principal_paid, 0);
+    
+    // Live burden
+    const remainingTermInterest = Math.max(0, baseInterest - totalInterestPaid);
+    const remainingPrincipal = Math.max(0, loan.principal - totalPrincipalPaid);
+    
+    return {
+      totalTermDebt,
+      installmentAmount: totalTermDebt / 4,
+      penaltyTotal,
+      monthsOverdue,
+      remainingPrincipal,
+      remainingTermInterest,
+      liveTotalDue: remainingPrincipal + remainingTermInterest + penaltyTotal,
+      isPostTerm: now > termEndDate,
+      schedule
+    };
+  }
+
+  calculateLiveInterest(loan: LoanWithBorrower | any, payments: Payment[]): number {
+    const debt = this.calculateDetailedDebt(loan, payments);
+    return debt.remainingTermInterest + debt.penaltyTotal;
+  }
+
+  async restoreSession(): Promise<User | null> {
+    if (this.isMock()) return MOCK_USERS[0];
+    const { data: { session } } = await this.supabase!.auth.getSession();
+    if (!session) return null;
+    return this.ensureProfileExists(session.user);
+  }
+
   private async ensureProfileExists(authUser: any): Promise<User> {
     const { data } = await this.supabase!.from('profiles').select('*').eq('auth_id', authUser.id).single();
     if (data) return data as User;
@@ -32,13 +131,6 @@ class DataService {
     const { data: created, error: createError } = await this.supabase!.from('profiles').insert(newProfile).select().single();
     if (createError) throw createError;
     return created as User;
-  }
-
-  async restoreSession(): Promise<User | null> {
-    if (this.isMock()) return MOCK_USERS[0];
-    const { data: { session } } = await this.supabase!.auth.getSession();
-    if (!session) return null;
-    return this.ensureProfileExists(session.user);
   }
 
   async login(email: string, pass: string): Promise<User> {
@@ -85,23 +177,6 @@ class DataService {
   }
 
   async getTreasuryMetrics() {
-    if (this.isMock()) {
-      const totalContributions = MOCK_CONTRIBUTIONS.filter(c => c.status === 'approved').reduce((s, c) => s + c.amount, 0);
-      const totalPayments = MOCK_PAYMENTS.reduce((s, p) => s + p.amount, 0);
-      const totalDisbursed = MOCK_LOANS.filter(l => l.status === 'active' || l.status === 'paid').reduce((s, l) => s + l.principal, 0);
-      const totalInterestCollected = MOCK_PAYMENTS.reduce((s, p) => s + p.interest_paid, 0);
-      const totalPrincipalRepaid = MOCK_PAYMENTS.reduce((s, p) => s + p.principal_paid, 0);
-      
-      return {
-        balance: totalContributions + totalPayments - totalDisbursed,
-        totalContributions,
-        totalPayments,
-        totalDisbursed,
-        totalInterestCollected,
-        totalPrincipalRepaid
-      };
-    }
-    
     try {
       const [loans, contributions, payments] = await Promise.all([
         this.getLoans(),
@@ -196,7 +271,7 @@ class DataService {
         borrower_id: data.borrower_id,
         principal: data.principal,
         interest_rate: 10,
-        duration_months: data.duration_months,
+        duration_months: 2, // Forced to 2
         status: 'pending',
         purpose: data.purpose,
         remaining_principal: data.principal,
@@ -207,6 +282,7 @@ class DataService {
     }
     const { error } = await this.supabase!.from('loans').insert({
       ...data,
+      duration_months: 2, // Forced to 2
       remaining_principal: data.principal,
       interest_rate: 10,
       status: 'pending',
@@ -223,9 +299,7 @@ class DataService {
         if (customRate !== undefined) loan.interest_rate = customRate;
         if (status === 'active') {
           loan.start_date = new Date().toISOString();
-          // Calculate total term interest for the ledger
-          const rate = customRate ?? loan.interest_rate;
-          loan.interest_accrued = (loan.principal * (rate / 100)) * loan.duration_months;
+          loan.interest_accrued = 0;
         }
       }
       return;
@@ -233,16 +307,12 @@ class DataService {
 
     const updates: any = { status };
     if (status === 'active') {
-      // Fetch current loan to calculate interest accurately
       const { data: currentLoan } = await this.supabase!.from('loans').select('*').eq('id', loanId).single();
       if (currentLoan) {
-        const rate = customRate ?? currentLoan.interest_rate;
-        updates.interest_rate = rate;
-        updates.interest_accrued = (currentLoan.principal * (rate / 100)) * currentLoan.duration_months;
+        updates.interest_rate = 10; // Forced to 10
+        updates.interest_accrued = 0;
         updates.start_date = new Date().toISOString();
       }
-    } else if (customRate !== undefined) {
-      updates.interest_rate = customRate;
     }
     
     const { error } = await this.supabase!.from('loans').update(updates).eq('id', loanId);
@@ -292,62 +362,61 @@ class DataService {
      return data as Payment[];
   }
 
-  calculatePaymentSplit(totalAmount: number, currentPrincipal: number, monthlyRate: number) {
-    const installmentInterestDue = (currentPrincipal * (monthlyRate / 100)) / 2;
-    const interestPaid = Math.min(totalAmount, installmentInterestDue);
-    const principalPaid = Math.max(0, totalAmount - interestPaid);
-
-    return {
-      interest_paid: parseFloat(interestPaid.toFixed(2)),
-      principal_paid: parseFloat(principalPaid.toFixed(2))
-    };
-  }
-  
   async addPayment(loanId: string, amount: number): Promise<void> {
+     const payments = await this.getLoanPayments(loanId);
+     const { data: loan } = this.isMock() 
+        ? { data: MOCK_LOANS.find(l => l.id === loanId) } 
+        : await this.supabase!.from('loans').select('*').eq('id', loanId).single();
+
+     if (!loan) throw new Error("Loan not found");
+
+     const debt = this.calculateDetailedDebt(loan, payments);
+     
+     // Splitting logic: Penalties first -> Interest -> Principal
+     let remainingToDistribute = amount;
+     
+     // 1. Clear Penalty
+     const penaltyPaid = Math.min(remainingToDistribute, debt.penaltyTotal);
+     remainingToDistribute -= penaltyPaid;
+     
+     // 2. Clear Interest
+     const interestPaid = Math.min(remainingToDistribute, debt.remainingTermInterest);
+     remainingToDistribute -= interestPaid;
+     
+     // 3. Clear Principal
+     const principalPaid = remainingToDistribute; 
+
      if (this.isMock()) {
-        const loan = MOCK_LOANS.find(l => l.id === loanId);
-        if (!loan) throw new Error("Loan not found");
-        
-        const split = this.calculatePaymentSplit(amount, loan.remaining_principal, loan.interest_rate);
-        
         MOCK_PAYMENTS.push({ 
           id: `p${MOCK_PAYMENTS.length + 1}`, 
           loan_id: loanId, 
           amount, 
-          interest_paid: split.interest_paid, 
-          principal_paid: split.principal_paid, 
+          interest_paid: interestPaid + penaltyPaid, // Penalties logged as interest for simplicity in reports
+          principal_paid: principalPaid, 
           date: new Date().toISOString() 
         });
         
-        loan.remaining_principal -= split.principal_paid;
-        loan.interest_accrued = Math.max(0, loan.interest_accrued - split.interest_paid);
+        loan.remaining_principal = Math.max(0, loan.remaining_principal - principalPaid);
         if (loan.remaining_principal <= 0.01) loan.status = 'paid';
         return;
      }
 
-     const { data: loan, error: fetchError } = await this.supabase!.from('loans').select('*').eq('id', loanId).single();
-     if (fetchError || !loan) throw new Error("Could not fetch loan details for payment processing.");
-
-     const split = this.calculatePaymentSplit(amount, loan.remaining_principal, loan.interest_rate);
-
      const { error: payError } = await this.supabase!.from('payments').insert({ 
        loan_id: loanId, 
        amount: amount, 
-       interest_paid: split.interest_paid, 
-       principal_paid: split.principal_paid, 
+       interest_paid: interestPaid + penaltyPaid, 
+       principal_paid: principalPaid, 
        date: new Date().toISOString() 
      });
      
      if (payError) throw payError;
 
-     // Reduce the interest_accrued balance in the main loan table
-     await this.supabase!.from('loans').update({ 
-       interest_accrued: Math.max(0, (loan.interest_accrued || 0) - split.interest_paid) 
-     }).eq('id', loanId);
+     const newRemainingPrincipal = Math.max(0, loan.remaining_principal - principalPaid);
 
-     if (loan.remaining_principal - split.principal_paid <= 0.01) {
-        await this.supabase!.from('loans').update({ status: 'paid' }).eq('id', loanId);
-     }
+     await this.supabase!.from('loans').update({ 
+       remaining_principal: newRemainingPrincipal,
+       status: newRemainingPrincipal <= 0.01 ? 'paid' : loan.status
+     }).eq('id', loanId);
   }
 
   async inviteMember(email: string, fullName: string, role: Role): Promise<void> {
@@ -406,7 +475,7 @@ class DataService {
 
   async updateGalleryItem(id: string, updates: Partial<GalleryItem>): Promise<void> {
     if (this.isMock()) return;
-    const { error } = await this.supabase!.from('gallery_items').update(updates).eq('id', id);
+    const { error = null } = await this.supabase!.from('gallery_items').update(updates).eq('id', id);
     if (error) throw error;
   }
 
@@ -448,7 +517,7 @@ class DataService {
 
   async updatePersonalEntry(id: string, updates: Partial<PersonalLedgerEntry>): Promise<void> {
     if (this.isMock()) return;
-    const { error } = await this.supabase!.from('personal_ledger').update(updates).eq('id', id);
+    const { error = null } = await this.supabase!.from('personal_ledger').update(updates).eq('id', id);
     if (error) throw error;
   }
 
@@ -486,7 +555,7 @@ class DataService {
 
   async updateSavingGoal(id: string, updates: Partial<SavingGoal>): Promise<void> {
      if (this.isMock()) return;
-     const { error } = await this.supabase!.from('saving_goals').update(updates).eq('id', id);
+     const { error = null } = await this.supabase!.from('saving_goals').update(updates).eq('id', id);
      if (error) throw error;
   }
 
@@ -509,31 +578,33 @@ class DataService {
      
      for (const loan of activeLoans) {
         const payments = await this.getLoanPayments(loan.id);
+        const debt = this.calculateDetailedDebt(loan, payments);
         const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-        // Semi-monthly calculation for projection
-        const monthlyInterest = (loan.principal * (loan.interest_rate/100));
-        const monthlyPrincipal = (loan.principal / loan.duration_months);
-        const paydayAmount = (monthlyPrincipal + monthlyInterest) / 2;
 
-        const loanStart = new Date(loan.start_date || loan.created_at);
-        const startDay = loanStart.getDate();
-        let firstMonthOffset = 1;
-        let startOn10th = true;
-        if (startDay <= 10) { startOn10th = true; } else if (startDay <= 25) { startOn10th = false; } else { startOn10th = true; firstMonthOffset = 2; }
-        let currentYear = loanStart.getFullYear();
-        let currentMonth = loanStart.getMonth() + firstMonthOffset;
-        let is10th = startOn10th;
-        const normalizeDate = () => { if (currentMonth > 11) { currentYear += Math.floor(currentMonth / 12); currentMonth %= 12; } };
-        normalizeDate();
-        const totalInstallmentsExpected = loan.duration_months * 2;
+        const installmentDates = this.getInstallmentDates(new Date(loan.start_date || loan.created_at));
         let cumulativeRequired = 0;
-        for (let i = 0; i < totalInstallmentsExpected; i++) {
-           const targetDate = new Date(currentYear, currentMonth, is10th ? 10 : 25);
-           cumulativeRequired += paydayAmount;
+
+        for (let i = 0; i < installmentDates.length; i++) {
+           const targetDate = installmentDates[i];
+           cumulativeRequired += debt.installmentAmount;
+           
            let status: 'paid' | 'overdue' | 'upcoming' = 'upcoming';
-           if (totalPaid >= (cumulativeRequired - 0.1)) { status = 'paid'; } else if (targetDate < now) { status = 'overdue'; }
-           schedules.push({ loan_id: loan.id, date: targetDate.toISOString(), title: `Installment ${i + 1}/${totalInstallmentsExpected} - ${loan.purpose}`, amount: paydayAmount, borrower_id: loan.borrower_id, borrower_name: loan.borrower.full_name, status, is_payday: true });
-           if (is10th) { is10th = false; } else { is10th = true; currentMonth++; normalizeDate(); }
+           if (totalPaid >= (cumulativeRequired - 0.1)) { 
+             status = 'paid'; 
+           } else if (targetDate < now) { 
+             status = 'overdue'; 
+           }
+           
+           schedules.push({ 
+             loan_id: loan.id, 
+             date: targetDate.toISOString(), 
+             title: `Pay ${i + 1}/4 - ${loan.purpose}`, 
+             amount: debt.installmentAmount, 
+             borrower_id: loan.borrower_id, 
+             borrower_name: loan.borrower.full_name, 
+             status, 
+             is_payday: true 
+           });
         }
      }
      return schedules.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());

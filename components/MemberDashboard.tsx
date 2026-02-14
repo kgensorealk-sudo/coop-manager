@@ -2,7 +2,7 @@
 import React from 'react';
 import { User, LoanWithBorrower, ContributionWithMember } from '../types';
 import { StatCard } from './StatCard';
-import { Wallet, CreditCard, Calendar, Clock, AlertCircle, Plus, PiggyBank, Lock, TrendingDown, CheckCircle2, XCircle } from 'lucide-react';
+import { Wallet, CreditCard, Calendar, Clock, AlertCircle, Plus, PiggyBank, Lock, TrendingDown, CheckCircle2, XCircle, ArrowRightLeft } from 'lucide-react';
 
 interface MemberDashboardProps {
   user: User;
@@ -158,9 +158,14 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
         </div>
       )}
 
-      {/* Loan Applications Summary (Non-Pending) - Replaces previous Table */}
+      {/* Loan Applications Summary - ENHANCED Historical Register Table */}
       <div className="space-y-4">
-        <h2 className="text-xl font-serif font-bold text-slate-900 border-b border-slate-200 pb-2">Loan Applications Summary</h2>
+        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+            <h2 className="text-xl font-serif font-bold text-slate-900 flex items-center gap-2">
+                <ArrowRightLeft size={20} className="text-blue-600" />
+                Loan History & Principal Register
+            </h2>
+        </div>
         
         {historyLoans.length === 0 ? (
            <div className="bg-white p-12 text-center flex flex-col items-center justify-center rounded-sm border border-slate-200 border-dashed text-slate-400">
@@ -168,72 +173,66 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
               <p className="font-serif italic text-lg">No active or past loan records found.</p>
            </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {historyLoans.map((loan) => (
-              <div 
-                key={loan.id} 
-                className={`bg-white rounded-sm border shadow-sm p-6 relative overflow-hidden group transition-all duration-300 hover:shadow-md ${loan.status === 'active' ? 'border-emerald-200 ring-1 ring-emerald-50' : 'border-slate-200'}`}
-              >
-                {/* Decorative Side Bar */}
-                <div className={`absolute top-0 left-0 w-1 h-full ${loan.status === 'active' ? 'bg-emerald-500' : loan.status === 'paid' ? 'bg-blue-500' : 'bg-red-500'}`}></div>
-
-                <div className="flex justify-between items-start mb-6 pl-3">
-                  <div>
-                    <h3 className="font-serif font-bold text-xl text-slate-900">{loan.purpose}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs font-mono text-slate-500">
-                        {loan.start_date ? new Date(loan.start_date).toLocaleDateString() : 'N/A'}
-                      </span>
-                      {loan.status === 'active' && (
-                        <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold uppercase">
-                           Due: {new Date(new Date().setMonth(new Date().getMonth() + 1)).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border ${getStatusColor(loan.status)}`}>
-                    {getStatusIcon(loan.status)}
-                    {loan.status}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4 pl-3 border-l border-dashed border-slate-200 ml-0.5">
-                  <div>
-                    <span className="text-xs text-slate-400 uppercase tracking-wider font-bold block mb-1">Principal</span>
-                    <span className="text-lg font-mono text-slate-700 font-bold">₱{loan.principal.toLocaleString()}</span>
-                  </div>
-                  <div>
-                    <span className="text-xs text-slate-400 uppercase tracking-wider font-bold block mb-1">Remaining Balance</span>
-                    <span className={`text-lg font-mono font-bold ${loan.remaining_principal > 0 ? 'text-blue-600' : 'text-slate-400'}`}>
-                      ₱{loan.remaining_principal.toLocaleString()}
-                    </span>
-                  </div>
-                   <div>
-                    <span className="text-xs text-slate-400 uppercase tracking-wider font-bold block mb-1">Interest Rate</span>
-                    <span className="text-sm font-mono text-slate-600 font-medium">{loan.interest_rate}% / mo</span>
-                  </div>
-                   <div>
-                    <span className="text-xs text-slate-400 uppercase tracking-wider font-bold block mb-1">Duration</span>
-                    <span className="text-sm font-mono text-slate-600 font-medium">{loan.duration_months} Months</span>
-                  </div>
-                </div>
-
-                {loan.status === 'rejected' && (
-                  <div className="mt-4 pl-3 text-xs text-red-500 italic">
-                    This application was not approved. Please contact admin for details.
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="bg-white rounded-sm border border-slate-200 shadow-paper overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-slate-100 border-b border-slate-200">
+                  <tr>
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] font-sans">Effective Date / Purpose</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] font-sans">Status</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] font-sans">Total Principal</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] font-sans">Principal Paid</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] font-sans">Rem. Balance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {historyLoans.map((loan) => {
+                    const principalPaid = loan.principal - loan.remaining_principal;
+                    return (
+                      <tr key={loan.id} className="hover:bg-slate-50 transition-colors group">
+                        <td className="px-6 py-5">
+                          <div className="font-serif font-bold text-lg text-slate-900">{loan.purpose}</div>
+                          <div className="text-[10px] font-mono text-slate-400 uppercase tracking-tighter">
+                            Ref: {loan.id.substring(0,8).toUpperCase()} • {loan.start_date ? new Date(loan.start_date).toLocaleDateString() : 'N/A'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-widest border ${getStatusColor(loan.status)}`}>
+                            {getStatusIcon(loan.status)}
+                            {loan.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="font-mono font-bold text-slate-700">₱{loan.principal.toLocaleString()}</div>
+                          <div className="text-[10px] text-slate-400 font-sans">{loan.interest_rate}% Fixed Rate</div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="font-mono font-bold text-emerald-600">₱{principalPaid.toLocaleString()}</div>
+                          <div className="text-[10px] text-slate-400 font-sans italic">Excl. Interest</div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className={`font-mono font-bold text-lg ${loan.remaining_principal > 0 ? 'text-blue-700' : 'text-slate-300'}`}>
+                            ₱{loan.remaining_principal.toLocaleString()}
+                          </div>
+                          {loan.status === 'active' && (
+                            <div className="text-[10px] text-blue-500 font-sans uppercase font-bold tracking-tighter">Current Debt</div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
 
       {/* Contribution History Table */}
       <div className="bg-white rounded-sm border border-slate-200 shadow-paper overflow-hidden mt-8">
-        <div className="p-6 border-b border-slate-200 bg-slate-50/50">
-          <h2 className="text-lg font-serif font-bold text-slate-900">Contribution Log</h2>
+        <div className="p-6 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+          <h2 className="text-lg font-serif font-bold text-slate-900">Equity Contribution Log</h2>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Verified Transactions</span>
         </div>
         
         {memberContributions.length === 0 ? (
@@ -261,7 +260,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                     <td className="px-6 py-4 text-slate-900 capitalize font-serif font-medium">
                       {contribution.type.replace('_', ' ')}
                     </td>
-                    <td className="px-6 py-4 font-bold text-emerald-700 font-mono">
+                    <td className="px-6 py-4 font-bold text-emerald-700 font-mono text-lg">
                       +₱{contribution.amount.toLocaleString()}
                     </td>
                     <td className="px-6 py-4">
