@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { User, PersonalLedgerEntry, PersonalAccount, SavingGoal } from '../types';
 import { dataService } from '../services/dataService';
 import { StatCard } from './StatCard';
@@ -56,7 +57,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
 
   const fetchAllData = async () => {
     try {
-      const [entryData, accountData, goalData, , scheduleData] = await Promise.all([
+      const [entryData, accountData, goalData, _budgetData, scheduleData] = await Promise.all([
         dataService.getPersonalEntries(currentUser.id),
         dataService.getPersonalAccounts(currentUser.id),
         dataService.getSavingGoals(currentUser.id),
@@ -244,10 +245,10 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
 
       {/* Sovereign Stats Bar */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Net Worth" value={`₱${stats.totalAssets.toLocaleString()}`} icon={ShieldCheck} trend="Across Vaults" trendUp={true} colorClass="text-ink-900" />
-        <StatCard title="Safe to Spend" value={`₱${stats.safeToSpend.toLocaleString()}`} icon={Wallet} trend="After 10th/25th Dues" trendUp={stats.safeToSpend > 0} colorClass="text-emerald-700" />
-        <StatCard title="Burn Rate" value={`₱${Math.round(stats.expense / 30).toLocaleString()}`} icon={TrendingDown} trend="Average Daily" colorClass="text-wax-600" />
-        <StatCard title="Coop Savings" value={`₱${currentUser.equity.toLocaleString()}`} icon={PiggyBank} trend="Member Share" trendUp={true} colorClass="text-blue-700" />
+        <StatCard index={0} title="Net Worth" value={`₱${stats.totalAssets.toLocaleString()}`} icon={ShieldCheck} trend="Across Vaults" trendUp={true} colorClass="text-ink-900" />
+        <StatCard index={1} title="Safe to Spend" value={`₱${stats.safeToSpend.toLocaleString()}`} icon={Wallet} trend="After 10th/25th Dues" trendUp={stats.safeToSpend > 0} colorClass="text-emerald-700" />
+        <StatCard index={2} title="Burn Rate" value={`₱${Math.round(stats.expense / 30).toLocaleString()}`} icon={TrendingDown} trend="Average Daily" colorClass="text-wax-600" />
+        <StatCard index={3} title="Coop Savings" value={`₱${currentUser.equity.toLocaleString()}`} icon={PiggyBank} trend="Member Share" trendUp={true} colorClass="text-blue-700" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -340,95 +341,109 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
          {/* RIGHT COLUMN: Ledger */}
          <div className="lg:col-span-8 space-y-8">
             
-            {showForm && (
-               <div className="bg-paper-50 p-8 rounded-sm border-2 border-leather-800/20 shadow-float animate-slide-up relative">
-                  <button onClick={resetForm} className="absolute top-6 right-6 text-ink-400 hover:text-ink-600 p-1"><X size={24}/></button>
-                  <h3 className="font-serif font-bold text-3xl text-ink-900 mb-10 flex items-center gap-3">
-                     <div className="w-10 h-10 rounded-full bg-ink-900 flex items-center justify-center text-paper-50 text-base italic shadow-md">#</div>
-                     {editingEntry ? 'Revise Entry' : 'Record Transaction'}
-                  </h3>
-                  
-                  <form onSubmit={handleSubmit} className="space-y-8">
-                     {/* Validation Error Display */}
-                     {formError && (
-                        <div className="bg-wax-50 border border-wax-200 p-4 rounded-sm flex items-start gap-3 animate-fade-in">
-                           <AlertCircle className="text-wax-600 shrink-0 mt-0.5" size={18} />
-                           <p className="text-sm text-wax-900 font-serif italic">{formError}</p>
-                        </div>
-                     )}
+            <AnimatePresence>
+              {showForm && (
+                 <motion.div 
+                   initial={{ opacity: 0, y: 20 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   exit={{ opacity: 0, y: 20 }}
+                   className="bg-paper-50 p-8 rounded-sm border-2 border-leather-800/20 shadow-float relative"
+                 >
+                    <button onClick={resetForm} className="absolute top-6 right-6 text-ink-400 hover:text-ink-600 p-1"><X size={24}/></button>
+                    <h3 className="font-serif font-bold text-3xl text-ink-900 mb-10 flex items-center gap-3">
+                       <div className="w-10 h-10 rounded-full bg-ink-900 flex items-center justify-center text-paper-50 text-base italic shadow-md">#</div>
+                       {editingEntry ? 'Revise Entry' : 'Record Transaction'}
+                    </h3>
+                    
+                    <form onSubmit={handleSubmit} className="space-y-8">
+                       {/* Validation Error Display */}
+                       <AnimatePresence>
+                         {formError && (
+                            <motion.div 
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="bg-wax-50 border border-wax-200 p-4 rounded-sm flex items-start gap-3 overflow-hidden"
+                            >
+                               <AlertCircle className="text-wax-600 shrink-0 mt-0.5" size={18} />
+                               <p className="text-sm text-wax-900 font-serif italic">{formError}</p>
+                            </motion.div>
+                         )}
+                       </AnimatePresence>
 
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                        <div className="space-y-8">
-                           <div className="space-y-1">
-                              <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Description / Particulars</label>
-                              <input autoFocus required value={description} onChange={e => { setDescription(e.target.value); setFormError(null); }}
-                                 className="w-full text-3xl font-serif text-ink-900 border-b-2 border-paper-300 focus:border-ink-900 outline-none pb-2 bg-transparent"
-                                 placeholder="e.g. Payday Repayment (10th)"
-                              />
-                           </div>
-                           
-                           <div>
-                              <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-3">Transaction Mode</label>
-                              <div className="flex gap-4">
-                                 <button type="button" onClick={() => { setType('expense'); setFormError(null); }}
-                                    className={`flex-1 py-4 border-2 text-xs font-bold uppercase tracking-[0.2em] transition-all ${type === 'expense' ? 'bg-wax-50 text-wax-600 border-wax-600 shadow-sm' : 'bg-white text-ink-400 border-paper-300'}`}>
-                                    Debit (DR)
-                                 </button>
-                                 <button type="button" onClick={() => { setType('income'); setFormError(null); }}
-                                    className={`flex-1 py-4 border-2 text-xs font-bold uppercase tracking-[0.2em] transition-all ${type === 'income' ? 'bg-emerald-50 text-emerald-700 border-emerald-600 shadow-sm' : 'bg-white text-ink-400 border-paper-300'}`}>
-                                    Credit (CR)
-                                 </button>
-                              </div>
-                           </div>
-                        </div>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                          <div className="space-y-8">
+                             <div className="space-y-1">
+                                <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Description / Particulars</label>
+                                <input autoFocus required value={description} onChange={e => { setDescription(e.target.value); setFormError(null); }}
+                                   className="w-full text-3xl font-serif text-ink-900 border-b-2 border-paper-300 focus:border-ink-900 outline-none pb-2 bg-transparent"
+                                   placeholder="e.g. Payday Repayment (10th)"
+                                />
+                             </div>
+                             
+                             <div>
+                                <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-3">Transaction Mode</label>
+                                <div className="flex gap-4">
+                                   <button type="button" onClick={() => { setType('expense'); setFormError(null); }}
+                                      className={`flex-1 py-4 border-2 text-xs font-bold uppercase tracking-[0.2em] transition-all ${type === 'expense' ? 'bg-wax-50 text-wax-600 border-wax-600 shadow-sm' : 'bg-white text-ink-400 border-paper-300'}`}>
+                                      Debit (DR)
+                                   </button>
+                                   <button type="button" onClick={() => { setType('income'); setFormError(null); }}
+                                      className={`flex-1 py-4 border-2 text-xs font-bold uppercase tracking-[0.2em] transition-all ${type === 'income' ? 'bg-emerald-50 text-emerald-700 border-emerald-600 shadow-sm' : 'bg-white text-ink-400 border-paper-300'}`}>
+                                      Credit (CR)
+                                   </button>
+                                </div>
+                             </div>
+                          </div>
 
-                        <div className="space-y-8">
-                           <div className="grid grid-cols-2 gap-6">
-                              <div className="space-y-1">
-                                 <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Amount (₱)</label>
-                                 <input type="number" required min="0.01" step="0.01" value={amount} onChange={e => { setAmount(e.target.value ? parseFloat(e.target.value) : ''); setFormError(null); }}
-                                    className="w-full p-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none text-2xl font-mono font-bold"
-                                 />
-                              </div>
-                              <div className="space-y-1">
-                                 <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Effective Date</label>
-                                 <input type="date" required value={date} onChange={e => setDate(e.target.value)}
-                                    className="w-full p-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none text-sm font-mono"
-                                 />
-                              </div>
-                           </div>
+                          <div className="space-y-8">
+                             <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-1">
+                                   <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Amount (₱)</label>
+                                   <input type="number" required min="0.01" step="0.01" value={amount} onChange={e => { setAmount(e.target.value ? parseFloat(e.target.value) : ''); setFormError(null); }}
+                                      className="w-full p-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none text-2xl font-mono font-bold"
+                                   />
+                                </div>
+                                <div className="space-y-1">
+                                   <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Effective Date</label>
+                                   <input type="date" required value={date} onChange={e => setDate(e.target.value)}
+                                      className="w-full p-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none text-sm font-mono"
+                                   />
+                                </div>
+                             </div>
 
-                           <div className="grid grid-cols-2 gap-6">
-                              <div className="space-y-1">
-                                 <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Vault (Source)</label>
-                                 <select required value={accountId} onChange={e => { setAccountId(e.target.value); setFormError(null); }}
-                                    className="w-full p-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none text-sm font-serif appearance-none">
-                                    {accounts.map(a => <option key={a.id} value={a.id}>{a.name} (₱{a.balance.toLocaleString()})</option>)}
-                                 </select>
-                              </div>
-                              <div className="space-y-1">
-                                 <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Category</label>
-                                 <input type="text" value={category} onChange={e => setCategory(e.target.value)}
-                                    className="w-full p-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none text-sm font-serif"
-                                    placeholder="e.g. Coop Loan"
-                                 />
-                              </div>
-                           </div>
-                        </div>
-                     </div>
+                             <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-1">
+                                   <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Vault (Source)</label>
+                                   <select required value={accountId} onChange={e => { setAccountId(e.target.value); setFormError(null); }}
+                                      className="w-full p-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none text-sm font-serif appearance-none">
+                                      {accounts.map(a => <option key={a.id} value={a.id}>{a.name} (₱{a.balance.toLocaleString()})</option>)}
+                                   </select>
+                                </div>
+                                <div className="space-y-1">
+                                   <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Category</label>
+                                   <input type="text" value={category} onChange={e => setCategory(e.target.value)}
+                                      className="w-full p-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none text-sm font-serif"
+                                      placeholder="e.g. Coop Loan"
+                                   />
+                                </div>
+                             </div>
+                          </div>
+                       </div>
 
-                     <div className="flex justify-end gap-4 pt-6 border-t border-paper-300">
-                        <button type="button" onClick={resetForm} className="px-8 py-3 text-xs font-black uppercase tracking-[0.2em] text-ink-400 hover:text-ink-900">Cancel</button>
-                        <button type="submit" disabled={isSubmitting}
-                           className="px-12 py-4 bg-ink-900 text-white rounded-sm font-bold uppercase tracking-[0.3em] text-xs hover:bg-black shadow-xl flex items-center gap-3 active:scale-95 transition-all"
-                        >
-                           {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                           {editingEntry ? 'Revise Entry' : 'Post to Ledger'}
-                        </button>
-                     </div>
-                  </form>
-               </div>
-            )}
+                       <div className="flex justify-end gap-4 pt-6 border-t border-paper-300">
+                          <button type="button" onClick={resetForm} className="px-8 py-3 text-xs font-black uppercase tracking-[0.2em] text-ink-400 hover:text-ink-900">Cancel</button>
+                          <button type="submit" disabled={isSubmitting}
+                             className="px-12 py-4 bg-ink-900 text-white rounded-sm font-bold uppercase tracking-[0.3em] text-xs hover:bg-black shadow-xl flex items-center gap-3 active:scale-95 transition-all"
+                          >
+                             {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                             {editingEntry ? 'Revise Entry' : 'Post to Ledger'}
+                          </button>
+                       </div>
+                    </form>
+                 </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Main Content Area */}
             {activeView === 'register' && (
@@ -453,7 +468,13 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                               {dayEntries.map((entry) => {
                                  const acc = accounts.find(a => a.id === entry.account_id);
                                  return (
-                                    <div key={entry.id} className="px-6 py-5 hover:bg-paper-50 transition-colors group flex items-center justify-between border-l-4 border-l-transparent hover:border-l-gold-500">
+                                    <motion.div 
+                                       key={entry.id}
+                                       initial={{ opacity: 0, x: -10 }}
+                                       animate={{ opacity: 1, x: 0 }}
+                                       transition={{ duration: 0.3 }}
+                                       className="px-6 py-5 hover:bg-paper-50 transition-colors group flex items-center justify-between border-l-4 border-l-transparent hover:border-l-gold-500"
+                                    >
                                        <div className="flex items-center gap-6">
                                           <div className={`w-14 h-14 flex items-center justify-center shrink-0 border-2 rounded-sm rotate-1 group-hover:rotate-0 transition-transform ${entry.type === 'income' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-paper-100 border-paper-200 text-ink-400'}`}>
                                              {entry.type === 'income' ? <TrendingUp size={24} /> : <TrendingDown size={24} />}
@@ -481,7 +502,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                                              <button onClick={() => handleDelete(entry.id)} className="p-2 text-ink-300 hover:text-wax-600 hover:bg-wax-50 border border-paper-200"><Trash2 size={16} /></button>
                                           </div>
                                        </div>
-                                    </div>
+                                    </motion.div>
                                  );
                               })}
                            </div>

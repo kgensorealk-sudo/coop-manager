@@ -1,7 +1,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { User } from '../types';
 import { dataService } from '../services/dataService';
+import { DEFAULT_INTEREST_RATE } from '../constants';
 import { 
   X, 
   AlertCircle, 
@@ -42,14 +44,12 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
   const [error, setError] = useState('');
   const [showSchedule, setShowSchedule] = useState(false);
   
-  const [isClosing, setIsClosing] = useState(false);
-
   // Hook must be called at top level
   const simulatedSchedule = useMemo(() => {
     // Safety guard inside the hook
     if (!isOpen || !principal) return [];
     
-    const totalRepaymentLocal = Number(principal) * (1 + (0.10 * durationMonths));
+    const totalRepaymentLocal = Number(principal) * (1 + ((DEFAULT_INTEREST_RATE / 100) * durationMonths));
     const totalInstallmentsLocal = durationMonths * 2;
     const installmentAmountLocal = totalRepaymentLocal / totalInstallmentsLocal;
     
@@ -57,7 +57,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
     const dates = dataService.getInstallmentDates(startDate, totalInstallmentsLocal);
     
     const principalPerPayment = Number(principal) / totalInstallmentsLocal;
-    const interestPerPayment = (Number(principal) * 0.10 * durationMonths) / totalInstallmentsLocal;
+    const interestPerPayment = (Number(principal) * (DEFAULT_INTEREST_RATE / 100) * durationMonths) / totalInstallmentsLocal;
 
     return dates.map((date, index) => ({
       number: index + 1,
@@ -70,7 +70,6 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setIsClosing(false);
       setStep(1);
       setAcceptedTerms(false);
       setDurationMonths(2);
@@ -84,19 +83,15 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
   }, [isOpen, currentUser]);
 
   const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-      setIsClosing(false);
-    }, 300);
+    onClose();
   };
 
   if (!isOpen) return null;
 
   const borrowerName = members.find(m => m.id === borrowerId)?.full_name || currentUser?.full_name || 'Borrower';
   
-  // Logic: 10% interest per month. Total interest = principal * (0.10 * months)
-  const interestMultiplier = 1 + (0.10 * durationMonths);
+  // Logic: Default interest per month. Total interest = principal * (rate * months)
+  const interestMultiplier = 1 + ((DEFAULT_INTEREST_RATE / 100) * durationMonths);
   const totalRepayment = principal ? Number(principal) * interestMultiplier : 0;
   const totalInstallments = durationMonths * 2;
   const installmentAmount = totalRepayment / totalInstallments;
@@ -141,10 +136,25 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
   const isAdmin = !currentUser || currentUser.role === 'admin';
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-leather-900/60 backdrop-blur-sm p-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
-      <div className={`bg-paper-50 rounded-sm shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] border-4 border-double border-paper-300 relative ${isClosing ? 'animate-scale-out' : 'animate-zoom-in'}`}>
-        
-        {/* Header */}
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={handleClose}
+            className="absolute inset-0 bg-leather-900/60 backdrop-blur-sm"
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="bg-paper-50 rounded-sm shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] border-4 border-double border-paper-300 relative z-10"
+          >
+            
+            {/* Header */}
         <div className="bg-paper-100 border-b border-paper-200 p-6 flex justify-between items-center">
           <div className="flex items-center gap-3">
              <div className="p-2 bg-ink-900 text-gold-500 rounded-sm shadow-md">
@@ -330,7 +340,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
                            <div className="w-1.5 h-1.5 bg-gold-600 rounded-full"></div> Repayment Terms
                         </h4>
                         <p className="italic text-sm text-ink-700 leading-relaxed pl-3 border-l border-paper-300">
-                           Repayments are strictly bi-monthly, scheduled on the <strong>10th and 25th</strong> of each month, starting the month following disbursement. Total interest of {durationMonths * 10}% has been applied to the principal sum.
+                           Repayments are strictly bi-monthly, scheduled on the <strong>10th and 25th</strong> of each month, starting the month following disbursement. Total interest of {durationMonths * DEFAULT_INTEREST_RATE}% has been applied to the principal sum.
                         </p>
                      </section>
 
@@ -403,8 +413,10 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
+  )}
+  </AnimatePresence>
   );
 };
 

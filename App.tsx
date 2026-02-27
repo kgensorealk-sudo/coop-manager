@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Sidebar } from './components/Sidebar';
 import { StatCard } from './components/StatCard';
 import LoanApprovalModal from './components/LoanApprovalModal';
@@ -33,7 +34,8 @@ import {
   Feather,
   ArrowRight,
   ClipboardCheck,
-  Coins
+  Coins,
+  CalendarDays
 } from 'lucide-react';
 
 const getErrorMessage = (err: any): string => {
@@ -90,6 +92,7 @@ const App: React.FC = () => {
     totalPayments: 0, 
     totalDisbursed: 0,
     totalInterestCollected: 0,
+    totalPenaltyCollected: 0,
     totalPrincipalRepaid: 0
   });
   const [activeVolume, setActiveVolume] = useState(0);
@@ -390,10 +393,10 @@ const App: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <StatCard title="Treasury Balance" value={`₱${treasuryStats.balance.toLocaleString()}`} icon={Wallet} trend="Liquid Assets" trendUp={true} colorClass="text-emerald-700" />
-          <StatCard title="Interest Realized" value={`₱${treasuryStats.totalInterestCollected.toLocaleString()}`} icon={TrendingUp} trend="Gross Cash Earnings" trendUp={true} colorClass="text-purple-700" />
-          <StatCard title="Loan Volume" value={`₱${activeVolume.toLocaleString()}`} icon={Coins} trend="Deployed Capital" trendUp={true} colorClass="text-blue-700" />
-          <StatCard title="Assessments Due" value={`${pendingLoans.length + pendingContributions.length}`} icon={ClipboardCheck} colorClass={pendingLoans.length > 0 ? "text-wax-600" : "text-ink-600"} />
+          <StatCard index={0} title="Treasury Balance" value={`₱${treasuryStats.balance.toLocaleString()}`} icon={Wallet} trend="Liquid Assets" trendUp={true} colorClass="text-emerald-700" />
+          <StatCard index={1} title="Gains Realized" value={`₱${(treasuryStats.totalInterestCollected + treasuryStats.totalPenaltyCollected).toLocaleString()}`} icon={TrendingUp} trend="Interest + Penalties" trendUp={true} colorClass="text-purple-700" />
+          <StatCard index={2} title="Total Receivables" value={`₱${activeVolume.toLocaleString()}`} icon={Coins} trend="Loan Book Value" trendUp={true} colorClass="text-blue-700" />
+          <StatCard index={3} title="Assessments Due" value={`${pendingLoans.length + pendingContributions.length}`} icon={ClipboardCheck} colorClass={pendingLoans.length > 0 ? "text-wax-600" : "text-ink-600"} />
         </div>
 
         <div className="grid grid-cols-1 gap-8">
@@ -553,7 +556,14 @@ const App: React.FC = () => {
           {filteredLoans.map(loan => {
             const loanPayments = allPayments.filter(p => p.loan_id === loan.id);
             const liveInterestDue = dataService.calculateLiveInterest(loan, loanPayments);
+            const debtDetails = dataService.calculateDetailedDebt(loan, loanPayments);
+            const totalPaid = loanPayments.reduce((sum, p) => sum + p.amount, 0);
             
+            const nextDue = debtDetails.schedule.find((_, idx) => {
+              const cumulativeRequired = debtDetails.installmentAmount * (idx + 1);
+              return totalPaid < (cumulativeRequired - 0.1);
+            });
+
             return (
               <div key={loan.id} onClick={() => loan.status !== 'pending' && handleViewLoanDetails(loan)} className={`bg-paper-50 rounded-sm border-2 shadow-card hover:shadow-float transition-all duration-300 p-6 flex flex-col relative overflow-hidden group ${loan.status !== 'pending' ? 'cursor-pointer border-paper-200 hover:border-ink-300' : 'border-amber-200 bg-amber-50/20'}`}>
                 <div className="absolute top-0 left-0 w-1 h-full bg-paper-200 group-hover:bg-ink-400 transition-colors"></div>
@@ -569,6 +579,29 @@ const App: React.FC = () => {
                      {loan.status}
                    </div>
                 </div>
+                
+                {/* Repayment Tracking Mini-Section for Active Loans */}
+                {loan.status === 'active' && nextDue && (
+                  <div className="mb-4 pl-3 flex gap-4">
+                     <div className="bg-amber-50/50 border border-amber-200 rounded-sm p-2 flex-1">
+                        <div className="text-[9px] font-black text-amber-700 uppercase tracking-tighter flex items-center gap-1">
+                           <CalendarDays size={10} /> Next Due
+                        </div>
+                        <div className="text-sm font-mono font-bold text-ink-900">
+                           {nextDue.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </div>
+                     </div>
+                     <div className="bg-emerald-50/50 border border-emerald-200 rounded-sm p-2 flex-1">
+                        <div className="text-[9px] font-black text-emerald-700 uppercase tracking-tighter flex items-center gap-1">
+                           <Coins size={10} /> Installment
+                        </div>
+                        <div className="text-sm font-mono font-bold text-ink-900">
+                           ₱{debtDetails.installmentAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </div>
+                     </div>
+                  </div>
+                )}
+
                 <div className="space-y-3 mb-6 pl-3 border-l border-dashed border-paper-300 ml-0.5 font-mono text-sm">
                    <div className="flex justify-between">
                      <span className="text-ink-500 font-serif italic">Principal Rem.</span>
@@ -604,16 +637,26 @@ const App: React.FC = () => {
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} currentUser={currentUser} onLogout={handleLogout} />
       <main className="flex-1 lg:ml-72 min-h-screen p-8 md:p-12">
         <div className="max-w-7xl mx-auto">
-          {activeTab === 'dashboard' && renderAdminDashboard()}
-          {activeTab === 'loans' && renderLoansTab()}
-          {activeTab === 'my-dashboard' && <MemberDashboard user={currentUser} memberLoans={loans.filter(l => l.borrower_id === currentUser.id)} memberContributions={contributions.filter(c => c.member_id === currentUser.id)} memberSavingGoals={savingGoals} onApplyLoan={() => setIsApplicationModalOpen(true)} onAddContribution={() => setIsContributionModalOpen(true)} />}
-          {activeTab === 'members' && <MemberDirectory members={members} loans={loans} onRefresh={refreshData} currentUserRole={currentUser.role} />}
-          {activeTab === 'treasury' && <TreasuryDashboard treasuryStats={treasuryStats} contributions={contributions} loans={loans} allPayments={allPayments} activeLoanVolume={activeVolume} totalInterestGained={totalInterestGained} onAddContribution={() => setIsContributionModalOpen(true)} onApproveContribution={handleApproveContribution} onRejectContribution={handleRejectContribution} loading={loading} />}
-          {activeTab === 'announcements' && <AnnouncementHistory onOpenCreate={handleOpenAnnouncementCreate} onEdit={handleOpenAnnouncementEdit} readOnly={currentUser.role === 'member'} />}
-          {activeTab === 'gallery' && <GalleryView currentUser={currentUser} />}
-          {activeTab === 'personal-ledger' && <PersonalLedger currentUser={currentUser} />}
-          {activeTab === 'schedules' && <ScheduleView filterByUserId={currentUser.role === 'member' ? currentUser.id : undefined} />}
-          {activeTab === 'dev-guide' && <DeveloperGuide />}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.3 }}
+            >
+              {activeTab === 'dashboard' && renderAdminDashboard()}
+              {activeTab === 'loans' && renderLoansTab()}
+              {activeTab === 'my-dashboard' && <MemberDashboard user={currentUser} memberLoans={loans.filter(l => l.borrower_id === currentUser.id)} memberContributions={contributions.filter(c => c.member_id === currentUser.id)} memberSavingGoals={savingGoals} onApplyLoan={() => setIsApplicationModalOpen(true)} onAddContribution={() => setIsContributionModalOpen(true)} />}
+              {activeTab === 'members' && <MemberDirectory members={members} loans={loans} onRefresh={refreshData} currentUserRole={currentUser.role} />}
+              {activeTab === 'treasury' && <TreasuryDashboard treasuryStats={treasuryStats} contributions={contributions} loans={loans} allPayments={allPayments} activeLoanVolume={activeVolume} totalInterestGained={totalInterestGained} onAddContribution={() => setIsContributionModalOpen(true)} onApproveContribution={handleApproveContribution} onRejectContribution={handleRejectContribution} loading={loading} />}
+              {activeTab === 'announcements' && <AnnouncementHistory onOpenCreate={handleOpenAnnouncementCreate} onEdit={handleOpenAnnouncementEdit} readOnly={currentUser.role === 'member'} />}
+              {activeTab === 'gallery' && <GalleryView currentUser={currentUser} />}
+              {activeTab === 'personal-ledger' && <PersonalLedger currentUser={currentUser} />}
+              {activeTab === 'schedules' && <ScheduleView filterByUserId={currentUser.role === 'member' ? currentUser.id : undefined} />}
+              {activeTab === 'dev-guide' && <DeveloperGuide />}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
       {currentUser.role === 'admin' && <LoanApprovalModal isOpen={isApprovalModalOpen} onClose={() => setIsApprovalModalOpen(false)} loan={selectedLoan} onApprove={handleApproveLoan} onReject={handleRejectLoan} treasuryBalance={treasuryStats.balance} />}

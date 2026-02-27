@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { LucideIcon } from 'lucide-react';
+import { motion } from 'motion/react';
 
 interface StatCardProps {
   title: string;
@@ -9,6 +10,7 @@ interface StatCardProps {
   trend?: string;
   trendUp?: boolean;
   colorClass?: string;
+  index?: number;
 }
 
 export const StatCard: React.FC<StatCardProps> = ({ 
@@ -17,10 +19,17 @@ export const StatCard: React.FC<StatCardProps> = ({
   icon: Icon, 
   trend, 
   trendUp,
-  colorClass = "text-ink-800"
+  colorClass = "text-ink-800",
+  index = 0
 }) => {
   return (
-    <div className="bg-paper-50 border-2 border-paper-200 p-6 relative overflow-hidden group hover:border-ink-300 hover:-translate-y-1 hover:shadow-float transition-all duration-500 cursor-default">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: index * 0.1 }}
+      whileHover={{ y: -4 }}
+      className="bg-paper-50 border-2 border-paper-200 p-6 relative overflow-hidden group hover:border-ink-300 hover:shadow-float transition-all duration-500 cursor-default"
+    >
       
       {/* Aesthetic: Corner decorative lines that expand on hover */}
       <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-paper-300 group-hover:w-6 group-hover:h-6 group-hover:border-ink-400 transition-all duration-500"></div>
@@ -60,6 +69,6 @@ export const StatCard: React.FC<StatCardProps> = ({
            <span className="text-xs font-mono text-ink-400 uppercase tracking-widest font-bold">System Verified</span>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };

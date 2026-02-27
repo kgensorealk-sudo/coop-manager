@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
+import { motion } from 'motion/react';
 import { User, LoanWithBorrower } from '../types';
 import { dataService } from '../services/dataService';
 import { 
@@ -29,6 +30,21 @@ interface MemberDirectoryProps {
 }
 
 type MemberFilter = 'all' | 'active-loans' | 'admins' | 'external' | 'arrears';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
 
 export const MemberDirectory: React.FC<MemberDirectoryProps> = ({ 
   members, 
@@ -161,8 +177,13 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
   const isAdmin = currentUserRole === 'admin';
 
   return (
-    <div className="space-y-8 animate-fade-in relative">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-paper-300 pb-6">
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-8 animate-fade-in relative"
+    >
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-paper-300 pb-6">
         <div>
           <h1 className="text-4xl font-serif font-bold text-ink-900">Membership Registry</h1>
           <p className="text-ink-500 mt-2 font-serif italic text-xl">Directory of shareholders and borrowers.</p>
@@ -174,16 +195,16 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
             <span>Add Shareholder</span>
           </button>
         )}
-      </div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard title="Registered Members" value={summaryStats.totalMembers.toString()} icon={Users} trend="Total Registry" colorClass="text-ink-900" />
         <StatCard title="Total Group Equity" value={`₱${summaryStats.totalGroupEquity.toLocaleString()}`} icon={PiggyBank} trend="Cooperative Pool" trendUp={true} colorClass="text-emerald-700" />
         <StatCard title="Active Loans" value={summaryStats.totalActiveLoans.toString()} icon={CreditCard} trend="Deployed Assets" colorClass="text-blue-700" />
         <StatCard title="Arrears Notice" value={summaryStats.totalArrearsCount.toString()} icon={AlertTriangle} trend={summaryStats.totalArrearsCount > 0 ? "Review Required" : "Clean Books"} trendUp={summaryStats.totalArrearsCount === 0} colorClass={summaryStats.totalArrearsCount > 0 ? "text-wax-600" : "text-ink-400"} />
-      </div>
+      </motion.div>
 
-      <div className="bg-paper-50 p-4 rounded-sm shadow-sm border border-paper-200 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <motion.div variants={itemVariants} className="bg-paper-50 p-4 rounded-sm shadow-sm border border-paper-200 flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative w-full md:w-96 group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 group-focus-within:text-ink-900 transition-colors" size={18} />
           <input type="text" placeholder="Search by name or email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-transparent border-b border-paper-300 focus:border-ink-900 outline-none font-serif placeholder:italic text-ink-800" />
@@ -210,9 +231,9 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredMembers.map(member => {
           const memberActiveLoans = loans.filter(l => l.borrower_id === member.id && l.status === 'active');
           const totalActivePrincipal = memberActiveLoans.reduce((sum, l) => sum + l.remaining_principal, 0);
@@ -282,9 +303,8 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
             </div>
           );
         })}
-      </div>
-
+      </motion.div>
       <MemberModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={editingMember ? handleUpdateMember : handleAddMember} editingMember={editingMember} />
-    </div>
+    </motion.div>
   );
 };

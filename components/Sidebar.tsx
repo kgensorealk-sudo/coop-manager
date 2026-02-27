@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { motion } from 'motion/react';
 import { LayoutDashboard, Users, PiggyBank, FileText, LogOut, Code2, Calendar, Megaphone, Feather, Image, Book } from 'lucide-react';
 import { User } from '../types';
 
@@ -9,6 +10,18 @@ interface SidebarProps {
   currentUser: User;
   onLogout: () => void;
 }
+
+const itemVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: (i: number) => ({
+    opacity: 1,
+    x: 0,
+    transition: {
+      delay: i * 0.05,
+      duration: 0.3
+    }
+  })
+};
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
   activeTab, 
@@ -62,12 +75,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="text-xs font-bold text-gold-600 uppercase tracking-[0.2em] px-3 mb-2 font-sans opacity-80">
           {isAdmin ? 'Administration' : 'Member Access'}
         </div>
-        {menuItems.map((item) => {
+        {menuItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
-            <button
+            <motion.button
               key={item.id}
+              custom={index}
+              initial="hidden"
+              animate="visible"
+              variants={itemVariants}
               onClick={() => onTabChange(item.id)}
               className={`w-full flex items-center space-x-4 px-4 py-3.5 rounded-sm transition-all duration-300 group relative overflow-hidden ${
                 isActive 
@@ -82,14 +99,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
               
               <Icon size={18} strokeWidth={1.5} className={isActive ? 'text-gold-400' : 'text-paper-500 group-hover:text-paper-300 transition-colors'} />
               <span className={`text-base tracking-wide ${isActive ? 'font-medium' : 'font-light'}`}>{item.label}</span>
-            </button>
+            </motion.button>
           );
         })}
         
         {isAdmin && (
           <div className="pt-8 mt-4">
             <div className="text-xs font-bold text-gold-600 uppercase tracking-[0.2em] px-3 mb-2 font-sans opacity-80">System</div>
-            <button
+            <motion.button
+              custom={menuItems.length}
+              initial="hidden"
+              animate="visible"
+              variants={itemVariants}
               onClick={() => onTabChange('dev-guide')}
               className={`w-full flex items-center space-x-4 px-4 py-3.5 rounded-sm transition-all duration-300 group relative ${
                 activeTab === 'dev-guide'
@@ -100,7 +121,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {activeTab === 'dev-guide' && <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold-500"></div>}
               <Code2 size={18} strokeWidth={1.5} className={activeTab === 'dev-guide' ? 'text-gold-400' : 'text-paper-500 group-hover:text-paper-300'} />
               <span className="text-base font-light tracking-wide">Developer Guide</span>
-            </button>
+            </motion.button>
           </div>
         )}
       </nav>

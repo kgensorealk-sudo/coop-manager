@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { motion } from 'motion/react';
 import { User, LoanWithBorrower, ContributionWithMember, SavingGoal } from '../types';
 import { StatCard } from './StatCard';
 import { Wallet, CreditCard, Calendar, Clock, AlertCircle, Plus, PiggyBank, Lock, TrendingDown, CheckCircle2, XCircle, ArrowRightLeft, Target } from 'lucide-react';
@@ -12,6 +13,21 @@ interface MemberDashboardProps {
   onApplyLoan: () => void;
   onAddContribution: () => void;
 }
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
 
 export const MemberDashboard: React.FC<MemberDashboardProps> = ({ 
   user, 
@@ -59,10 +75,15 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-8 animate-fade-in"
+    >
       
       {/* Welcome Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-serif font-bold text-slate-900">Personal Ledger</h1>
           <p className="text-slate-500 mt-2 font-serif italic">Overview of your equity and loan status.</p>
@@ -89,10 +110,10 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
               <span>{hasPendingLoan ? 'Request Pending' : 'Loan'}</span>
            </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Personal Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard 
           title="My Equity" 
           value={`₱${user.equity.toLocaleString()}`} 
@@ -111,11 +132,11 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
           icon={Calendar} 
           colorClass="bg-purple-50 text-purple-700 border-purple-200"
         />
-      </div>
+      </motion.div>
 
       {/* Pending Items (Loans & Deposits) */}
       {(pendingLoans.length > 0 || pendingContributions.length > 0) && (
-        <div className="bg-amber-50 rounded-sm border border-amber-200 p-6 relative overflow-hidden">
+        <motion.div variants={itemVariants} className="bg-amber-50 rounded-sm border border-amber-200 p-6 relative overflow-hidden">
            {/* Striped tape effect */}
            <div className="absolute top-0 left-0 w-full h-1 bg-amber-200 repeating-linear-gradient(45deg,transparent,transparent 10px,#f59e0b 10px,#f59e0b 20px)"></div>
            
@@ -157,11 +178,11 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                  </div>
               ))}
            </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Loan Applications Summary - ENHANCED Historical Register Table */}
-      <div className="space-y-4">
+      <motion.div variants={itemVariants} className="space-y-4">
         <div className="flex items-center justify-between border-b border-slate-200 pb-2">
             <h2 className="text-xl font-serif font-bold text-slate-900 flex items-center gap-2">
                 <ArrowRightLeft size={20} className="text-blue-600" />
@@ -228,10 +249,10 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* NEW: Savings Goals Summary Section */}
-      <div className="space-y-4">
+      <motion.div variants={itemVariants} className="space-y-4">
         <div className="flex items-center justify-between border-b border-slate-200 pb-2">
             <h2 className="text-xl font-serif font-bold text-slate-900 flex items-center gap-2">
                 <Target size={20} className="text-gold-600" />
@@ -292,10 +313,10 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
             })}
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* Contribution History Table */}
-      <div className="bg-white rounded-sm border border-slate-200 shadow-paper overflow-hidden mt-8">
+      <motion.div variants={itemVariants} className="bg-white rounded-sm border border-slate-200 shadow-paper overflow-hidden mt-8">
         <div className="p-6 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
           <h2 className="text-lg font-serif font-bold text-slate-900">Equity Contribution Log</h2>
           <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Verified Transactions</span>
@@ -344,7 +365,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
             </table>
           </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

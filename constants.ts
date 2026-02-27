@@ -98,7 +98,8 @@ export const MOCK_PAYMENTS: Payment[] = [
     amount: 1000, 
     date: '2023-11-01', 
     interest_paid: 500, 
-    principal_paid: 500 
+    principal_paid: 500,
+    penalty_paid: 0
   },
   { 
     id: 'p2', 
@@ -106,7 +107,8 @@ export const MOCK_PAYMENTS: Payment[] = [
     amount: 1500, 
     date: '2023-12-01', 
     interest_paid: 500, 
-    principal_paid: 1000 
+    principal_paid: 1000,
+    penalty_paid: 0
   }
 ];
 

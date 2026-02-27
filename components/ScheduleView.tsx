@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { dataService } from '../services/dataService';
-import { LoanWithBorrower } from '../types';
 import { 
   Clock, 
   Coins, 
@@ -29,7 +28,7 @@ interface PaydayGroup {
 }
 
 export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) => {
-  const [loans, setLoans] = useState<LoanWithBorrower[]>([]);
+  const [allInstallments, setAllInstallments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
 
@@ -40,8 +39,32 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
   const fetchData = async () => {
     setLoading(true);
     try {
-      const allLoans = await dataService.getLoans();
-      setLoans(allLoans.filter(l => l.status === 'active' || l.status === 'paid'));
+      const schedules = await dataService.getUpcomingSchedules();
+      
+      // Map dataService schedules to the format expected by ScheduleView
+      const mappedSchedules = schedules
+        .filter(s => !filterByUserId || s.borrower_id === filterByUserId)
+        .map(s => {
+          const d = new Date(s.date);
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          
+          return {
+            loanId: s.loan_id,
+            loanPurpose: s.title.split(' - ')[1] || '',
+            borrowerName: s.borrower_name,
+            date: d,
+            dateStr: `${y}-${m}-${day}`,
+            principal: s.principal,
+            interest: s.interest,
+            total: s.amount,
+            status: s.status,
+            loanRef: s.loanRef
+          };
+        });
+        
+      setAllInstallments(mappedSchedules);
     } catch (e) {
       console.error(e);
     } finally {
@@ -49,59 +72,13 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
     }
   };
 
-  const toLocalISO = (date: Date) => {
+  const todayStr = useMemo(() => {
+    const date = new Date();
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
-  };
-
-  const todayStr = useMemo(() => toLocalISO(new Date()), []);
-
-  const allInstallments = useMemo(() => {
-    const installments: any[] = [];
-    const now = new Date();
-
-    loans.forEach(loan => {
-      if (filterByUserId && loan.borrower_id !== filterByUserId) return;
-
-      // New Math: 2-month term, 4 installments
-      const totalTermDebt = loan.principal * 1.20; 
-      const installmentAmount = totalTermDebt / 4;
-      const installmentInterest = (loan.principal * 0.05); // 5% per payment (Total 20%)
-      const installmentPrincipal = loan.principal / 4;
-
-      const loanStart = new Date(loan.start_date || loan.created_at);
-      const scheduleDates = dataService.getInstallmentDates(loanStart);
-
-      const totalPaidOverall = loan.principal - loan.remaining_principal; // Approx for simplicity in ledger view
-      // NOTE: We rely on the payments collection logic for higher accuracy, but here we track by cumulative principal
-      let cumulativeExpectedPrincipal = 0;
-
-      scheduleDates.forEach((paydayDate) => {
-        cumulativeExpectedPrincipal += installmentPrincipal;
-
-        // Strict date-based overdue check (ignoring hours)
-        const isPast = paydayDate < now;
-        const isSettled = totalPaidOverall >= (cumulativeExpectedPrincipal - 0.1);
-
-        installments.push({
-          loanId: loan.id,
-          loanPurpose: loan.purpose,
-          borrowerName: loan.borrower.full_name,
-          date: paydayDate,
-          dateStr: toLocalISO(paydayDate),
-          principal: installmentPrincipal,
-          interest: installmentInterest,
-          total: installmentAmount,
-          status: isSettled ? 'paid' : (isPast ? 'overdue' : 'upcoming'),
-          loanRef: loan
-        });
-      });
-    });
-
-    return installments.sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [loans, filterByUserId]);
+  }, []);
 
   const paydayGroups = useMemo(() => {
     const groups: Record<string, PaydayGroup> = {};

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { LoanWithBorrower, Payment } from '../types';
 import { dataService } from '../services/dataService';
 import { 
@@ -38,12 +39,8 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'history' | 'schedule'>('history');
 
-  // Animation state
-  const [isClosing, setIsClosing] = useState(false);
-
   useEffect(() => {
     if (isOpen && loan) {
-      setIsClosing(false);
       fetchHistory();
       setAmount('');
       setError(null);
@@ -52,11 +49,7 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
   }, [isOpen, loan]);
 
   const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-      setIsClosing(false);
-    }, 300);
+    onClose();
   };
 
   const fetchHistory = async () => {
@@ -77,11 +70,11 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
   const amortizationSchedule = useMemo(() => {
     if (!loan || !debt) return [];
     
-    const installmentInterest = (loan.principal * 0.05); // 5% per cycle (Total 20%)
-    const installmentPrincipal = loan.principal / 4;
+    const installmentInterest = (loan.principal * (loan.interest_rate / 200)); 
+    const installmentPrincipal = loan.principal / (loan.duration_months * 2);
     
     const loanStart = new Date(loan.start_date || loan.created_at);
-    const scheduleDates = dataService.getInstallmentDates(loanStart);
+    const scheduleDates = dataService.getInstallmentDates(loanStart, loan.duration_months * 2);
 
     const historyTotalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
     let cumulativeRequired = 0;
@@ -129,6 +122,19 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
     }
   };
 
+  const paymentsWithRunningPrincipal = useMemo(() => {
+    if (!loan) return [];
+    // Sort by date ascending to calculate running principal
+    const sorted = [...payments].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    let currentPrincipal = loan.principal;
+    const withRunning = sorted.map(p => {
+      currentPrincipal -= (p.principal_paid || 0);
+      return { ...p, runningPrincipal: Math.max(0, currentPrincipal) };
+    });
+    // Return in descending order for display
+    return withRunning.reverse();
+  }, [loan, payments]);
+
   if (!isOpen || !loan || !debt) return null;
 
   const totalPaidOverall = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -136,10 +142,24 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
   const principalProgress = Math.min(((loan.principal - debt.remainingPrincipal) / loan.principal) * 100, 100);
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-leather-900/70 backdrop-blur-md p-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
-      <div className={`bg-paper-50 rounded-sm shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh] border-4 border-double border-paper-300 relative ${isClosing ? 'animate-scale-out' : 'animate-zoom-in'}`}>
-        
-        <div className={`p-8 relative overflow-hidden shrink-0 min-h-[300px] transition-colors duration-500 ${debt.isPostTerm ? 'bg-wax-950 text-paper-50' : 'bg-[#0f172a] text-paper-50'}`}>
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-leather-900/70 backdrop-blur-md p-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={handleClose}
+            className="absolute inset-0"
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="bg-paper-50 rounded-sm shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh] border-4 border-double border-paper-300 relative z-10"
+          >
+            <div className={`p-8 relative overflow-hidden shrink-0 min-h-[300px] transition-colors duration-500 ${debt.isPostTerm ? 'bg-wax-950 text-paper-50' : 'bg-[#0f172a] text-paper-50'}`}>
           <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none rotate-12">
              <Receipt size={180} />
           </div>
@@ -168,9 +188,9 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                 <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#C5A028] flex items-center gap-2">
                    <Scale size={12} /> Live Interest & Penalties
                 </div>
-                <div className="text-3xl font-mono font-bold">₱{(debt.remainingTermInterest + debt.penaltyTotal).toLocaleString()}</div>
+                <div className="text-3xl font-mono font-bold">₱{(debt.remainingTermInterest + debt.remainingPenalty).toLocaleString()}</div>
                 <div className="text-xs text-paper-500 font-serif italic">
-                   {debt.isPostTerm ? `Includes ₱${debt.penaltyTotal.toLocaleString()} Late Fees` : 'Fixed Term Interest'}
+                   {debt.isPostTerm ? `Includes ₱${debt.remainingPenalty.toLocaleString()} Late Fees` : 'Fixed Term Interest'}
                 </div>
              </div>
 
@@ -229,8 +249,8 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                             <span className="font-mono font-bold">{debt.monthsOverdue} Mo.</span>
                          </div>
                          <div className="p-3 bg-wax-600 text-white rounded-sm shadow-md">
-                            <span className="block text-[10px] font-black uppercase text-wax-100 mb-1">Total Penalty Due</span>
-                            <span className="font-mono font-bold text-lg">₱{debt.penaltyTotal.toLocaleString()}</span>
+                            <span className="block text-[10px] font-black uppercase text-wax-100 mb-1">Remaining Penalty</span>
+                            <span className="font-mono font-bold text-lg">₱{debt.remainingPenalty.toLocaleString()}</span>
                          </div>
                       </div>
                    </div>
@@ -276,7 +296,7 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                         placeholder="0.00"
                         value={amount}
                         onChange={(e) => {
-                            setAmount(e.target.value ? Number(e.target.value) : '');
+                            setAmount(e.target.value ? parseFloat(e.target.value) : '');
                             setError(null); 
                         }}
                         className="w-full pl-10 pr-4 py-4 bg-paper-50 border-b-2 border-paper-300 focus:border-ink-900 outline-none transition-colors text-2xl font-mono text-ink-900"
@@ -291,7 +311,7 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                  </button>
               </form>
               <div className="mt-4 flex items-center gap-2 text-[10px] text-ink-400 font-black uppercase tracking-widest">
-                  <History size={12}/> Cascade: Penalties (₱{debt.penaltyTotal.toLocaleString()}) are settled before Interest or Principal.
+                  <History size={12}/> Cascade: Penalties (₱{debt.remainingPenalty.toLocaleString()}) are settled before Interest or Principal.
               </div>
               {error && <p className="mt-4 text-xs text-wax-600 font-black flex items-center gap-2"><AlertCircle size={14}/> {error}</p>}
             </div>
@@ -322,15 +342,15 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                     <tr>
                       <th className="px-6 py-4">Ref. Date</th>
                       <th className="px-6 py-4">Amt Collected</th>
-                      <th className="px-6 py-4">Allocated Interest/Pen</th>
+                      <th className="px-6 py-4">Application Breakdown</th>
                       <th className="px-6 py-4 text-right">Running Principal</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-paper-100 font-mono text-xs">
-                    {payments.length === 0 ? (
+                    {paymentsWithRunningPrincipal.length === 0 ? (
                        <tr><td colSpan={4} className="px-6 py-16 text-center text-ink-300 italic font-serif text-xl">No transactions found in history.</td></tr>
                     ) : (
-                        payments.map((payment) => (
+                        paymentsWithRunningPrincipal.map((payment) => (
                         <tr key={payment.id} className="hover:bg-paper-50 transition-colors group">
                             <td className="px-6 py-5 text-ink-600 font-serif italic text-base">
                                 {new Date(payment.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -338,11 +358,31 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                             <td className="px-6 py-5 font-bold text-sm text-ink-900">
                                 ₱{payment.amount.toLocaleString()}
                             </td>
-                            <td className="px-6 py-5 text-[#d97706] text-sm">
-                                ₱{payment.interest_paid.toLocaleString()}
+                            <td className="px-6 py-5 space-y-1">
+                                {(payment.penalty_paid || 0) > 0 && (
+                                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-wax-600">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-wax-600"></div>
+                                        <span>Pen: ₱{payment.penalty_paid.toLocaleString()}</span>
+                                    </div>
+                                )}
+                                {(payment.interest_paid || 0) > 0 && (
+                                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-amber-600">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-600"></div>
+                                        <span>Int: ₱{payment.interest_paid.toLocaleString()}</span>
+                                    </div>
+                                )}
+                                {(payment.principal_paid || 0) > 0 && (
+                                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-600">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
+                                        <span>Pri: ₱{payment.principal_paid.toLocaleString()}</span>
+                                    </div>
+                                )}
+                                {!(payment.penalty_paid || 0) && !(payment.interest_paid || 0) && !(payment.principal_paid || 0) && (
+                                    <span className="text-ink-300 italic">Unallocated</span>
+                                )}
                             </td>
                             <td className="px-6 py-5 text-right font-black text-ink-900 text-lg">
-                                ₱{loan.principal.toLocaleString()}
+                                ₱{payment.runningPrincipal.toLocaleString()}
                             </td>
                         </tr>
                         ))
@@ -400,8 +440,10 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
+  )}
+  </AnimatePresence>
   );
 };
 

@@ -59,9 +59,10 @@ class DataService {
     const startDate = new Date(loan.start_date || loan.created_at);
     const now = new Date();
     
-    // 1. Core Term Math: 10% interest per month
+    // 1. Core Term Math: Use loan.interest_rate (monthly)
     const totalInstallments = loan.duration_months * 2;
-    const baseInterest = (loan.principal * 0.10) * loan.duration_months;
+    const rate = (loan.interest_rate || 10) / 100;
+    const baseInterest = (loan.principal * rate) * loan.duration_months;
     const totalTermDebt = loan.principal + baseInterest;
     
     // 2. Installment Schedule
@@ -82,20 +83,31 @@ class DataService {
       penaltyTotal = Math.max(0, monthsOverdue * totalMonthlyPenalty);
     }
 
-    const totalInterestPaid = payments.reduce((sum, p) => sum + p.interest_paid, 0);
-    const totalPrincipalPaid = payments.reduce((sum, p) => sum + p.principal_paid, 0);
+    const totalInterestPaid = payments.reduce((sum, p) => sum + (p.interest_paid || 0), 0);
+    const totalPrincipalPaid = payments.reduce((sum, p) => sum + (p.principal_paid || 0), 0);
+    const totalPenaltyPaid = payments.reduce((sum, p) => sum + (p.penalty_paid || 0), 0);
     
+    // 3. Matured Interest Calculation
+    const passedInstallments = schedule.filter(date => date <= now).length;
+    const interestPerInstallment = baseInterest / totalInstallments;
+    const maturedInterest = interestPerInstallment * passedInstallments;
+    const unpaidMaturedInterest = Math.max(0, maturedInterest - totalInterestPaid);
+
     const remainingTermInterest = Math.max(0, baseInterest - totalInterestPaid);
     const remainingPrincipal = Math.max(0, loan.principal - totalPrincipalPaid);
+    const remainingPenalty = Math.max(0, penaltyTotal - totalPenaltyPaid);
     
     return {
       totalTermDebt,
       installmentAmount: totalTermDebt / totalInstallments,
       penaltyTotal,
+      remainingPenalty,
       monthsOverdue,
       remainingPrincipal,
       remainingTermInterest,
-      liveTotalDue: remainingPrincipal + remainingTermInterest + penaltyTotal,
+      maturedInterest,
+      unpaidMaturedInterest,
+      liveTotalDue: remainingPrincipal + remainingTermInterest + remainingPenalty,
       isPostTerm: now > termEndDate,
       schedule
     };
@@ -103,7 +115,7 @@ class DataService {
 
   calculateLiveInterest(loan: LoanWithBorrower | any, payments: Payment[]): number {
     const debt = this.calculateDetailedDebt(loan, payments);
-    return debt.remainingTermInterest + debt.penaltyTotal;
+    return debt.remainingTermInterest + debt.remainingPenalty;
   }
 
   async restoreSession(): Promise<User | null> {
@@ -184,8 +196,9 @@ class DataService {
       const totalContributions = contributions.filter(c => c.status === 'approved').reduce((s, c) => s + c.amount, 0);
       const totalPayments = payments.reduce((s, p) => s + p.amount, 0);
       const totalDisbursed = loans.filter(l => l.status === 'active' || l.status === 'paid').reduce((s, l) => s + l.principal, 0);
-      const totalInterestCollected = payments.reduce((s, p) => s + p.interest_paid, 0);
-      const totalPrincipalRepaid = payments.reduce((s, p) => s + p.principal_paid, 0);
+      const totalInterestCollected = payments.reduce((s, p) => s + (p.interest_paid || 0), 0);
+      const totalPenaltyCollected = payments.reduce((s, p) => s + (p.penalty_paid || 0), 0);
+      const totalPrincipalRepaid = payments.reduce((s, p) => s + (p.principal_paid || 0), 0);
 
       return {
         balance: totalContributions + totalPayments - totalDisbursed,
@@ -193,10 +206,11 @@ class DataService {
         totalPayments,
         totalDisbursed,
         totalInterestCollected,
+        totalPenaltyCollected,
         totalPrincipalRepaid
       };
     } catch (e) {
-      return { balance: 0, totalContributions: 0, totalPayments: 0, totalDisbursed: 0, totalInterestCollected: 0, totalPrincipalRepaid: 0 };
+      return { balance: 0, totalContributions: 0, totalPayments: 0, totalDisbursed: 0, totalInterestCollected: 0, totalPenaltyCollected: 0, totalPrincipalRepaid: 0 };
     }
   }
 
@@ -302,13 +316,11 @@ class DataService {
     }
 
     const updates: any = { status };
+    if (customRate !== undefined) updates.interest_rate = customRate;
+    
     if (status === 'active') {
-      const { data: currentLoan } = await this.supabase!.from('loans').select('*').eq('id', loanId).single();
-      if (currentLoan) {
-        updates.interest_rate = 10;
-        updates.interest_accrued = 0;
-        updates.start_date = new Date().toISOString();
-      }
+      updates.interest_accrued = 0;
+      updates.start_date = new Date().toISOString();
     }
     
     const { error } = await this.supabase!.from('loans').update(updates).eq('id', loanId);
@@ -370,20 +382,29 @@ class DataService {
      
      let remainingToDistribute = amount;
      
-     const penaltyPaid = Math.min(remainingToDistribute, debt.penaltyTotal);
+     // 1. Pay Penalties first
+     const penaltyPaid = Math.min(remainingToDistribute, debt.remainingPenalty);
      remainingToDistribute -= penaltyPaid;
      
-     const interestPaid = Math.min(remainingToDistribute, debt.remainingTermInterest);
-     remainingToDistribute -= interestPaid;
+     // 2. Pay Matured Interest next (Arrears)
+     const maturedInterestPaid = Math.min(remainingToDistribute, debt.unpaidMaturedInterest);
+     remainingToDistribute -= maturedInterestPaid;
      
-     const principalPaid = remainingToDistribute; 
+     // 3. Pay Principal next
+     const principalPaid = Math.min(remainingToDistribute, debt.remainingPrincipal);
+     remainingToDistribute -= principalPaid;
+     
+     // 4. Pay Future Interest last
+     const futureInterestPaid = Math.min(remainingToDistribute, Math.max(0, debt.remainingTermInterest - maturedInterestPaid));
+     const interestPaid = maturedInterestPaid + futureInterestPaid;
 
      if (this.isMock()) {
         MOCK_PAYMENTS.push({ 
           id: `p${MOCK_PAYMENTS.length + 1}`, 
           loan_id: loanId, 
           amount, 
-          interest_paid: interestPaid + penaltyPaid,
+          interest_paid: interestPaid,
+          penalty_paid: penaltyPaid,
           principal_paid: principalPaid, 
           date: new Date().toISOString() 
         });
@@ -396,7 +417,8 @@ class DataService {
      const { error: payError } = await this.supabase!.from('payments').insert({ 
        loan_id: loanId, 
        amount: amount, 
-       interest_paid: interestPaid + penaltyPaid, 
+       interest_paid: interestPaid, 
+       penalty_paid: penaltyPaid,
        principal_paid: principalPaid, 
        date: new Date().toISOString() 
      });
@@ -576,6 +598,9 @@ class DataService {
         const installmentDates = this.getInstallmentDates(new Date(loan.start_date || loan.created_at), loan.duration_months * 2);
         let cumulativeRequired = 0;
 
+        const interestPerInstallment = (loan.principal * (loan.interest_rate / 100) * loan.duration_months) / (loan.duration_months * 2);
+        const principalPerInstallment = loan.principal / (loan.duration_months * 2);
+
         for (let i = 0; i < installmentDates.length; i++) {
            const targetDate = installmentDates[i];
            cumulativeRequired += debt.installmentAmount;
@@ -592,10 +617,13 @@ class DataService {
              date: targetDate.toISOString(), 
              title: `Pay ${i + 1}/${installmentDates.length} - ${loan.purpose}`, 
              amount: debt.installmentAmount, 
+             principal: principalPerInstallment,
+             interest: interestPerInstallment,
              borrower_id: loan.borrower_id, 
              borrower_name: loan.borrower.full_name, 
              status, 
-             is_payday: true 
+             is_payday: true,
+             loanRef: loan
            });
         }
      }

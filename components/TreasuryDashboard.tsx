@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { ContributionWithMember, LoanWithBorrower, Payment } from '../types';
 import { dataService } from '../services/dataService';
 import { StatCard } from './StatCard';
@@ -31,6 +32,7 @@ interface TreasuryDashboardProps {
     totalPayments: number;
     totalDisbursed: number;
     totalInterestCollected: number;
+    totalPenaltyCollected: number;
     totalPrincipalRepaid: number;
   };
   contributions: ContributionWithMember[];
@@ -43,6 +45,21 @@ interface TreasuryDashboardProps {
   onRejectContribution?: (id: string) => void;
   loading: boolean;
 }
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
 
 export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({ 
   treasuryStats, 
@@ -67,17 +84,19 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
     // 2. Comprehensive Interest Analysis
     let totalContractInterest = 0; // The theoretical maximum interest from all current active contracts
     let totalArrearsInterest = 0;  // Materialized interest that passed its date but wasn't paid
+    let totalPenaltyArrears = 0;   // Unpaid penalties
     let totalPaidFromActive = 0;   // Interest already collected specifically from these active loans
 
     activeLoans.forEach(l => {
         const loanPayments = allPayments.filter(p => p.loan_id === l.id);
-        const interestPaidOnLoan = loanPayments.reduce((s, p) => s + p.interest_paid, 0);
+        const interestPaidOnLoan = loanPayments.reduce((s, p) => s + (p.interest_paid || 0), 0);
         
         const fullTermInterest = (l.principal * (l.interest_rate / 100)) * l.duration_months;
-        const liveArrears = dataService.calculateLiveInterest(l, loanPayments);
+        const debt = dataService.calculateDetailedDebt(l, loanPayments);
 
         totalContractInterest += fullTermInterest;
-        totalArrearsInterest += liveArrears;
+        totalArrearsInterest += debt.unpaidMaturedInterest;
+        totalPenaltyArrears += debt.remainingPenalty;
         totalPaidFromActive += interestPaidOnLoan;
     });
 
@@ -88,7 +107,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
     const futureOnlyInterest = Math.max(0, totalUnearnedInterest - totalArrearsInterest);
 
     // 3. Valuation
-    const totalProjectedValuation = treasuryStats.balance + totalReceivables + totalUnearnedInterest;
+    const totalProjectedValuation = treasuryStats.balance + totalReceivables + totalUnearnedInterest + totalPenaltyArrears;
     const totalNetValue = treasuryStats.balance + totalReceivables;
 
     // 4. Harvest Efficiency (How much of the interest we SHOULD have by now is actually in the bank)
@@ -101,6 +120,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
       totalContractInterest,
       totalPaidFromActive,
       totalArrearsInterest,
+      totalPenaltyArrears,
       totalUnearnedInterest,
       futureOnlyInterest,
       totalProjectedValuation,
@@ -204,17 +224,30 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
             <div style={{ width: `${percent}%` }} className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${barColor}`}></div>
          </div>
          
-         {isExpanded && items && (
-           <div className="mb-4 pl-4 border-l-2 border-gold-500/30 text-sm text-ink-600 space-y-2 animate-fade-in max-h-48 overflow-y-auto pr-1 custom-scrollbar">
-              {items}
-           </div>
-         )}
+         <AnimatePresence>
+           {isExpanded && items && (
+             <motion.div 
+               initial={{ height: 0, opacity: 0 }}
+               animate={{ height: 'auto', opacity: 1 }}
+               exit={{ height: 0, opacity: 0 }}
+               transition={{ duration: 0.3 }}
+               className="mb-4 pl-4 border-l-2 border-gold-500/30 text-sm text-ink-600 space-y-2 overflow-hidden max-h-48 overflow-y-auto pr-1 custom-scrollbar"
+             >
+                {items}
+             </motion.div>
+           )}
+         </AnimatePresence>
       </div>
     );
   };
 
   return (
-    <div className="space-y-8 animate-fade-in relative pb-12">
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-8 animate-fade-in relative pb-12"
+    >
       
       {isEditingGoal && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-leather-900/60 backdrop-blur-sm p-4">
@@ -244,7 +277,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
          </div>
       )}
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-paper-300 pb-6">
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-paper-300 pb-6">
         <div>
           <h1 className="text-4xl font-serif font-bold text-ink-900">The Treasury Books</h1>
           <div className="flex items-center gap-2 text-ink-500 mt-2 font-serif italic">
@@ -271,10 +304,11 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
               <span>New Entry</span>
            </button>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
+          index={0}
           title="Net Cooperative Value" 
           value={`₱${financialMetrics.totalNetValue.toLocaleString()}`} 
           icon={Briefcase} 
@@ -283,6 +317,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
           colorClass="text-ink-900"
         />
         <StatCard 
+          index={1}
           title="Cash Liquidity" 
           value={`₱${treasuryStats.balance.toLocaleString()}`} 
           icon={Wallet} 
@@ -291,6 +326,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
           colorClass="text-emerald-700"
         />
         <StatCard 
+          index={2}
           title="Active Harvest Rate" 
           value={`${financialMetrics.activeHarvestRate.toFixed(1)}%`} 
           icon={ShieldCheck} 
@@ -299,6 +335,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
           colorClass={financialMetrics.activeHarvestRate < 90 ? "text-wax-600" : "text-blue-700"}
         />
         <StatCard 
+          index={3}
           title="Unearned Interest" 
           value={`₱${financialMetrics.totalUnearnedInterest.toLocaleString()}`} 
           icon={TrendingUp} 
@@ -306,10 +343,10 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
           trendUp={true}
           colorClass="text-purple-700"
         />
-      </div>
+      </motion.div>
 
       {/* REFINED: Interest Realization Stack Analysis */}
-      <div className="bg-paper-50 border-4 border-double border-paper-300 rounded-sm p-8 shadow-card relative overflow-hidden">
+      <motion.div variants={itemVariants} className="bg-paper-50 border-4 border-double border-paper-300 rounded-sm p-8 shadow-card relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-5">
              <PieChart size={160} />
           </div>
@@ -330,10 +367,10 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                   <div className="space-y-6">
                       <div className="bg-white p-5 border border-paper-200 rounded-sm shadow-sm group hover:border-emerald-300 transition-colors">
                           <div className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-1 flex items-center gap-2">
-                             <Check size={12}/> 1. Realized Cash (Paid)
+                             <Check size={12}/> 1. Realized Gains (Paid)
                           </div>
-                          <div className="text-3xl font-mono font-bold text-ink-900">₱{treasuryStats.totalInterestCollected.toLocaleString()}</div>
-                          <p className="text-xs text-ink-400 mt-2 font-serif italic">Profit already collected and sitting in the vault.</p>
+                          <div className="text-3xl font-mono font-bold text-ink-900">₱{(treasuryStats.totalInterestCollected + treasuryStats.totalPenaltyCollected).toLocaleString()}</div>
+                          <p className="text-xs text-ink-400 mt-2 font-serif italic">Interest and penalties already collected and sitting in the vault.</p>
                       </div>
 
                       <div className="bg-white p-5 border border-paper-200 rounded-sm shadow-sm group hover:border-amber-300 transition-colors">
@@ -392,11 +429,15 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                               <ul className="space-y-3 text-sm font-serif italic text-ink-700">
                                   <li className="flex items-start gap-2">
                                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5"></div>
-                                      <span>₱{treasuryStats.totalInterestCollected.toLocaleString()} is fully liquid cash.</span>
+                                      <span>₱{(treasuryStats.totalInterestCollected + treasuryStats.totalPenaltyCollected).toLocaleString()} is fully liquid gains (Interest + Pen).</span>
                                   </li>
                                   <li className="flex items-start gap-2">
                                       <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5"></div>
-                                      <span>₱{financialMetrics.totalArrearsInterest.toLocaleString()} is owed and 'up' on borrower ledgers.</span>
+                                      <span>₱{financialMetrics.totalArrearsInterest.toLocaleString()} is matured interest owed.</span>
+                                  </li>
+                                  <li className="flex items-start gap-2">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-wax-500 mt-1.5"></div>
+                                      <span>₱{financialMetrics.totalPenaltyArrears.toLocaleString()} is active penalty arrears.</span>
                                   </li>
                                   <li className="flex items-start gap-2">
                                       <div className="w-1.5 h-1.5 rounded-full bg-violet-500 mt-1.5"></div>
@@ -424,10 +465,10 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                   </div>
               </div>
           </div>
-      </div>
+      </motion.div>
 
       {/* Composition Visualizer */}
-      <div className="bg-white border-2 border-paper-200 rounded-sm p-6 shadow-sm">
+      <motion.div variants={itemVariants} className="bg-white border-2 border-paper-200 rounded-sm p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
               <h3 className="text-sm font-black text-ink-500 uppercase tracking-widest flex items-center gap-2">
                   <BarChart3 size={16} />
@@ -489,9 +530,9 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                   </div>
               </div>
           </div>
-      </div>
+      </motion.div>
 
-      <div className="bg-paper-50 rounded-sm border-2 border-paper-200 shadow-card overflow-hidden">
+      <motion.div variants={itemVariants} className="bg-paper-50 rounded-sm border-2 border-paper-200 shadow-card overflow-hidden">
          <div className="p-5 border-b border-paper-200 bg-paper-100/50 flex items-center justify-between">
             <div className="flex items-center space-x-3">
                <div className="p-2 bg-ink-900 text-gold-500 rounded-sm">
@@ -559,6 +600,13 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                         percent={getPercent(treasuryStats.totalInterestCollected)}
                         id="br-interest"
                      />
+                     <BreakdownRow 
+                        title="Penalty Collections"
+                        amount={treasuryStats.totalPenaltyCollected}
+                        color="wax"
+                        percent={getPercent(treasuryStats.totalPenaltyCollected)}
+                        id="br-penalties"
+                     />
                   </div>
                </div>
             </div>
@@ -625,8 +673,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                </div>
             </div>
          </div>
-      </div>
-
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

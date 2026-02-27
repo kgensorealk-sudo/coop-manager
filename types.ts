@@ -48,6 +48,7 @@ export interface Payment {
   date: string;
   interest_paid: number;
   principal_paid: number;
+  penalty_paid: number;
 }
 
 export interface Announcement {
