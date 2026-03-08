@@ -231,25 +231,21 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                       <AlertTriangle size={24}/>
                    </div>
                    <div className="flex-1">
-                      <h3 className="text-xl font-serif font-bold text-wax-900 mb-1">Post-Term Default Penalty Applied</h3>
+                      <h3 className="text-xl font-serif font-bold text-wax-900 mb-1">Post-Term Default Surcharge Applied</h3>
                       <p className="text-sm text-wax-800 font-serif italic leading-relaxed mb-4">
-                         The 4-installment grace window has closed. The account has entered the default phase.
+                         The {loan.duration_months * 2}-installment contracted term has ended. The account has entered the default phase.
                       </p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                          <div className="p-3 bg-white border border-wax-200 rounded-sm">
-                            <span className="block text-[10px] font-black uppercase text-wax-600 mb-1">Base Penalty (10%)</span>
-                            <span className="font-mono font-bold">₱{(loan.principal * 0.1).toLocaleString()}</span>
-                         </div>
-                         <div className="p-3 bg-white border border-wax-200 rounded-sm">
-                            <span className="block text-[10px] font-black uppercase text-wax-600 mb-1">Surcharge (10%)</span>
-                            <span className="font-mono font-bold">₱{(loan.principal * 0.01).toLocaleString()}</span>
+                            <span className="block text-[10px] font-black uppercase text-wax-600 mb-1">Monthly Surcharge (10%)</span>
+                            <span className="font-mono font-bold">₱{(loan.remaining_principal * 0.1).toLocaleString()}</span>
                          </div>
                          <div className="p-3 bg-white border border-wax-200 rounded-sm">
                             <span className="block text-[10px] font-black uppercase text-wax-600 mb-1">Months Overdue</span>
                             <span className="font-mono font-bold">{debt.monthsOverdue} Mo.</span>
                          </div>
                          <div className="p-3 bg-wax-600 text-white rounded-sm shadow-md">
-                            <span className="block text-[10px] font-black uppercase text-wax-100 mb-1">Remaining Penalty</span>
+                            <span className="block text-[10px] font-black uppercase text-wax-100 mb-1">Total Surcharge Owed</span>
                             <span className="font-mono font-bold text-lg">₱{debt.remainingPenalty.toLocaleString()}</span>
                          </div>
                       </div>
@@ -311,7 +307,7 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                  </button>
               </form>
               <div className="mt-4 flex items-center gap-2 text-[10px] text-ink-400 font-black uppercase tracking-widest">
-                  <History size={12}/> Cascade: Penalties (₱{debt.remainingPenalty.toLocaleString()}) are settled before Interest or Principal.
+                  <History size={12}/> Cascade: Surcharges (₱{debt.remainingPenalty.toLocaleString()}) are settled before Interest or Principal.
               </div>
               {error && <p className="mt-4 text-xs text-wax-600 font-black flex items-center gap-2"><AlertCircle size={14}/> {error}</p>}
             </div>

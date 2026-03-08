@@ -76,11 +76,8 @@ class DataService {
       monthsOverdue = (now.getFullYear() - termEndDate.getFullYear()) * 12 + (now.getMonth() - termEndDate.getMonth());
       if (now.getDate() > termEndDate.getDate()) monthsOverdue += 1;
       
-      const basePenaltyPerMonth = loan.principal * 0.10;
-      const surchargePerMonth = basePenaltyPerMonth * 0.10;
-      const totalMonthlyPenalty = basePenaltyPerMonth + surchargePerMonth;
-      
-      penaltyTotal = Math.max(0, monthsOverdue * totalMonthlyPenalty);
+      const surchargePerMonth = loan.remaining_principal * 0.10;
+      penaltyTotal = Math.max(0, monthsOverdue * surchargePerMonth);
     }
 
     const totalInterestPaid = payments.reduce((sum, p) => sum + (p.interest_paid || 0), 0);
@@ -410,7 +407,10 @@ class DataService {
         });
         
         loan.remaining_principal = Math.max(0, loan.remaining_principal - principalPaid);
-        if (loan.remaining_principal <= 0.01) loan.status = 'paid';
+        
+        // Loan is only 'paid' if BOTH principal and all contracted interest are settled
+        const totalRemaining = loan.remaining_principal + (Math.max(0, debt.remainingTermInterest - interestPaid));
+        if (totalRemaining <= 0.01) loan.status = 'paid';
         return;
      }
 
@@ -426,10 +426,12 @@ class DataService {
      if (payError) throw payError;
 
      const newRemainingPrincipal = Math.max(0, loan.remaining_principal - principalPaid);
+     const newRemainingInterest = Math.max(0, debt.remainingTermInterest - interestPaid);
+     const isFullySettled = (newRemainingPrincipal + newRemainingInterest) <= 0.01;
 
      await this.supabase!.from('loans').update({ 
        remaining_principal: newRemainingPrincipal,
-       status: newRemainingPrincipal <= 0.01 ? 'paid' : loan.status
+       status: isFullySettled ? 'paid' : loan.status
      }).eq('id', loanId);
   }
 
