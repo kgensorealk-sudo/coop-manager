@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { GalleryItem, User } from '../types';
 import { dataService } from '../services/dataService';
 import { Image as ImageIcon, Plus, X, ZoomIn, Edit2, CheckCircle, Loader2, Archive, ArchiveRestore, AlertTriangle, Clock, Loader } from 'lucide-react';
@@ -24,7 +24,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ currentUser }) => {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isClosingEdit, setIsClosingEdit] = useState(false);
 
-  const fetchGallery = async () => {
+  const fetchGallery = useCallback(async () => {
     setLoading(true);
     try {
       const data = await dataService.getGalleryItems();
@@ -34,11 +34,11 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ currentUser }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchGallery();
-  }, []);
+  }, [fetchGallery]);
 
   const handleUpload = async (file: File, caption: string) => {
     setIsUploading(true);

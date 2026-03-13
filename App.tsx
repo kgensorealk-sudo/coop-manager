@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sidebar } from './components/Sidebar';
+import { MobileNav } from './components/MobileNav';
 import { StatCard } from './components/StatCard';
 import LoanApprovalModal from './components/LoanApprovalModal';
 import LoanApplicationForm from './components/LoanApplicationForm';
@@ -123,29 +124,19 @@ const App: React.FC = () => {
         } else {
           setInitialLoading(false);
         }
-      } catch (e) {
+      } catch {
         setInitialLoading(false);
       }
     };
     initSession();
   }, []);
 
-  useEffect(() => {
-    const loadData = async () => {
-      if (currentUser) {
-        await refreshData();
-        setInitialLoading(false);
-      }
-    };
-    loadData();
-  }, [currentUser?.id]);
-
-  const refreshData = async () => {
-    if (!currentUser) return;
+  const refreshData = useCallback(async () => {
+    if (!currentUser?.id) return;
     setLoading(true);
     setError(null);
     try {
-      const [fetchedLoans, fetchedMetrics, fetchedVolume, fetchedInterest, fetchedUsers, fetchedContributions, fetchedAnnouncements, fetchedSavingGoals] = await Promise.all([
+      const [fetchedLoans, fetchedMetrics, fetchedVolume, fetchedInterest, fetchedUsers, fetchedContributions, fetchedAnnouncements, fetchedSavingGoals, fetchedPayments] = await Promise.all([
         dataService.getLoans(),
         dataService.getTreasuryMetrics(),
         dataService.getActiveLoanVolume(),
@@ -153,7 +144,8 @@ const App: React.FC = () => {
         dataService.getUsers(),
         dataService.getContributions(),
         dataService.getActiveAnnouncements(),
-        dataService.getSavingGoals(currentUser.id)
+        dataService.getSavingGoals(currentUser.id),
+        dataService.getAllPayments()
       ]);
 
       setLoans(fetchedLoans);
@@ -163,10 +155,7 @@ const App: React.FC = () => {
       setMembers(fetchedUsers);
       setContributions(fetchedContributions);
       setSavingGoals(fetchedSavingGoals);
-      
-      const { data: payments, error: payError } = await (dataService as any).supabase.from('payments').select('*');
-      if (payError) throw payError;
-      setAllPayments(payments || []);
+      setAllPayments(fetchedPayments);
       
       if (fetchedAnnouncements && fetchedAnnouncements.length > 0 && !hasShownAnnouncement) {
         setSystemAnnouncements(fetchedAnnouncements);
@@ -177,18 +166,44 @@ const App: React.FC = () => {
       }
       
       const updatedCurrentUser = fetchedUsers.find(u => u.id === currentUser.id);
-      if (updatedCurrentUser) setCurrentUser(updatedCurrentUser);
-      
-      if (selectedLoan) {
-         const updatedSelectedLoan = fetchedLoans.find(l => l.id === selectedLoan.id);
-         if (updatedSelectedLoan) setSelectedLoan(updatedSelectedLoan);
+      if (updatedCurrentUser) {
+        // Only update if equity or role changed to avoid unnecessary re-renders
+        setCurrentUser(prev => {
+          if (!prev) return updatedCurrentUser;
+          if (prev.equity !== updatedCurrentUser.equity || prev.role !== updatedCurrentUser.role || prev.full_name !== updatedCurrentUser.full_name) {
+            return updatedCurrentUser;
+          }
+          return prev;
+        });
       }
+      
+      setSelectedLoan(prev => {
+        if (!prev) return null;
+        const updatedSelectedLoan = fetchedLoans.find(l => l.id === prev.id);
+        if (updatedSelectedLoan) {
+          // Simple check to avoid infinite loop if object is same data but new reference
+          if (JSON.stringify(prev) !== JSON.stringify(updatedSelectedLoan)) {
+            return updatedSelectedLoan;
+          }
+        }
+        return prev;
+      });
     } catch (err: any) {
       setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser?.id, hasShownAnnouncement]); // Removed selectedLoan?.id dependency by using functional update for setSelectedLoan
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (currentUser) {
+        await refreshData();
+        setInitialLoading(false);
+      }
+    };
+    loadData();
+  }, [currentUser, refreshData]);
 
   const handleLogin = async (email: string, pass: string, isSignup?: boolean, fullName?: string) => {
     setLoadingText('Verifying Identity...');
@@ -231,7 +246,8 @@ const App: React.FC = () => {
       setHasShownAnnouncement(false);
       setSystemAnnouncements([]);
       setIsSystemAnnouncementOpen(false);
-    } catch (e) {
+    } catch {
+      // Ignore
     } finally {
       setInitialLoading(initialLoading);
       window.location.reload(); // Hard refresh to clear all states
@@ -273,21 +289,13 @@ const App: React.FC = () => {
   const handleCreateLoan = async (data: { borrower_id: string; principal: number; duration_months: number; purpose: string }) => {
     const hasPending = loans.some(l => l.borrower_id === data.borrower_id && l.status === 'pending');
     if (hasPending) throw new Error("This borrower already has a pending loan request.");
-    try {
-      await dataService.createLoan(data);
-      await refreshData();
-    } catch (error) {
-      throw error;
-    }
+    await dataService.createLoan(data);
+    await refreshData();
   };
 
   const handleAddContribution = async (data: { member_id: string; amount: number; type: 'monthly_deposit' | 'one_time'; status: ContributionStatus }) => {
-    try {
-      await dataService.addContribution(data);
-      await refreshData();
-    } catch (error) {
-      throw error;
-    }
+    await dataService.addContribution(data);
+    await refreshData();
   };
 
   const handleApproveContribution = async (id: string) => {
@@ -310,17 +318,13 @@ const App: React.FC = () => {
   
   const handleSaveAnnouncement = async (title: string, message: string, priority: AnnouncementPriority, start: string | null, end: string | null) => {
     if (!currentUser) return;
-    try {
-      if (editingAnnouncement) {
-        await dataService.updateAnnouncement(editingAnnouncement.id, { title, message, priority, scheduled_start: start, scheduled_end: end });
-      } else {
-        await dataService.createAnnouncement(title, message, currentUser.id, priority, start, end);
-      }
-      await refreshData(); 
-      setEditingAnnouncement(null);
-    } catch (e) {
-      throw e;
+    if (editingAnnouncement) {
+      await dataService.updateAnnouncement(editingAnnouncement.id, { title, message, priority, scheduled_start: start, scheduled_end: end });
+    } else {
+      await dataService.createAnnouncement(title, message, currentUser.id, priority, start, end);
     }
+    await refreshData(); 
+    setEditingAnnouncement(null);
   };
   
   const handleOpenAnnouncementCreate = () => {
@@ -471,35 +475,63 @@ const App: React.FC = () => {
                  </div>
               </div>
               <div className="bg-paper-50 rounded-sm border-2 border-paper-200 shadow-card overflow-hidden">
-                 <table className="w-full text-left">
-                    <thead className="bg-paper-100 border-b border-paper-200 text-sm font-bold text-ink-500 uppercase">
-                       <tr>
-                          <th className="px-6 py-4">Sender</th>
-                          <th className="px-6 py-4">Type</th>
-                          <th className="px-6 py-4">Amount</th>
-                          <th className="px-6 py-4 text-right">Actions</th>
-                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-paper-200">
-                       {pendingContributions.length === 0 ? (
-                          <tr><td colSpan={4} className="px-6 py-12 text-center text-ink-400 font-serif italic text-lg">No pending deposits.</td></tr>
-                       ) : (
-                          pendingContributions.map((c) => (
-                             <tr key={c.id} className="hover:bg-paper-100/50 transition-colors">
-                                <td className="px-6 py-4 font-serif font-bold text-ink-900 text-lg">{c.member.full_name}</td>
-                                <td className="px-6 py-4"><span className="text-xs font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-sm border border-blue-100">{c.type.replace('_', ' ')}</span></td>
-                                <td className="px-6 py-4 font-mono font-bold text-emerald-700 text-lg">+₱{c.amount.toLocaleString()}</td>
-                                <td className="px-6 py-4 text-right">
-                                   <div className="flex justify-end gap-2">
-                                      <button onClick={() => handleRejectContribution(c.id)} className="px-3 py-1.5 text-wax-600 hover:bg-wax-50 rounded-sm text-xs font-black uppercase transition-colors">Decline</button>
-                                      <button onClick={() => handleApproveContribution(c.id)} className="px-4 py-1.5 bg-ink-900 text-white hover:bg-black rounded-sm text-xs font-black transition-all">Confirm</button>
+                 {/* Desktop Table */}
+                 <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left">
+                       <thead className="bg-paper-100 border-b border-paper-200 text-sm font-bold text-ink-500 uppercase">
+                          <tr>
+                             <th className="px-6 py-4">Sender</th>
+                             <th className="px-6 py-4">Type</th>
+                             <th className="px-6 py-4">Amount</th>
+                             <th className="px-6 py-4 text-right">Actions</th>
+                          </tr>
+                       </thead>
+                       <tbody className="divide-y divide-paper-200">
+                          {pendingContributions.length === 0 ? (
+                             <tr><td colSpan={4} className="px-6 py-12 text-center text-ink-400 font-serif italic text-lg">No pending deposits.</td></tr>
+                          ) : (
+                             pendingContributions.map((c) => (
+                                <tr key={c.id} className="hover:bg-paper-100/50 transition-colors">
+                                   <td className="px-6 py-4 font-serif font-bold text-ink-900 text-lg">{c.member.full_name}</td>
+                                   <td className="px-6 py-4"><span className="text-xs font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-sm border border-blue-100">{c.type.replace('_', ' ')}</span></td>
+                                   <td className="px-6 py-4 font-mono font-bold text-emerald-700 text-lg">+₱{c.amount.toLocaleString()}</td>
+                                   <td className="px-6 py-4 text-right">
+                                      <div className="flex justify-end gap-2">
+                                         <button onClick={() => handleRejectContribution(c.id)} className="px-3 py-1.5 text-wax-600 hover:bg-wax-50 rounded-sm text-xs font-black uppercase transition-colors">Decline</button>
+                                         <button onClick={() => handleApproveContribution(c.id)} className="px-4 py-1.5 bg-ink-900 text-white hover:bg-black rounded-sm text-xs font-black transition-all">Confirm</button>
+                                      </div>
+                                   </td>
+                                </tr>
+                             ))
+                          )}
+                       </tbody>
+                    </table>
+                 </div>
+
+                 {/* Mobile Card List */}
+                 <div className="md:hidden divide-y divide-paper-200">
+                    {pendingContributions.length === 0 ? (
+                       <div className="px-6 py-12 text-center text-ink-400 font-serif italic text-lg">No pending deposits.</div>
+                    ) : (
+                       pendingContributions.map((c) => (
+                          <div key={c.id} className="p-4 space-y-4">
+                             <div className="flex justify-between items-start">
+                                <div>
+                                   <div className="font-serif font-bold text-ink-900 text-lg">{c.member.full_name}</div>
+                                   <div className="mt-1">
+                                      <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-sm border border-blue-100">{c.type.replace('_', ' ')}</span>
                                    </div>
-                                </td>
-                             </tr>
-                          ))
-                       )}
-                    </tbody>
-                 </table>
+                                </div>
+                                <div className="font-mono font-bold text-emerald-700 text-lg">+₱{c.amount.toLocaleString()}</div>
+                             </div>
+                             <div className="flex gap-2">
+                                <button onClick={() => handleRejectContribution(c.id)} className="flex-1 py-2 text-wax-600 bg-wax-50 rounded-sm text-xs font-black uppercase transition-colors border border-wax-200">Decline</button>
+                                <button onClick={() => handleApproveContribution(c.id)} className="flex-1 py-2 bg-ink-900 text-white hover:bg-black rounded-sm text-xs font-black uppercase transition-all">Confirm</button>
+                             </div>
+                          </div>
+                       ))
+                    )}
+                 </div>
               </div>
            </div>
         </div>
@@ -559,6 +591,9 @@ const App: React.FC = () => {
             const debtDetails = dataService.calculateDetailedDebt(loan, loanPayments);
             const totalPaid = loanPayments.reduce((sum, p) => sum + p.amount, 0);
             
+            const isEffectivelyPaid = loan.status === 'active' && (loan.remaining_principal + liveInterestDue + debtDetails.remainingPenalty) <= 0.01;
+            const displayStatus = isEffectivelyPaid ? 'paid' : loan.status;
+
             const nextDue = debtDetails.schedule.find((_, idx) => {
               const cumulativeRequired = debtDetails.installmentAmount * (idx + 1);
               return totalPaid < (cumulativeRequired - 0.1);
@@ -572,16 +607,16 @@ const App: React.FC = () => {
                       <img src={loan.borrower.avatar_url} className="w-10 h-10 rounded-sm object-cover border border-paper-300 grayscale" alt="" />
                       <div>
                          <h3 className="font-serif font-bold text-ink-900 text-lg leading-tight">{loan.borrower.full_name}</h3>
-                         <p className="text-xs text-ink-500 font-mono mt-0.5">{loan.status === 'active' ? 'Active Account' : loan.status === 'pending' ? 'Pending Approval' : loan.status}</p>
+                         <p className="text-xs text-ink-500 font-mono mt-0.5">{displayStatus === 'active' ? 'Active Account' : displayStatus === 'pending' ? 'Pending Approval' : displayStatus === 'paid' ? 'Settled Account' : displayStatus}</p>
                       </div>
                    </div>
-                   <div className={`px-2 py-1 rounded-sm text-xs font-bold uppercase tracking-widest border ${loan.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : loan.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : loan.status === 'paid' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-paper-100 text-ink-500 border-paper-200'}`}>
-                     {loan.status}
+                   <div className={`px-2 py-1 rounded-sm text-xs font-bold uppercase tracking-widest border ${displayStatus === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : displayStatus === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : displayStatus === 'paid' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-paper-100 text-ink-500 border-paper-200'}`}>
+                     {displayStatus}
                    </div>
                 </div>
                 
                 {/* Repayment Tracking Mini-Section for Active Loans */}
-                {loan.status === 'active' && nextDue && (
+                {displayStatus === 'active' && nextDue && (
                   <div className="mb-4 pl-3 flex gap-4">
                      <div className="bg-amber-50/50 border border-amber-200 rounded-sm p-2 flex-1">
                         <div className="text-[9px] font-black text-amber-700 uppercase tracking-tighter flex items-center gap-1">
@@ -635,7 +670,8 @@ const App: React.FC = () => {
     <div className="flex min-h-screen bg-paper-100 font-sans selection:bg-gold-500/30 selection:text-ink-900">
       <AnnouncementModal isOpen={isSystemAnnouncementOpen} onClose={() => setIsSystemAnnouncementOpen(false)} announcements={systemAnnouncements} />
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} currentUser={currentUser} onLogout={handleLogout} />
-      <main className="flex-1 lg:ml-72 min-h-screen p-8 md:p-12">
+      <MobileNav activeTab={activeTab} onTabChange={setActiveTab} currentUser={currentUser} onLogout={handleLogout} />
+      <main className="flex-1 lg:ml-72 min-h-screen p-6 md:p-12 pt-24 lg:pt-12">
         <div className="max-w-7xl mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
@@ -647,7 +683,7 @@ const App: React.FC = () => {
             >
               {activeTab === 'dashboard' && renderAdminDashboard()}
               {activeTab === 'loans' && renderLoansTab()}
-              {activeTab === 'my-dashboard' && <MemberDashboard user={currentUser} memberLoans={loans.filter(l => l.borrower_id === currentUser.id)} memberContributions={contributions.filter(c => c.member_id === currentUser.id)} memberSavingGoals={savingGoals} onApplyLoan={() => setIsApplicationModalOpen(true)} onAddContribution={() => setIsContributionModalOpen(true)} />}
+              {activeTab === 'my-dashboard' && <MemberDashboard user={currentUser} memberLoans={loans.filter(l => l.borrower_id === currentUser.id)} memberContributions={contributions.filter(c => c.member_id === currentUser.id)} memberSavingGoals={savingGoals} allPayments={allPayments} onApplyLoan={() => setIsApplicationModalOpen(true)} onAddContribution={() => setIsContributionModalOpen(true)} />}
               {activeTab === 'members' && <MemberDirectory members={members} loans={loans} onRefresh={refreshData} currentUserRole={currentUser.role} />}
               {activeTab === 'treasury' && <TreasuryDashboard treasuryStats={treasuryStats} contributions={contributions} loans={loans} allPayments={allPayments} activeLoanVolume={activeVolume} totalInterestGained={totalInterestGained} onAddContribution={() => setIsContributionModalOpen(true)} onApproveContribution={handleApproveContribution} onRejectContribution={handleRejectContribution} loading={loading} />}
               {activeTab === 'announcements' && <AnnouncementHistory onOpenCreate={handleOpenAnnouncementCreate} onEdit={handleOpenAnnouncementEdit} readOnly={currentUser.role === 'member'} />}

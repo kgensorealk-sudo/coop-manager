@@ -29,21 +29,24 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
   // Load data if editing
   useEffect(() => {
     if (isOpen) {
-       setIsClosing(false);
-       if (editingAnnouncement) {
-          setTitle(editingAnnouncement.title);
-          setMessage(editingAnnouncement.message);
-          setPriority(editingAnnouncement.priority);
-          // Convert ISO to datetime-local string (YYYY-MM-DDTHH:mm)
-          setScheduledStart(editingAnnouncement.scheduled_start ? new Date(editingAnnouncement.scheduled_start).toISOString().slice(0, 16) : '');
-          setScheduledEnd(editingAnnouncement.scheduled_end ? new Date(editingAnnouncement.scheduled_end).toISOString().slice(0, 16) : '');
-       } else {
-          setTitle('');
-          setMessage('');
-          setPriority('normal');
-          setScheduledStart('');
-          setScheduledEnd('');
-       }
+       const timer = setTimeout(() => {
+         setIsClosing(false);
+         if (editingAnnouncement) {
+            setTitle(editingAnnouncement.title);
+            setMessage(editingAnnouncement.message);
+            setPriority(editingAnnouncement.priority);
+            // Convert ISO to datetime-local string (YYYY-MM-DDTHH:mm)
+            setScheduledStart(editingAnnouncement.scheduled_start ? new Date(editingAnnouncement.scheduled_start).toISOString().slice(0, 16) : '');
+            setScheduledEnd(editingAnnouncement.scheduled_end ? new Date(editingAnnouncement.scheduled_end).toISOString().slice(0, 16) : '');
+         } else {
+            setTitle('');
+            setMessage('');
+            setPriority('normal');
+            setScheduledStart('');
+            setScheduledEnd('');
+         }
+       }, 0);
+       return () => clearTimeout(timer);
     }
   }, [isOpen, editingAnnouncement]);
 

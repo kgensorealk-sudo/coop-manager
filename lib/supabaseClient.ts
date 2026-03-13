@@ -6,9 +6,9 @@ const getEnvVar = (key: string) => {
   if (typeof process !== 'undefined' && process.env && process.env[key]) {
     return process.env[key];
   }
-  // @ts-ignore
+  // @ts-expect-error: import.meta is not defined in all environments
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
-    // @ts-ignore
+    // @ts-expect-error: import.meta.env is not defined in all environments
     return import.meta.env[key];
   }
   return '';

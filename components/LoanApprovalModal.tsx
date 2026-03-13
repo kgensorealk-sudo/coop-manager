@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { LoanWithBorrower } from '../types';
-import { X, AlertCircle, CheckCircle, Percent, AlertTriangle, Info } from 'lucide-react';
+import { X, AlertCircle, CheckCircle, Percent, AlertTriangle, Info, Calendar, Clock } from 'lucide-react';
+import { dataService } from '../services/dataService';
 
 interface LoanApprovalModalProps {
   isOpen: boolean;
@@ -26,11 +27,16 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
   const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      setIsClosing(false);
-    }
-    if (loan) {
-      setInterestRate(loan.interest_rate);
+    if (isOpen || loan) {
+      const timer = setTimeout(() => {
+        if (isOpen) {
+          setIsClosing(false);
+        }
+        if (loan) {
+          setInterestRate(loan.interest_rate);
+        }
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [isOpen, loan]);
 
@@ -42,16 +48,35 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
     }, 300);
   };
 
-  if (!isOpen || !loan) return null;
-
-  const isNonMember = !loan.borrower.is_coop_member;
+  const isNonMember = loan?.borrower ? !loan.borrower.is_coop_member : false;
   
   // Logic: Principal + (interest per month x duration_months) = Total
-  const monthlyInterestAmount = (loan.principal * (interestRate / 100));
-  const totalTermInterest = monthlyInterestAmount * loan.duration_months;
-  const totalResponsibility = loan.principal + totalTermInterest;
+  const monthlyInterestAmount = loan ? (loan.principal * (interestRate / 100)) : 0;
+  const totalTermInterest = loan ? monthlyInterestAmount * loan.duration_months : 0;
+  const totalResponsibility = loan ? loan.principal + totalTermInterest : 0;
   
-  const hasInsufficientFunds = loan.principal > treasuryBalance;
+  const hasInsufficientFunds = loan ? loan.principal > treasuryBalance : false;
+
+  const simulatedSchedule = useMemo(() => {
+    if (!loan) return [];
+    
+    const installmentInterest = (loan.principal * (interestRate / 200)); 
+    const installmentPrincipal = loan.principal / (loan.duration_months * 2);
+    const totalInstallment = installmentInterest + installmentPrincipal;
+    
+    const loanStart = new Date();
+    const scheduleDates = dataService.getInstallmentDates(loanStart, loan.duration_months * 2);
+
+    return scheduleDates.map((paydayDate, index) => ({
+        number: index + 1,
+        date: paydayDate,
+        interest: installmentInterest,
+        principal: installmentPrincipal,
+        total: totalInstallment
+    }));
+  }, [loan, interestRate]);
+
+  if (!isOpen || !loan) return null;
 
   return (
     <div className={`fixed inset-0 z-50 flex items-center justify-center bg-leather-900/60 backdrop-blur-sm p-4 ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}>
@@ -177,6 +202,71 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
                 Upon approval, the full interest for the {loan.duration_months}-month term (₱{totalTermInterest.toLocaleString()}) will be applied to the borrower's ledger immediately.
               </p>
             </div>
+          </div>
+
+          {/* Simulated Amortization Table */}
+          <div className="space-y-4">
+             <div className="flex justify-between items-center border-b border-paper-200 pb-2">
+                <h3 className="text-sm font-black text-ink-900 uppercase tracking-widest flex items-center gap-2">
+                   <Calendar size={16} className="text-[#C5A028]" /> Simulated Amortization
+                </h3>
+                <span className="text-[10px] font-mono text-ink-400">10TH & 25TH ALIGNMENT</span>
+             </div>
+             
+             <div className="bg-white border border-paper-200 rounded-sm overflow-hidden shadow-sm max-h-64 overflow-y-auto custom-scrollbar">
+                {/* Desktop Table */}
+                <div className="hidden md:block">
+                  <table className="w-full text-left">
+                     <thead className="bg-paper-100 border-b border-paper-200 text-[9px] text-ink-500 uppercase tracking-widest font-black sticky top-0 z-10">
+                        <tr>
+                           <th className="px-4 py-3">No.</th>
+                           <th className="px-4 py-3">Date</th>
+                           <th className="px-4 py-3">P+I Due</th>
+                           <th className="px-4 py-3 text-right">Status</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-paper-100 font-mono text-[10px]">
+                        {simulatedSchedule.map((step) => (
+                           <tr key={step.number} className="hover:bg-paper-50 transition-colors">
+                              <td className="px-4 py-3 text-ink-400 font-bold">#{step.number}</td>
+                              <td className="px-4 py-3 text-ink-900 font-serif italic text-xs">
+                                 {step.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </td>
+                              <td className="px-4 py-3 text-ink-900 font-bold">₱{step.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                              <td className="px-4 py-3 text-right">
+                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-paper-100 text-ink-400 border border-paper-200 uppercase text-[8px] font-black tracking-tighter">
+                                    <Clock size={8}/> Pending
+                                 </span>
+                              </td>
+                           </tr>
+                        ))}
+                     </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="md:hidden divide-y divide-paper-100">
+                  {simulatedSchedule.map((step) => (
+                    <div key={step.number} className="p-4 space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="text-ink-400 font-bold text-[10px]">#{step.number}</div>
+                          <div className="text-ink-900 font-serif italic text-sm">
+                            {step.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </div>
+                        </div>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-paper-100 text-ink-400 border border-paper-200 uppercase text-[8px] font-black tracking-tighter">
+                          <Clock size={8}/> Pending
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-ink-400 font-black uppercase text-[9px] tracking-widest">P+I Due</span>
+                        <span className="font-mono font-bold text-ink-900">₱{step.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+             </div>
           </div>
 
           {/* Warning for High Rates */}

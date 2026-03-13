@@ -26,7 +26,7 @@ class DataService {
     const startDay = startDate.getDate();
     
     // Determine the "Cycle Type" based on the window rules
-    let cycleIs10th = (startDay >= 3 && startDay <= 17);
+    const cycleIs10th = (startDay >= 3 && startDay <= 17);
     
     // First payment is ALWAYS in the following month
     let curYear = startDate.getFullYear();
@@ -76,7 +76,8 @@ class DataService {
       monthsOverdue = (now.getFullYear() - termEndDate.getFullYear()) * 12 + (now.getMonth() - termEndDate.getMonth());
       if (now.getDate() > termEndDate.getDate()) monthsOverdue += 1;
       
-      const surchargePerMonth = loan.remaining_principal * 0.10;
+      const monthlyInterest = loan.principal * rate;
+      const surchargePerMonth = monthlyInterest * 0.10;
       penaltyTotal = Math.max(0, monthsOverdue * surchargePerMonth);
     }
 
@@ -167,6 +168,13 @@ class DataService {
     await this.supabase!.auth.signOut();
   }
 
+  async getAllPayments(): Promise<Payment[]> {
+    if (this.isMock()) return MOCK_PAYMENTS;
+    const { data, error } = await this.supabase!.from('payments').select('*');
+    if (error) throw error;
+    return data || [];
+  }
+
   async getLoans(): Promise<LoanWithBorrower[]> {
     if (this.isMock()) {
       return MOCK_LOANS.map(l => ({
@@ -206,16 +214,9 @@ class DataService {
         totalPenaltyCollected,
         totalPrincipalRepaid
       };
-    } catch (e) {
+    } catch {
       return { balance: 0, totalContributions: 0, totalPayments: 0, totalDisbursed: 0, totalInterestCollected: 0, totalPenaltyCollected: 0, totalPrincipalRepaid: 0 };
     }
-  }
-
-  private async getAllPayments(): Promise<Payment[]> {
-    if (this.isMock()) return MOCK_PAYMENTS;
-    const { data, error } = await this.supabase!.from('payments').select('*');
-    if (error) throw error;
-    return data as Payment[];
   }
 
   async getActiveLoanVolume(): Promise<number> {
@@ -427,7 +428,8 @@ class DataService {
 
      const newRemainingPrincipal = Math.max(0, loan.remaining_principal - principalPaid);
      const newRemainingInterest = Math.max(0, debt.remainingTermInterest - interestPaid);
-     const isFullySettled = (newRemainingPrincipal + newRemainingInterest) <= 0.01;
+     const newRemainingPenalty = Math.max(0, debt.remainingPenalty - penaltyPaid);
+     const isFullySettled = (newRemainingPrincipal + newRemainingInterest + newRemainingPenalty) <= 0.01;
 
      await this.supabase!.from('loans').update({ 
        remaining_principal: newRemainingPrincipal,
@@ -596,6 +598,7 @@ class DataService {
         const payments = await this.getLoanPayments(loan.id);
         const debt = this.calculateDetailedDebt(loan, payments);
         const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+        const totalInterestPaid = payments.reduce((sum, p) => sum + (p.interest_paid || 0), 0);
 
         const installmentDates = this.getInstallmentDates(new Date(loan.start_date || loan.created_at), loan.duration_months * 2);
         let cumulativeRequired = 0;
@@ -613,6 +616,8 @@ class DataService {
            } else if (targetDate < now) { 
              status = 'overdue'; 
            }
+
+           const isInterestPaid = totalInterestPaid >= ((interestPerInstallment * (i + 1)) - 0.1);
            
            schedules.push({ 
              loan_id: loan.id, 
@@ -621,6 +626,7 @@ class DataService {
              amount: debt.installmentAmount, 
              principal: principalPerInstallment,
              interest: interestPerInstallment,
+             isInterestPaid,
              borrower_id: loan.borrower_id, 
              borrower_name: loan.borrower.full_name, 
              status, 

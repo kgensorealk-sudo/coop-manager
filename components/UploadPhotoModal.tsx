@@ -24,7 +24,10 @@ const UploadPhotoModal: React.FC<UploadPhotoModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setIsClosing(false);
+      const timer = setTimeout(() => {
+        setIsClosing(false);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 

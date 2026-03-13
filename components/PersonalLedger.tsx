@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, PersonalLedgerEntry, PersonalAccount, SavingGoal } from '../types';
 import { dataService } from '../services/dataService';
@@ -55,9 +55,9 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
     try {
-      const [entryData, accountData, goalData, _budgetData, scheduleData] = await Promise.all([
+      const [entryData, accountData, goalData, , scheduleData] = await Promise.all([
         dataService.getPersonalEntries(currentUser.id),
         dataService.getPersonalAccounts(currentUser.id),
         dataService.getSavingGoals(currentUser.id),
@@ -69,15 +69,17 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
       setGoals(goalData);
       setObligations(scheduleData.filter(s => s.borrower_id === currentUser.id));
       
-      if (accountData.length > 0 && !accountId) setAccountId(accountData[0].id);
+      if (accountData.length > 0) {
+        setAccountId(prev => prev || accountData[0].id);
+      }
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [currentUser.id]); // Removed accountId dependency by using functional update for setAccountId
 
   useEffect(() => {
     fetchAllData();
-  }, [currentUser.id]);
+  }, [fetchAllData]);
 
   useEffect(() => {
     if (editingEntry) {
@@ -205,11 +207,11 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 border-b border-paper-300 pb-6">
         <div className="space-y-4">
           <div>
-            <h1 className="text-5xl font-serif font-bold text-ink-900 leading-tight">Personal Books</h1>
-            <p className="text-ink-500 font-serif italic text-xl mt-1">Refined ledger with semi-monthly Payday alignments.</p>
+            <h1 className="text-3xl md:text-5xl font-serif font-bold text-ink-900 leading-tight">Personal Books</h1>
+            <p className="text-ink-500 font-serif italic text-lg md:text-xl mt-1">Refined ledger with semi-monthly Payday alignments.</p>
           </div>
           
-          <div className="flex bg-paper-200/50 p-1 rounded-sm border border-paper-300 w-fit">
+          <div className="flex bg-paper-200/50 p-1 rounded-sm border border-paper-300 w-full md:w-fit overflow-x-auto no-scrollbar">
              {[
                { id: 'register', label: 'Journal', icon: History },
                { id: 'vaults', label: 'Vaults', icon: Coins },
@@ -218,7 +220,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                 <button 
                   key={view.id}
                   onClick={() => setActiveView(view.id as any)}
-                  className={`flex items-center gap-2 px-4 py-1.5 text-xs font-black uppercase tracking-widest transition-all ${activeView === view.id ? 'bg-ink-900 text-paper-50 shadow-md' : 'text-ink-400 hover:text-ink-600'}`}
+                  className={`flex items-center gap-2 px-4 py-2 text-[10px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeView === view.id ? 'bg-ink-900 text-paper-50 shadow-md' : 'text-ink-400 hover:text-ink-600'}`}
                 >
                    <view.icon size={14} />
                    <span>{view.label}</span>
@@ -227,15 +229,15 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
           </div>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3">
-           <div className="flex items-center gap-2 bg-paper-50 p-1 rounded-sm border border-paper-300 shadow-inner">
-              <button onClick={() => handleMonthChange('prev')} className="p-2 hover:bg-paper-200 rounded-sm text-ink-600 transition-colors"><ChevronLeft size={20} /></button>
-              <span className="font-serif font-bold text-ink-900 text-lg px-4 min-w-[140px] text-center">{monthLabel}</span>
-              <button onClick={() => handleMonthChange('next')} className="p-2 hover:bg-paper-200 rounded-sm text-ink-600 transition-colors"><ChevronRight size={20} /></button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
+           <div className="flex items-center justify-between gap-2 bg-paper-50 p-1 rounded-sm border border-paper-300 shadow-inner w-full sm:w-auto">
+              <button onClick={() => handleMonthChange('prev')} className="p-3 hover:bg-paper-200 rounded-sm text-ink-600 transition-colors"><ChevronLeft size={20} /></button>
+              <span className="font-serif font-bold text-ink-900 text-base md:text-lg px-2 md:px-4 flex-1 text-center">{monthLabel}</span>
+              <button onClick={() => handleMonthChange('next')} className="p-3 hover:bg-paper-200 rounded-sm text-ink-600 transition-colors"><ChevronRight size={20} /></button>
            </div>
            <button 
              onClick={() => setShowForm(true)}
-             className="bg-ink-900 hover:bg-black text-white px-8 py-3 rounded-sm font-bold uppercase tracking-widest text-xs shadow-lg transition-all active:scale-95 flex items-center space-x-2 border-b-4 border-ink-950"
+             className="bg-ink-900 hover:bg-black text-white px-8 py-4 sm:py-3 rounded-sm font-bold uppercase tracking-widest text-xs shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2 border-b-4 border-ink-950 w-full sm:w-auto"
            >
               <Plus size={16} />
               <span>Record</span>
@@ -340,30 +342,29 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
 
          {/* RIGHT COLUMN: Ledger */}
          <div className="lg:col-span-8 space-y-8">
-            
             <AnimatePresence>
               {showForm && (
                  <motion.div 
                    initial={{ opacity: 0, y: 20 }}
                    animate={{ opacity: 1, y: 0 }}
                    exit={{ opacity: 0, y: 20 }}
-                   className="bg-paper-50 p-8 rounded-sm border-2 border-leather-800/20 shadow-float relative"
+                   className="fixed md:relative inset-0 md:inset-auto z-50 md:z-0 bg-paper-50 p-6 md:p-8 rounded-none md:rounded-sm border-0 md:border-2 border-leather-800/20 shadow-float overflow-y-auto"
                  >
-                    <button onClick={resetForm} className="absolute top-6 right-6 text-ink-400 hover:text-ink-600 p-1"><X size={24}/></button>
-                    <h3 className="font-serif font-bold text-3xl text-ink-900 mb-10 flex items-center gap-3">
-                       <div className="w-10 h-10 rounded-full bg-ink-900 flex items-center justify-center text-paper-50 text-base italic shadow-md">#</div>
+                    <button onClick={resetForm} className="absolute top-4 right-4 md:top-6 md:right-6 text-ink-400 hover:text-ink-600 p-2"><X size={24}/></button>
+                    <h3 className="font-serif font-bold text-2xl md:text-3xl text-ink-900 mb-8 md:mb-10 flex items-center gap-3">
+                       <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-ink-900 flex items-center justify-center text-paper-50 text-sm md:text-base italic shadow-md">#</div>
                        {editingEntry ? 'Revise Entry' : 'Record Transaction'}
                     </h3>
                     
-                    <form onSubmit={handleSubmit} className="space-y-8">
+                    <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
                        {/* Validation Error Display */}
                        <AnimatePresence>
                          {formError && (
                             <motion.div 
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="bg-wax-50 border border-wax-200 p-4 rounded-sm flex items-start gap-3 overflow-hidden"
+                               initial={{ opacity: 0, height: 0 }}
+                               animate={{ opacity: 1, height: 'auto' }}
+                               exit={{ opacity: 0, height: 0 }}
+                               className="bg-wax-50 border border-wax-200 p-4 rounded-sm flex items-start gap-3 overflow-hidden"
                             >
                                <AlertCircle className="text-wax-600 shrink-0 mt-0.5" size={18} />
                                <p className="text-sm text-wax-900 font-serif italic">{formError}</p>
@@ -371,37 +372,37 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                          )}
                        </AnimatePresence>
 
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                          <div className="space-y-8">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+                          <div className="space-y-6 md:space-y-8">
                              <div className="space-y-1">
                                 <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Description / Particulars</label>
                                 <input autoFocus required value={description} onChange={e => { setDescription(e.target.value); setFormError(null); }}
-                                   className="w-full text-3xl font-serif text-ink-900 border-b-2 border-paper-300 focus:border-ink-900 outline-none pb-2 bg-transparent"
+                                   className="w-full text-2xl md:text-3xl font-serif text-ink-900 border-b-2 border-paper-300 focus:border-ink-900 outline-none pb-2 bg-transparent"
                                    placeholder="e.g. Payday Repayment (10th)"
                                 />
                              </div>
                              
                              <div>
                                 <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-3">Transaction Mode</label>
-                                <div className="flex gap-4">
+                                <div className="flex gap-3 md:gap-4">
                                    <button type="button" onClick={() => { setType('expense'); setFormError(null); }}
-                                      className={`flex-1 py-4 border-2 text-xs font-bold uppercase tracking-[0.2em] transition-all ${type === 'expense' ? 'bg-wax-50 text-wax-600 border-wax-600 shadow-sm' : 'bg-white text-ink-400 border-paper-300'}`}>
+                                      className={`flex-1 py-3 md:py-4 border-2 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] transition-all ${type === 'expense' ? 'bg-wax-50 text-wax-600 border-wax-600 shadow-sm' : 'bg-white text-ink-400 border-paper-300'}`}>
                                       Debit (DR)
                                    </button>
                                    <button type="button" onClick={() => { setType('income'); setFormError(null); }}
-                                      className={`flex-1 py-4 border-2 text-xs font-bold uppercase tracking-[0.2em] transition-all ${type === 'income' ? 'bg-emerald-50 text-emerald-700 border-emerald-600 shadow-sm' : 'bg-white text-ink-400 border-paper-300'}`}>
+                                      className={`flex-1 py-3 md:py-4 border-2 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] transition-all ${type === 'income' ? 'bg-emerald-50 text-emerald-700 border-emerald-600 shadow-sm' : 'bg-white text-ink-400 border-paper-300'}`}>
                                       Credit (CR)
                                    </button>
                                 </div>
                              </div>
                           </div>
 
-                          <div className="space-y-8">
-                             <div className="grid grid-cols-2 gap-6">
+                          <div className="space-y-6 md:space-y-8">
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div className="space-y-1">
                                    <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Amount (₱)</label>
                                    <input type="number" required min="0.01" step="0.01" value={amount} onChange={e => { setAmount(e.target.value ? parseFloat(e.target.value) : ''); setFormError(null); }}
-                                      className="w-full p-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none text-2xl font-mono font-bold"
+                                      className="w-full p-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none text-xl md:text-2xl font-mono font-bold"
                                    />
                                 </div>
                                 <div className="space-y-1">
@@ -412,7 +413,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                                 </div>
                              </div>
 
-                             <div className="grid grid-cols-2 gap-6">
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div className="space-y-1">
                                    <label className="text-[10px] font-black uppercase text-ink-400 tracking-[0.2em] block mb-2">Vault (Source)</label>
                                    <select required value={accountId} onChange={e => { setAccountId(e.target.value); setFormError(null); }}
@@ -431,10 +432,10 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                           </div>
                        </div>
 
-                       <div className="flex justify-end gap-4 pt-6 border-t border-paper-300">
-                          <button type="button" onClick={resetForm} className="px-8 py-3 text-xs font-black uppercase tracking-[0.2em] text-ink-400 hover:text-ink-900">Cancel</button>
+                       <div className="flex flex-col sm:flex-row justify-end gap-3 md:gap-4 pt-6 border-t border-paper-300">
+                          <button type="button" onClick={resetForm} className="px-8 py-3 text-xs font-black uppercase tracking-[0.2em] text-ink-400 hover:text-ink-900 order-2 sm:order-1">Cancel</button>
                           <button type="submit" disabled={isSubmitting}
-                             className="px-12 py-4 bg-ink-900 text-white rounded-sm font-bold uppercase tracking-[0.3em] text-xs hover:bg-black shadow-xl flex items-center gap-3 active:scale-95 transition-all"
+                             className="px-12 py-4 bg-ink-900 text-white rounded-sm font-bold uppercase tracking-[0.3em] text-xs hover:bg-black shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all order-1 sm:order-2"
                           >
                              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                              {editingEntry ? 'Revise Entry' : 'Post to Ledger'}
@@ -473,18 +474,18 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                                        initial={{ opacity: 0, x: -10 }}
                                        animate={{ opacity: 1, x: 0 }}
                                        transition={{ duration: 0.3 }}
-                                       className="px-6 py-5 hover:bg-paper-50 transition-colors group flex items-center justify-between border-l-4 border-l-transparent hover:border-l-gold-500"
+                                       className="px-4 md:px-6 py-4 md:py-5 hover:bg-paper-50 transition-colors group flex flex-col sm:flex-row sm:items-center justify-between border-l-4 border-l-transparent hover:border-l-gold-500 gap-4"
                                     >
-                                       <div className="flex items-center gap-6">
-                                          <div className={`w-14 h-14 flex items-center justify-center shrink-0 border-2 rounded-sm rotate-1 group-hover:rotate-0 transition-transform ${entry.type === 'income' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-paper-100 border-paper-200 text-ink-400'}`}>
-                                             {entry.type === 'income' ? <TrendingUp size={24} /> : <TrendingDown size={24} />}
+                                       <div className="flex items-center gap-4 md:gap-6">
+                                          <div className={`w-12 h-12 md:w-14 md:h-14 flex items-center justify-center shrink-0 border-2 rounded-sm rotate-1 group-hover:rotate-0 transition-transform ${entry.type === 'income' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-paper-100 border-paper-200 text-ink-400'}`}>
+                                             {entry.type === 'income' ? <TrendingUp size={20} className="md:size-24" /> : <TrendingDown size={20} className="md:size-24" />}
                                           </div>
-                                          <div>
-                                             <div className={`font-serif font-bold text-2xl leading-tight ${entry.type === 'expense' ? 'text-ink-900' : 'text-emerald-800'}`}>{entry.description}</div>
-                                             <div className="flex items-center gap-3 mt-2">
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-gold-600 bg-gold-50 px-2 py-0.5 rounded-sm border border-gold-100">{entry.category}</span>
+                                          <div className="overflow-hidden">
+                                             <div className={`font-serif font-bold text-xl md:text-2xl leading-tight truncate ${entry.type === 'expense' ? 'text-ink-900' : 'text-emerald-800'}`}>{entry.description}</div>
+                                             <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-1 md:mt-2">
+                                                <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gold-600 bg-gold-50 px-2 py-0.5 rounded-sm border border-gold-100">{entry.category}</span>
                                                 {acc && (
-                                                   <span className="text-[10px] font-mono text-ink-400 uppercase flex items-center gap-1">
+                                                   <span className="text-[9px] md:text-[10px] font-mono text-ink-400 uppercase flex items-center gap-1">
                                                       <div className={`w-1.5 h-1.5 rounded-full ${acc.color || 'bg-ink-300'}`}></div>
                                                       {acc.name}
                                                    </span>
@@ -493,13 +494,13 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                                           </div>
                                        </div>
                                        
-                                       <div className="flex items-center gap-10">
-                                          <div className={`font-mono font-bold text-2xl tabular-nums ${entry.type === 'income' ? 'text-emerald-700' : 'text-wax-600'}`}>
+                                       <div className="flex items-center justify-between sm:justify-end gap-4 md:gap-10">
+                                          <div className={`font-mono font-bold text-xl md:text-2xl tabular-nums ${entry.type === 'income' ? 'text-emerald-700' : 'text-wax-600'}`}>
                                              {entry.type === 'income' ? '+' : '-'}₱{entry.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                           </div>
-                                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                             <button onClick={() => setEditingEntry(entry)} className="p-2 text-ink-300 hover:text-ink-900 hover:bg-paper-100 border border-paper-200"><Edit2 size={16} /></button>
-                                             <button onClick={() => handleDelete(entry.id)} className="p-2 text-ink-300 hover:text-wax-600 hover:bg-wax-50 border border-paper-200"><Trash2 size={16} /></button>
+                                          <div className="flex gap-1 md:gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                             <button onClick={() => setEditingEntry(entry)} className="p-2.5 md:p-2 text-ink-400 sm:text-ink-300 hover:text-ink-900 hover:bg-paper-100 border border-paper-200 rounded-sm"><Edit2 size={16} /></button>
+                                             <button onClick={() => handleDelete(entry.id)} className="p-2.5 md:p-2 text-ink-400 sm:text-ink-300 hover:text-wax-600 hover:bg-wax-50 border border-paper-200 rounded-sm"><Trash2 size={16} /></button>
                                           </div>
                                        </div>
                                     </motion.div>

@@ -25,6 +25,77 @@ import {
   GanttChartSquare
 } from 'lucide-react';
 
+interface BreakdownRowProps {
+  title: string | React.ReactNode;
+  amount: number;
+  color: string;
+  percent: number;
+  id: string;
+  items?: React.ReactNode;
+  expandedSection: string | null;
+  toggleSection: (id: string) => void;
+}
+
+const BreakdownRow: React.FC<BreakdownRowProps> = ({ 
+  title, 
+  amount, 
+  color, 
+  percent, 
+  id, 
+  items,
+  expandedSection,
+  toggleSection
+}) => {
+  const isExpanded = expandedSection === id;
+  const barColor = color === 'green' ? 'bg-emerald-700' : 
+                   color === 'emerald' ? 'bg-emerald-600' :
+                   color === 'blue' ? 'bg-blue-700' :
+                   color === 'purple' ? 'bg-purple-700' : 'bg-wax-600';
+  
+  const containerColor = color === 'green' ? 'bg-emerald-50' : 
+                         color === 'emerald' ? 'bg-emerald-50' :
+                         color === 'blue' ? 'bg-blue-50' :
+                         color === 'purple' ? 'bg-purple-50' : 'bg-wax-50';
+
+  return (
+    <div className="relative pt-1">
+       <div 
+         className={`flex justify-between items-center mb-1 text-sm font-serif ${items ? 'cursor-pointer hover:bg-paper-100 p-1.5 -mx-1.5 rounded-sm transition-colors' : ''}`}
+         onClick={() => items && toggleSection(id)}
+       >
+          <span className="text-ink-700 flex items-center gap-2 font-bold tracking-tight">
+             {title}
+             {items && (
+               <span className="text-ink-400">
+                 {isExpanded ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
+               </span>
+             )}
+          </span>
+          <span className={`font-mono font-bold ${id === 'disbursed' ? 'text-wax-600' : 'text-ink-900'}`}>
+             {id === 'disbursed' ? '-' : ''}₱{amount.toLocaleString()}
+          </span>
+       </div>
+       <div className={`overflow-hidden h-1.5 mb-2 flex rounded-full ${containerColor} border border-paper-200`}>
+          <div style={{ width: `${percent}%` }} className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${barColor}`}></div>
+       </div>
+       
+       <AnimatePresence>
+         {isExpanded && items && (
+           <motion.div 
+             initial={{ height: 0, opacity: 0 }}
+             animate={{ height: 'auto', opacity: 1 }}
+             exit={{ height: 0, opacity: 0 }}
+             transition={{ duration: 0.3 }}
+             className="mb-4 pl-4 border-l-2 border-gold-500/30 text-sm text-ink-600 space-y-2 overflow-hidden max-h-48 overflow-y-auto pr-1 custom-scrollbar"
+           >
+              {items}
+           </motion.div>
+         )}
+       </AnimatePresence>
+    </div>
+  );
+};
+
 interface TreasuryDashboardProps {
   treasuryStats: {
     balance: number;
@@ -76,7 +147,12 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
 
   // Advanced Calculations for True Cooperative Wealth & Full Interest Pipeline
   const financialMetrics = useMemo(() => {
-    const activeLoans = loans.filter(l => l.status === 'active');
+    const activeLoans = loans.filter(l => {
+      if (l.status !== 'active') return false;
+      const loanPayments = allPayments.filter(p => p.loan_id === l.id);
+      const debt = dataService.calculateDetailedDebt(l, loanPayments);
+      return debt.liveTotalDue > 0.01;
+    });
     
     // 1. Principal Receivables
     const totalReceivables = activeLoans.reduce((sum, l) => sum + l.remaining_principal, 0);
@@ -175,71 +251,6 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
   const unearnedPercent = financialMetrics.totalProjectedValuation > 0 
     ? (financialMetrics.totalUnearnedInterest / financialMetrics.totalProjectedValuation) * 100 
     : 0;
-
-  const BreakdownRow = ({ 
-    title, 
-    amount, 
-    color, 
-    percent, 
-    id, 
-    items 
-  }: { 
-    title: string | React.ReactNode, 
-    amount: number, 
-    color: string, 
-    percent: number, 
-    id: string,
-    items?: React.ReactNode 
-  }) => {
-    const isExpanded = expandedSection === id;
-    const barColor = color === 'green' ? 'bg-emerald-700' : 
-                     color === 'emerald' ? 'bg-emerald-600' :
-                     color === 'blue' ? 'bg-blue-700' :
-                     color === 'purple' ? 'bg-purple-700' : 'bg-wax-600';
-    
-    const containerColor = color === 'green' ? 'bg-emerald-50' : 
-                           color === 'emerald' ? 'bg-emerald-50' :
-                           color === 'blue' ? 'bg-blue-50' :
-                           color === 'purple' ? 'bg-purple-50' : 'bg-wax-50';
-
-    return (
-      <div className="relative pt-1">
-         <div 
-           className={`flex justify-between items-center mb-1 text-sm font-serif ${items ? 'cursor-pointer hover:bg-paper-100 p-1.5 -mx-1.5 rounded-sm transition-colors' : ''}`}
-           onClick={() => items && toggleSection(id)}
-         >
-            <span className="text-ink-700 flex items-center gap-2 font-bold tracking-tight">
-               {title}
-               {items && (
-                 <span className="text-ink-400">
-                   {isExpanded ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
-                 </span>
-               )}
-            </span>
-            <span className={`font-mono font-bold ${id === 'disbursed' ? 'text-wax-600' : 'text-ink-900'}`}>
-               {id === 'disbursed' ? '-' : ''}₱{amount.toLocaleString()}
-            </span>
-         </div>
-         <div className={`overflow-hidden h-1.5 mb-2 flex rounded-full ${containerColor} border border-paper-200`}>
-            <div style={{ width: `${percent}%` }} className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${barColor}`}></div>
-         </div>
-         
-         <AnimatePresence>
-           {isExpanded && items && (
-             <motion.div 
-               initial={{ height: 0, opacity: 0 }}
-               animate={{ height: 'auto', opacity: 1 }}
-               exit={{ height: 0, opacity: 0 }}
-               transition={{ duration: 0.3 }}
-               className="mb-4 pl-4 border-l-2 border-gold-500/30 text-sm text-ink-600 space-y-2 overflow-hidden max-h-48 overflow-y-auto pr-1 custom-scrollbar"
-             >
-                {items}
-             </motion.div>
-           )}
-         </AnimatePresence>
-      </div>
-    );
-  };
 
   return (
     <motion.div 
@@ -562,6 +573,8 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                         color="green"
                         percent={getPercent(monthlyDeposits)}
                         id="br-monthly"
+                        expandedSection={expandedSection}
+                        toggleSection={toggleSection}
                         items={monthlyDepositContribs.slice(0, 5).map(c => (
                            <div key={c.id} className="flex justify-between py-1 border-b border-paper-100 border-dashed">
                               <span>{c.member.full_name}</span>
@@ -575,6 +588,8 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                         color="emerald"
                         percent={getPercent(oneTimeDeposits)}
                         id="br-onetime"
+                        expandedSection={expandedSection}
+                        toggleSection={toggleSection}
                         items={oneTimeContribs.slice(0, 5).map(c => (
                            <div key={c.id} className="flex justify-between py-1 border-b border-paper-100 border-dashed">
                               <span>{c.member.full_name}</span>
@@ -592,6 +607,8 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                         color="blue"
                         percent={getPercent(treasuryStats.totalPrincipalRepaid)}
                         id="br-principal"
+                        expandedSection={expandedSection}
+                        toggleSection={toggleSection}
                      />
                      <BreakdownRow 
                         title="Net Interest Income"
@@ -599,6 +616,8 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                         color="purple"
                         percent={getPercent(treasuryStats.totalInterestCollected)}
                         id="br-interest"
+                        expandedSection={expandedSection}
+                        toggleSection={toggleSection}
                      />
                      <BreakdownRow 
                         title="Penalty Collections"
@@ -606,6 +625,8 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                         color="wax"
                         percent={getPercent(treasuryStats.totalPenaltyCollected)}
                         id="br-penalties"
+                        expandedSection={expandedSection}
+                        toggleSection={toggleSection}
                      />
                   </div>
                </div>
@@ -629,6 +650,8 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                         color="wax"
                         percent={100}
                         id="br-disbursed"
+                        expandedSection={expandedSection}
+                        toggleSection={toggleSection}
                         items={loans.filter(l => l.status === 'active' || l.status === 'paid').slice(0, 5).map(l => (
                            <div key={l.id} className="flex justify-between py-1 border-b border-paper-100 border-dashed">
                               <span>{l.borrower.full_name}</span>

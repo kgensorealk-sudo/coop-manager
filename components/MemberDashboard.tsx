@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { motion } from 'motion/react';
-import { User, LoanWithBorrower, ContributionWithMember, SavingGoal } from '../types';
+import { User, LoanWithBorrower, ContributionWithMember, SavingGoal, Payment } from '../types';
 import { StatCard } from './StatCard';
+import { dataService } from '../services/dataService';
 import { Wallet, CreditCard, Calendar, Clock, AlertCircle, Plus, PiggyBank, Lock, TrendingDown, CheckCircle2, XCircle, ArrowRightLeft, Target } from 'lucide-react';
 
 interface MemberDashboardProps {
@@ -10,6 +11,7 @@ interface MemberDashboardProps {
   memberLoans: LoanWithBorrower[];
   memberContributions: ContributionWithMember[];
   memberSavingGoals: SavingGoal[];
+  allPayments: Payment[];
   onApplyLoan: () => void;
   onAddContribution: () => void;
 }
@@ -34,13 +36,23 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   memberLoans, 
   memberContributions,
   memberSavingGoals,
+  allPayments,
   onApplyLoan, 
   onAddContribution 
 }) => {
   
   // Calculate total active balance (sum of all active loans)
-  const activeLoans = memberLoans.filter(l => l.status === 'active');
-  const totalLoanBalance = activeLoans.reduce((sum, l) => sum + l.remaining_principal, 0);
+  const activeLoans = memberLoans.filter(l => {
+    if (l.status !== 'active') return false;
+    const loanPayments = allPayments.filter(p => p.loan_id === l.id);
+    const debt = dataService.calculateDetailedDebt(l, loanPayments);
+    return debt.liveTotalDue > 0.01;
+  });
+  const totalLoanBalance = activeLoans.reduce((sum, l) => {
+    const loanPayments = allPayments.filter(p => p.loan_id === l.id);
+    const debt = dataService.calculateDetailedDebt(l, loanPayments);
+    return sum + debt.liveTotalDue;
+  }, 0);
   
   const pendingLoans = memberLoans.filter(l => l.status === 'pending');
   const hasPendingLoan = pendingLoans.length > 0;
@@ -197,7 +209,8 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
            </div>
         ) : (
           <div className="bg-white rounded-sm border border-slate-200 shadow-paper overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left">
                 <thead className="bg-slate-100 border-b border-slate-200">
                   <tr>
@@ -210,7 +223,12 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {historyLoans.map((loan) => {
+                    const loanPayments = allPayments.filter(p => p.loan_id === loan.id);
+                    const debt = dataService.calculateDetailedDebt(loan, loanPayments);
+                    const isEffectivelyPaid = loan.status === 'active' && debt.liveTotalDue <= 0.01;
+                    const displayStatus = isEffectivelyPaid ? 'paid' : loan.status;
                     const principalPaid = loan.principal - loan.remaining_principal;
+
                     return (
                       <tr key={loan.id} className="hover:bg-slate-50 transition-colors group">
                         <td className="px-6 py-5">
@@ -220,9 +238,9 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                           </div>
                         </td>
                         <td className="px-6 py-5">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-widest border ${getStatusColor(loan.status)}`}>
-                            {getStatusIcon(loan.status)}
-                            {loan.status}
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-widest border ${getStatusColor(displayStatus)}`}>
+                            {getStatusIcon(displayStatus)}
+                            {displayStatus}
                           </span>
                         </td>
                         <td className="px-6 py-5">
@@ -234,10 +252,10 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                           <div className="text-[10px] text-slate-400 font-sans italic">Excl. Interest</div>
                         </td>
                         <td className="px-6 py-5">
-                          <div className={`font-mono font-bold text-lg ${loan.remaining_principal > 0 ? 'text-blue-700' : 'text-slate-300'}`}>
-                            ₱{loan.remaining_principal.toLocaleString()}
+                          <div className={`font-mono font-bold text-lg ${debt.liveTotalDue > 0.01 ? 'text-blue-700' : 'text-slate-300'}`}>
+                            ₱{debt.liveTotalDue.toLocaleString()}
                           </div>
-                          {loan.status === 'active' && (
+                          {displayStatus === 'active' && (
                             <div className="text-[10px] text-blue-500 font-sans uppercase font-bold tracking-tighter">Current Debt</div>
                           )}
                         </td>
@@ -246,6 +264,57 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Card List */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {historyLoans.map((loan) => {
+                const loanPayments = allPayments.filter(p => p.loan_id === loan.id);
+                const debt = dataService.calculateDetailedDebt(loan, loanPayments);
+                const isEffectivelyPaid = loan.status === 'active' && debt.liveTotalDue <= 0.01;
+                const displayStatus = isEffectivelyPaid ? 'paid' : loan.status;
+                const principalPaid = loan.principal - loan.remaining_principal;
+
+                return (
+                  <div key={loan.id} className="p-4 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-serif font-bold text-lg text-slate-900">{loan.purpose}</div>
+                        <div className="text-[10px] font-mono text-slate-400 uppercase tracking-tighter">
+                          Ref: {loan.id.substring(0,8).toUpperCase()} • {loan.start_date ? new Date(loan.start_date).toLocaleDateString() : 'N/A'}
+                        </div>
+                      </div>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-widest border ${getStatusColor(displayStatus)}`}>
+                        {getStatusIcon(displayStatus)}
+                        {displayStatus}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans">Total Principal</div>
+                        <div className="font-mono font-bold text-slate-700">₱{loan.principal.toLocaleString()}</div>
+                        <div className="text-[10px] text-slate-400 font-sans">{loan.interest_rate}% Fixed</div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans">Principal Paid</div>
+                        <div className="font-mono font-bold text-emerald-600">₱{principalPaid.toLocaleString()}</div>
+                      </div>
+                      <div className="col-span-2 pt-2 border-t border-slate-50">
+                        <div className="flex justify-between items-center">
+                          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans">Remaining Balance</div>
+                          <div className={`font-mono font-bold text-xl ${debt.liveTotalDue > 0.01 ? 'text-blue-700' : 'text-slate-300'}`}>
+                            ₱{debt.liveTotalDue.toLocaleString()}
+                          </div>
+                        </div>
+                        {displayStatus === 'active' && (
+                          <div className="text-[10px] text-blue-500 font-sans uppercase font-bold tracking-tighter text-right">Current Debt</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -328,41 +397,72 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
               <p className="font-serif italic">No contributions recorded.</p>
            </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-slate-100 border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Date</th>
-                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Type</th>
-                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Amount</th>
-                  <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {memberContributions.map((contribution) => (
-                  <tr key={contribution.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 text-slate-600 text-sm font-mono">
-                      {new Date(contribution.date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 text-slate-900 capitalize font-serif font-medium">
-                      {contribution.type.replace('_', ' ')}
-                    </td>
-                    <td className="px-6 py-4 font-bold text-emerald-700 font-mono text-lg">
-                      +₱{contribution.amount.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-sm text-xs font-bold uppercase tracking-wider border ${
-                        contribution.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                        contribution.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
-                        'bg-amber-50 text-amber-700 border-amber-200'
-                      }`}>
-                        {contribution.status}
-                      </span>
-                    </td>
+          <div className="bg-white rounded-sm border border-slate-200 shadow-paper overflow-hidden">
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-slate-100 border-b border-slate-200">
+                  <tr>
+                    <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Date</th>
+                    <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Type</th>
+                    <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Amount</th>
+                    <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest font-serif">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {memberContributions.map((contribution) => (
+                    <tr key={contribution.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 text-slate-600 text-sm font-mono">
+                        {new Date(contribution.date).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 text-slate-900 capitalize font-serif font-medium">
+                        {contribution.type.replace('_', ' ')}
+                      </td>
+                      <td className="px-6 py-4 font-bold text-emerald-700 font-mono text-lg">
+                        +₱{contribution.amount.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-sm text-xs font-bold uppercase tracking-wider border ${
+                          contribution.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          contribution.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                          'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}>
+                          {contribution.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card List */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {memberContributions.map((contribution) => (
+                <div key={contribution.id} className="p-4 flex justify-between items-center">
+                  <div className="space-y-1">
+                    <div className="text-slate-900 capitalize font-serif font-bold">
+                      {contribution.type.replace('_', ' ')}
+                    </div>
+                    <div className="text-slate-500 text-xs font-mono">
+                      {new Date(contribution.date).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="text-right space-y-2">
+                    <div className="font-bold text-emerald-700 font-mono">
+                      +₱{contribution.amount.toLocaleString()}
+                    </div>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider border ${
+                      contribution.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                      contribution.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                      'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}>
+                      {contribution.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </motion.div>

@@ -70,15 +70,18 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setStep(1);
-      setAcceptedTerms(false);
-      setDurationMonths(2);
-      setShowSchedule(false);
-      if (currentUser && currentUser.role === 'member') {
-        setBorrowerId(currentUser.id);
-      } else {
-        setBorrowerId('');
-      }
+      const timer = setTimeout(() => {
+        setStep(1);
+        setAcceptedTerms(false);
+        setDurationMonths(2);
+        setShowSchedule(false);
+        if (currentUser && currentUser.role === 'member') {
+          setBorrowerId(currentUser.id);
+        } else {
+          setBorrowerId('');
+        }
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [isOpen, currentUser]);
 

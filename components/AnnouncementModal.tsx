@@ -25,16 +25,21 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
 
   useEffect(() => {
     if (isOpen) {
-      setCurrentIndex(startIndex);
-      setIsClosing(false);
-      setIsExiting(false);
-      setSlideDirection('left');
-      setIsInitialMount(true);
-      setIsNavigating(false); // Reset navigation state on open to prevent auto-swipe
+      const timer = setTimeout(() => {
+        setCurrentIndex(startIndex);
+        setIsClosing(false);
+        setIsExiting(false);
+        setSlideDirection('left');
+        setIsInitialMount(true);
+        setIsNavigating(false);
+      }, 0);
       
       // Reset initial mount flag after animation
-      const timer = setTimeout(() => setIsInitialMount(false), 700); 
-      return () => clearTimeout(timer);
+      const mountTimer = setTimeout(() => setIsInitialMount(false), 700); 
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(mountTimer);
+      };
     }
   }, [isOpen, startIndex]);
 

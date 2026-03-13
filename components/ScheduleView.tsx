@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { dataService } from '../services/dataService';
 import { 
   Clock, 
@@ -32,11 +32,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
   const [loading, setLoading] = useState(true);
   const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const schedules = await dataService.getUpcomingSchedules();
@@ -70,7 +66,11 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterByUserId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const todayStr = useMemo(() => {
     const date = new Date();
@@ -239,7 +239,10 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
                                      <div className="text-[10px] text-ink-400 font-mono mt-0.5 uppercase tracking-tighter truncate">{inst.loanPurpose}</div>
                                   </div>
                                   <div className={`text-xs font-mono font-black ${inst.status === 'overdue' ? 'text-wax-600' : 'text-ink-900'}`}>
-                                     ₱{inst.total.toLocaleString()}
+                                     <div className="flex flex-col items-end">
+                                        <span>₱{inst.total.toLocaleString()}</span>
+                                        {inst.isInterestPaid && <span className="text-[8px] text-emerald-600 font-black uppercase tracking-tighter">Interest Paid</span>}
+                                     </div>
                                   </div>
                                </div>
                             </div>
@@ -254,42 +257,95 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ filterByUserId }) =>
         </div>
       ) : (
         <div className="bg-white border-2 border-paper-200 rounded-sm overflow-hidden shadow-card animate-slide-up">
-           <table className="w-full text-left border-collapse">
-              <thead className="bg-leather-900 text-paper-100 text-[10px] font-black uppercase tracking-[0.2em]">
-                 <tr>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Payday Date</th>
-                    <th className="px-6 py-4">Account Holder</th>
-                    <th className="px-6 py-4">Principal Part</th>
-                    <th className="px-6 py-4">Interest Part</th>
-                    <th className="px-6 py-4 text-right">Total Installment</th>
-                 </tr>
-              </thead>
-              <tbody className="divide-y divide-paper-100">
-                 {allInstallments.map((inst, idx) => (
-                    <tr key={idx} className={`hover:bg-paper-50 transition-colors group ${inst.status === 'paid' ? 'opacity-40' : ''}`}>
-                       <td className="px-6 py-5">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[9px] font-black uppercase tracking-widest border ${inst.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : inst.status === 'overdue' ? 'bg-wax-50 text-wax-600 border-wax-200 animate-pulse' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
-                             {inst.status === 'paid' ? <CheckCircle2 size={10}/> : <Clock size={10}/>}
-                             {inst.status}
-                          </span>
-                       </td>
-                       <td className="px-6 py-5">
-                          <div className="font-serif font-bold text-lg text-ink-900">{inst.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                       </td>
-                       <td className="px-6 py-5">
-                          <div className="font-bold text-ink-800">{inst.borrowerName}</div>
-                          <div className="text-[10px] font-mono text-ink-400 uppercase tracking-tighter">{inst.loanPurpose}</div>
-                       </td>
-                       <td className="px-6 py-5 font-mono text-sm">₱{inst.principal.toLocaleString()}</td>
-                       <td className="px-6 py-5 font-mono text-sm text-emerald-700 font-bold">₱{inst.interest.toLocaleString()}</td>
-                       <td className="px-6 py-5 text-right">
-                          <div className={`font-mono font-bold text-xl ${inst.status === 'overdue' ? 'text-wax-600' : 'text-ink-900'}`}>₱{inst.total.toLocaleString()}</div>
-                       </td>
-                    </tr>
-                 ))}
-              </tbody>
-           </table>
+           {/* Desktop Table View */}
+           <div className="hidden md:block overflow-x-auto">
+             <table className="w-full text-left border-collapse">
+                <thead className="bg-leather-900 text-paper-100 text-[10px] font-black uppercase tracking-[0.2em]">
+                   <tr>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4">Payday Date</th>
+                      <th className="px-6 py-4">Account Holder</th>
+                      <th className="px-6 py-4">Principal Part</th>
+                      <th className="px-6 py-4">Interest Part</th>
+                      <th className="px-6 py-4 text-right">Total Installment</th>
+                   </tr>
+                </thead>
+                <tbody className="divide-y divide-paper-100">
+                   {allInstallments.map((inst, idx) => (
+                      <tr key={idx} className={`hover:bg-paper-50 transition-colors group ${inst.status === 'paid' ? 'opacity-40' : ''}`}>
+                         <td className="px-6 py-5">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[9px] font-black uppercase tracking-widest border ${inst.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : inst.status === 'overdue' ? 'bg-wax-50 text-wax-600 border-wax-200 animate-pulse' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                               {inst.status === 'paid' ? <CheckCircle2 size={10}/> : <Clock size={10}/>}
+                               {inst.status}
+                            </span>
+                         </td>
+                         <td className="px-6 py-5">
+                            <div className="font-serif font-bold text-lg text-ink-900">{inst.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                         </td>
+                         <td className="px-6 py-5">
+                            <div className="font-bold text-ink-800">{inst.borrowerName}</div>
+                            <div className="text-[10px] font-mono text-ink-400 uppercase tracking-tighter">{inst.loanPurpose}</div>
+                         </td>
+                         <td className="px-6 py-5 font-mono text-sm">₱{inst.principal.toLocaleString()}</td>
+                         <td className="px-6 py-5 font-mono text-sm text-emerald-700 font-bold">
+                            <div className="flex items-center gap-2">
+                               ₱{inst.interest.toLocaleString()}
+                               {inst.isInterestPaid && <CheckCircle2 size={12} className="text-emerald-500" />}
+                            </div>
+                         </td>
+                         <td className="px-6 py-5 text-right">
+                            <div className={`font-mono font-bold text-xl ${inst.status === 'overdue' ? 'text-wax-600' : 'text-ink-900'}`}>₱{inst.total.toLocaleString()}</div>
+                         </td>
+                      </tr>
+                   ))}
+                </tbody>
+             </table>
+           </div>
+
+           {/* Mobile Card View */}
+           <div className="md:hidden divide-y divide-paper-100">
+             {allInstallments.map((inst, idx) => (
+               <div key={idx} className={`p-6 space-y-4 ${inst.status === 'paid' ? 'opacity-40' : ''}`}>
+                 <div className="flex justify-between items-start">
+                   <div>
+                     <div className="font-serif font-bold text-lg text-ink-900">
+                       {inst.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                     </div>
+                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[9px] font-black uppercase tracking-widest border mt-1 ${inst.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : inst.status === 'overdue' ? 'bg-wax-50 text-wax-600 border-wax-200 animate-pulse' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                       {inst.status === 'paid' ? <CheckCircle2 size={10}/> : <Clock size={10}/>}
+                       {inst.status}
+                     </span>
+                   </div>
+                   <div className={`font-mono font-bold text-xl ${inst.status === 'overdue' ? 'text-wax-600' : 'text-ink-900'}`}>
+                     ₱{inst.total.toLocaleString()}
+                   </div>
+                 </div>
+                 
+                 <div className="space-y-2">
+                   <div className="flex justify-between items-center text-sm">
+                     <span className="text-ink-400 font-black uppercase text-[10px] tracking-widest">Account Holder</span>
+                     <div className="text-right">
+                       <div className="font-bold text-ink-800">{inst.borrowerName}</div>
+                       <div className="text-[10px] font-mono text-ink-400 uppercase tracking-tighter">{inst.loanPurpose}</div>
+                     </div>
+                   </div>
+                   
+                   <div className="flex justify-between items-center text-sm">
+                     <span className="text-ink-400 font-black uppercase text-[10px] tracking-widest">Principal</span>
+                     <span className="font-mono">₱{inst.principal.toLocaleString()}</span>
+                   </div>
+                   
+                   <div className="flex justify-between items-center text-sm">
+                     <span className="text-ink-400 font-black uppercase text-[10px] tracking-widest">Interest</span>
+                     <div className="flex items-center gap-2 font-mono text-emerald-700 font-bold">
+                       ₱{inst.interest.toLocaleString()}
+                       {inst.isInterestPaid && <CheckCircle2 size={12} className="text-emerald-500" />}
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             ))}
+           </div>
         </div>
       )}
 

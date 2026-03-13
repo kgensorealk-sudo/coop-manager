@@ -29,13 +29,16 @@ const ContributionModal: React.FC<ContributionModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setIsClosing(false);
-      if (currentUser && currentUser.role === 'member') {
-        setMemberId(currentUser.id);
-      } else {
-        setMemberId('');
-        setAmount('');
-      }
+      const timer = setTimeout(() => {
+        setIsClosing(false);
+        if (currentUser && currentUser.role === 'member') {
+          setMemberId(currentUser.id);
+        } else {
+          setMemberId('');
+          setAmount('');
+        }
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [isOpen, currentUser]);
 

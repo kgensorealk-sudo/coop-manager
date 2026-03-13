@@ -22,8 +22,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading, erro
   // Auto-switch to Sign In on success message
   useEffect(() => {
     if (success && success.includes("Registration successful")) {
-      setIsSignup(false);
-      setPassword(''); // Clear password for security/UX
+      const timer = setTimeout(() => {
+        setIsSignup(false);
+        setPassword(''); // Clear password for security/UX
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [success]);
 

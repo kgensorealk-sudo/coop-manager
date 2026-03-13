@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { User, LoanWithBorrower } from '../types';
 import { dataService } from '../services/dataService';
@@ -58,7 +58,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<User | null>(null);
 
-  const checkArrears = (memberId: string) => {
+  const checkArrears = useCallback((memberId: string) => {
     const memberActiveLoans = loans.filter(l => l.borrower_id === memberId && l.status === 'active');
     if (memberActiveLoans.length === 0) return false;
 
@@ -67,7 +67,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
       const startDay = anchorDate.getDate();
       let firstYear = anchorDate.getFullYear();
       let firstMonth = anchorDate.getMonth();
-      let is10th = true;
+      let is10th;
 
       /**
        * NEW TIMING RULES: Window-based (+/- 7 days)
@@ -89,12 +89,12 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
         firstMonth %= 12;
       }
 
-      let firstPayday = new Date(firstYear, firstMonth, is10th ? 10 : 25);
+      const firstPayday = new Date(firstYear, firstMonth, is10th ? 10 : 25);
       const now = new Date();
       if (now < firstPayday) return false;
 
       let paydaysPassed = 0;
-      let tempDate = new Date(firstPayday);
+      const tempDate = new Date(firstPayday);
       let temp10th = is10th;
 
       while (tempDate <= now) {
@@ -115,7 +115,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
 
       return actualPrincipalRepaid < (expectedPrincipalRepaid - 0.1);
     });
-  };
+  }, [loans]);
 
   const filteredMembers = useMemo(() => {
     return members.filter(member => {
@@ -137,7 +137,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
           return true;
       }
     });
-  }, [members, loans, searchTerm, activeFilter]);
+  }, [members, loans, searchTerm, activeFilter, checkArrears]);
 
   const summaryStats = useMemo(() => {
     const totalGroupEquity = members.reduce((sum, m) => sum + (m.equity || 0), 0);
@@ -150,7 +150,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
       totalActiveLoans,
       totalArrearsCount
     };
-  }, [members, loans]);
+  }, [members, loans, checkArrears]);
 
   const handleAddMember = async (data: any) => {
     await dataService.createMember(data);

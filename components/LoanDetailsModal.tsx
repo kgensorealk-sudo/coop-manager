@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LoanWithBorrower, Payment } from '../types';
 import { dataService } from '../services/dataService';
@@ -39,20 +39,11 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'history' | 'schedule'>('history');
 
-  useEffect(() => {
-    if (isOpen && loan) {
-      fetchHistory();
-      setAmount('');
-      setError(null);
-      setActiveTab('history');
-    }
-  }, [isOpen, loan]);
-
   const handleClose = () => {
     onClose();
   };
 
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     if (!loan) return;
     try {
       const history = await dataService.getLoanPayments(loan.id);
@@ -60,7 +51,19 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
     } catch (error) {
       console.error(error);
     }
-  };
+  }, [loan]);
+
+  useEffect(() => {
+    if (isOpen && loan) {
+      const timer = setTimeout(() => {
+        fetchHistory();
+        setAmount('');
+        setError(null);
+        setActiveTab('history');
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, loan, fetchHistory]);
 
   const debt = useMemo(() => {
     if (!loan) return null;
@@ -77,13 +80,17 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
     const scheduleDates = dataService.getInstallmentDates(loanStart, loan.duration_months * 2);
 
     const historyTotalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const historyInterestPaid = payments.reduce((sum, p) => sum + (p.interest_paid || 0), 0);
     let cumulativeRequired = 0;
+    let cumulativeInterestRequired = 0;
     const now = new Date();
 
     return scheduleDates.map((paydayDate, index) => {
         cumulativeRequired += debt.installmentAmount;
+        cumulativeInterestRequired += installmentInterest;
         
         const isSettled = historyTotalPaid >= (cumulativeRequired - 0.1);
+        const isInterestSettled = historyInterestPaid >= (cumulativeInterestRequired - 0.1);
         const isPast = paydayDate < now;
 
         return {
@@ -92,6 +99,7 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
             interest: installmentInterest,
             principal: installmentPrincipal,
             total: debt.installmentAmount,
+            isInterestPaid: isInterestSettled,
             status: isSettled ? 'paid' : (isPast ? 'overdue' : 'upcoming')
         };
     });
@@ -141,6 +149,9 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
   const progressPercent = Math.min((totalPaidOverall / (debt.totalTermDebt + debt.penaltyTotal)) * 100, 100);
   const principalProgress = Math.min(((loan.principal - debt.remainingPrincipal) / loan.principal) * 100, 100);
 
+  const isEffectivelyPaid = loan.status === 'active' && debt.liveTotalDue <= 0.01;
+  const displayStatus = isEffectivelyPaid ? 'paid' : loan.status;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -168,13 +179,17 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
              <div>
                 <div className="flex items-center gap-3 mb-1">
                    <h2 className="text-3xl font-serif font-bold tracking-tight text-paper-50">Sovereign Ledger</h2>
-                   <span className={`px-2.5 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] border ${
-                      debt.isPostTerm ? 'bg-wax-500/20 text-wax-400 border-wax-500/30 animate-pulse' :
-                      loan.status === 'active' ? 'bg-[#059669]/20 text-[#10b981] border-[#059669]/30' :
-                      loan.status === 'paid' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-white/10 text-white/40'
-                   }`}>
-                      {debt.isPostTerm ? 'PENALTY PHASE' : loan.status}
-                   </span>
+                   {(() => {
+                      return (
+                         <span className={`px-2.5 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] border ${
+                            debt.isPostTerm && displayStatus !== 'paid' ? 'bg-wax-500/20 text-wax-400 border-wax-500/30 animate-pulse' :
+                            displayStatus === 'active' ? 'bg-[#059669]/20 text-[#10b981] border-[#059669]/30' :
+                            displayStatus === 'paid' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-white/10 text-white/40'
+                         }`}>
+                            {debt.isPostTerm && displayStatus !== 'paid' ? 'PENALTY PHASE' : displayStatus}
+                         </span>
+                      );
+                   })()}
                 </div>
                 <p className="text-paper-400 font-serif italic text-lg">{loan.borrower.full_name} • {loan.purpose}</p>
              </div>
@@ -276,7 +291,7 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
              </div>
           </div>
 
-          {loan.status === 'active' && (
+          {displayStatus === 'active' && (
             <div className="bg-paper-100/50 border-2 border-paper-300 rounded-sm p-6 shadow-sm group hover:border-ink-400 transition-colors">
               <h3 className="text-sm font-black text-ink-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                  <Calculator size={18} className="text-[#C5A028]" /> Post Repayment
@@ -333,105 +348,214 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
             
             {activeTab === 'history' ? (
               <div className="bg-white border border-paper-200 rounded-sm overflow-hidden shadow-sm">
-                <table className="w-full text-left">
-                  <thead className="bg-paper-100 border-b border-paper-200 text-[10px] text-ink-500 uppercase tracking-widest font-black">
-                    <tr>
-                      <th className="px-6 py-4">Ref. Date</th>
-                      <th className="px-6 py-4">Amt Collected</th>
-                      <th className="px-6 py-4">Application Breakdown</th>
-                      <th className="px-6 py-4 text-right">Running Principal</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-paper-100 font-mono text-xs">
-                    {paymentsWithRunningPrincipal.length === 0 ? (
-                       <tr><td colSpan={4} className="px-6 py-16 text-center text-ink-300 italic font-serif text-xl">No transactions found in history.</td></tr>
-                    ) : (
-                        paymentsWithRunningPrincipal.map((payment) => (
-                        <tr key={payment.id} className="hover:bg-paper-50 transition-colors group">
-                            <td className="px-6 py-5 text-ink-600 font-serif italic text-base">
-                                {new Date(payment.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </td>
-                            <td className="px-6 py-5 font-bold text-sm text-ink-900">
-                                ₱{payment.amount.toLocaleString()}
-                            </td>
-                            <td className="px-6 py-5 space-y-1">
-                                {(payment.penalty_paid || 0) > 0 && (
-                                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-wax-600">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-wax-600"></div>
-                                        <span>Pen: ₱{payment.penalty_paid.toLocaleString()}</span>
-                                    </div>
-                                )}
-                                {(payment.interest_paid || 0) > 0 && (
-                                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-amber-600">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-600"></div>
-                                        <span>Int: ₱{payment.interest_paid.toLocaleString()}</span>
-                                    </div>
-                                )}
-                                {(payment.principal_paid || 0) > 0 && (
-                                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-600">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
-                                        <span>Pri: ₱{payment.principal_paid.toLocaleString()}</span>
-                                    </div>
-                                )}
-                                {!(payment.penalty_paid || 0) && !(payment.interest_paid || 0) && !(payment.principal_paid || 0) && (
-                                    <span className="text-ink-300 italic">Unallocated</span>
-                                )}
-                            </td>
-                            <td className="px-6 py-5 text-right font-black text-ink-900 text-lg">
-                                ₱{payment.runningPrincipal.toLocaleString()}
-                            </td>
-                        </tr>
-                        ))
-                    )}
-                  </tbody>
-                </table>
+                {/* Desktop Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-paper-100 border-b border-paper-200 text-[10px] text-ink-500 uppercase tracking-widest font-black">
+                      <tr>
+                        <th className="px-6 py-4">Ref. Date</th>
+                        <th className="px-6 py-4">Amt Collected</th>
+                        <th className="px-6 py-4">Application Breakdown</th>
+                        <th className="px-6 py-4 text-right">Running Principal</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-paper-100 font-mono text-xs">
+                      {paymentsWithRunningPrincipal.length === 0 ? (
+                         <tr><td colSpan={4} className="px-6 py-16 text-center text-ink-300 italic font-serif text-xl">No transactions found in history.</td></tr>
+                      ) : (
+                          paymentsWithRunningPrincipal.map((payment) => (
+                          <tr key={payment.id} className="hover:bg-paper-50 transition-colors group">
+                              <td className="px-6 py-5 text-ink-600 font-serif italic text-base">
+                                  {new Date(payment.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </td>
+                              <td className="px-6 py-5 font-bold text-sm text-ink-900">
+                                  ₱{payment.amount.toLocaleString()}
+                              </td>
+                              <td className="px-6 py-5 space-y-1">
+                                  {(payment.penalty_paid || 0) > 0 && (
+                                      <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-wax-600">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-wax-600"></div>
+                                          <span>Pen: ₱{payment.penalty_paid.toLocaleString()}</span>
+                                      </div>
+                                  )}
+                                  {(payment.interest_paid || 0) > 0 && (
+                                      <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-amber-600">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-amber-600"></div>
+                                          <span>Int: ₱{payment.interest_paid.toLocaleString()}</span>
+                                      </div>
+                                  )}
+                                  {(payment.principal_paid || 0) > 0 && (
+                                      <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-600">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
+                                          <span>Pri: ₱{payment.principal_paid.toLocaleString()}</span>
+                                      </div>
+                                  )}
+                                  {!(payment.penalty_paid || 0) && !(payment.interest_paid || 0) && !(payment.principal_paid || 0) && (
+                                      <span className="text-ink-300 italic">Unallocated</span>
+                                  )}
+                              </td>
+                              <td className="px-6 py-5 text-right font-black text-ink-900 text-lg">
+                                  ₱{payment.runningPrincipal.toLocaleString()}
+                              </td>
+                          </tr>
+                          ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="md:hidden divide-y divide-paper-100">
+                  {paymentsWithRunningPrincipal.length === 0 ? (
+                    <div className="px-6 py-16 text-center text-ink-300 italic font-serif text-xl">No transactions found in history.</div>
+                  ) : (
+                    paymentsWithRunningPrincipal.map((payment) => (
+                      <div key={payment.id} className="p-6 space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div className="text-ink-600 font-serif italic text-base">
+                            {new Date(payment.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </div>
+                          <div className="font-black text-ink-900 text-lg">
+                            ₱{payment.runningPrincipal.toLocaleString()}
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-ink-400">Collected</span>
+                          <span className="font-mono font-bold text-ink-900">₱{payment.amount.toLocaleString()}</span>
+                        </div>
+
+                        <div className="space-y-1">
+                          {(payment.penalty_paid || 0) > 0 && (
+                            <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-wider text-wax-600">
+                              <span>Penalty Paid</span>
+                              <span>₱{payment.penalty_paid.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {(payment.interest_paid || 0) > 0 && (
+                            <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-wider text-amber-600">
+                              <span>Interest Paid</span>
+                              <span>₱{payment.interest_paid.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {(payment.principal_paid || 0) > 0 && (
+                            <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-wider text-emerald-600">
+                              <span>Principal Paid</span>
+                              <span>₱{payment.principal_paid.toLocaleString()}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             ) : (
                <div className="bg-white border border-paper-200 rounded-sm overflow-hidden shadow-sm">
-                  <table className="w-full text-left">
-                    <thead className="bg-paper-100 border-b border-paper-200 text-[10px] text-ink-500 uppercase tracking-widest font-black">
-                        <tr>
-                            <th className="px-6 py-4">No.</th>
-                            <th className="px-6 py-4">Cycle Date</th>
-                            <th className="px-6 py-4">Base P+I Due</th>
-                            <th className="px-6 py-4">Penalties</th>
-                            <th className="px-6 py-4 text-right">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-paper-100 font-mono text-xs">
-                        {amortizationSchedule.map((step) => (
-                            <tr key={step.number} className={`hover:bg-paper-50 transition-colors ${step.status === 'paid' ? 'opacity-40' : ''}`}>
-                                <td className="px-6 py-5 text-ink-400 font-bold">#{step.number}</td>
-                                <td className="px-6 py-5 text-ink-900 font-serif italic text-base">
-                                    {step.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                </td>
-                                <td className="px-6 py-5 text-ink-900 font-bold">₱{debt.installmentAmount.toLocaleString()}</td>
-                                <td className="px-6 py-5 text-ink-400">₱0.00</td>
+                  {/* Desktop Table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead className="bg-paper-100 border-b border-paper-200 text-[10px] text-ink-500 uppercase tracking-widest font-black">
+                          <tr>
+                              <th className="px-6 py-4">No.</th>
+                              <th className="px-6 py-4">Cycle Date</th>
+                              <th className="px-6 py-4">Base P+I Due</th>
+                              <th className="px-6 py-4">Penalties</th>
+                              <th className="px-6 py-4 text-right">Status</th>
+                          </tr>
+                      </thead>
+                      <tbody className="divide-y divide-paper-100 font-mono text-xs">
+                          {amortizationSchedule.map((step) => (
+                              <tr key={step.number} className={`hover:bg-paper-50 transition-colors ${step.status === 'paid' ? 'opacity-40' : ''}`}>
+                                  <td className="px-6 py-5 text-ink-400 font-bold">#{step.number}</td>
+                                  <td className="px-6 py-5 text-ink-900 font-serif italic text-base">
+                                      {step.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  </td>
+                                  <td className="px-6 py-5 text-ink-900 font-bold">
+                                      <div className="flex items-center gap-2">
+                                          ₱{debt.installmentAmount.toLocaleString()}
+                                          {step.isInterestPaid && <CheckCircle2 size={12} className="text-emerald-500" />}
+                                      </div>
+                                  </td>
+                                  <td className="px-6 py-5 text-ink-400">₱0.00</td>
+                                  <td className="px-6 py-5 text-right">
+                                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-sm text-[9px] font-black uppercase tracking-widest border ${
+                                          step.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                          step.status === 'overdue' ? 'bg-wax-50 text-wax-600 border-wax-200 animate-pulse' :
+                                          'bg-paper-100 text-ink-400 border-paper-200'
+                                      }`}>
+                                          {step.status === 'paid' ? <CheckCircle2 size={10}/> : <Clock size={10}/>}
+                                          {step.status}
+                                      </span>
+                                  </td>
+                              </tr>
+                          ))}
+                          {debt.isPostTerm && (
+                             <tr className="bg-wax-50/30">
+                                <td className="px-6 py-5 font-bold text-wax-600">PEN</td>
+                                <td className="px-6 py-5 italic text-wax-900">Post-Term Accumulation</td>
+                                <td className="px-6 py-5">--</td>
+                                <td className="px-6 py-5 text-wax-600 font-black">₱{debt.penaltyTotal.toLocaleString()}</td>
                                 <td className="px-6 py-5 text-right">
-                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-sm text-[9px] font-black uppercase tracking-widest border ${
-                                        step.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                        step.status === 'overdue' ? 'bg-wax-50 text-wax-600 border-wax-200 animate-pulse' :
-                                        'bg-paper-100 text-ink-400 border-paper-200'
-                                    }`}>
-                                        {step.status === 'paid' ? <CheckCircle2 size={10}/> : <Clock size={10}/>}
-                                        {step.status}
-                                    </span>
+                                   <span className="px-3 py-1 bg-wax-600 text-white text-[9px] font-black rounded-sm uppercase">Active Default</span>
                                 </td>
-                            </tr>
-                        ))}
-                        {debt.isPostTerm && (
-                           <tr className="bg-wax-50/30">
-                              <td className="px-6 py-5 font-bold text-wax-600">PEN</td>
-                              <td className="px-6 py-5 italic text-wax-900">Post-Term Accumulation</td>
-                              <td className="px-6 py-5">--</td>
-                              <td className="px-6 py-5 text-wax-600 font-black">₱{debt.penaltyTotal.toLocaleString()}</td>
-                              <td className="px-6 py-5 text-right">
-                                 <span className="px-3 py-1 bg-wax-600 text-white text-[9px] font-black rounded-sm uppercase">Active Default</span>
-                              </td>
-                           </tr>
-                        )}
-                    </tbody>
-                  </table>
+                             </tr>
+                          )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Cards */}
+                  <div className="md:hidden divide-y divide-paper-100">
+                    {amortizationSchedule.map((step) => (
+                      <div key={step.number} className={`p-6 space-y-4 ${step.status === 'paid' ? 'opacity-40' : ''}`}>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="text-ink-400 font-bold text-xs">#{step.number}</div>
+                            <div className="text-ink-900 font-serif italic text-base">
+                              {step.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </div>
+                          </div>
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-sm text-[9px] font-black uppercase tracking-widest border ${
+                            step.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                            step.status === 'overdue' ? 'bg-wax-50 text-wax-600 border-wax-200 animate-pulse' :
+                            'bg-paper-100 text-ink-400 border-paper-200'
+                          }`}>
+                            {step.status === 'paid' ? <CheckCircle2 size={10}/> : <Clock size={10}/>}
+                            {step.status}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-ink-400 font-black uppercase text-[10px] tracking-widest">Base P+I Due</span>
+                          <div className="font-bold text-ink-900 flex items-center gap-2">
+                            ₱{debt.installmentAmount.toLocaleString()}
+                            {step.isInterestPaid && <CheckCircle2 size={12} className="text-emerald-500" />}
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-ink-400 font-black uppercase text-[10px] tracking-widest">Penalties</span>
+                          <span className="text-ink-400 font-mono">₱0.00</span>
+                        </div>
+                      </div>
+                    ))}
+                    {debt.isPostTerm && (
+                      <div className="p-6 bg-wax-50/30 space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-bold text-wax-600 text-xs">PEN</div>
+                            <div className="italic text-wax-900 text-base">Post-Term Accumulation</div>
+                          </div>
+                          <span className="px-3 py-1 bg-wax-600 text-white text-[9px] font-black rounded-sm uppercase">Active Default</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-wax-600 font-black uppercase text-[10px] tracking-widest">Total Surcharge</span>
+                          <span className="text-wax-600 font-black font-mono">₱{debt.penaltyTotal.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                </div>
             )}
           </div>

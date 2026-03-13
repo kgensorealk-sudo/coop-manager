@@ -14,8 +14,11 @@ const ConnectionModal: React.FC<ConnectionModalProps> = ({ isOpen, onClose }) =>
 
   useEffect(() => {
     if (isOpen) {
-      setUrl(localStorage.getItem('supabase_url') || '');
-      setKey(localStorage.getItem('supabase_key') || '');
+      const timer = setTimeout(() => {
+        setUrl(localStorage.getItem('supabase_url') || '');
+        setKey(localStorage.getItem('supabase_key') || '');
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
