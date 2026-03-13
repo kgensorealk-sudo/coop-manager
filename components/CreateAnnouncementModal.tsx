@@ -116,7 +116,7 @@ const CreateAnnouncementModal: React.FC<CreateAnnouncementModalProps> = ({
               <AlertTriangle size={16} className="text-slate-400" />
               Priority Level
             </label>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {priorityOptions.map((option) => (
                 <button
                   key={option.value}

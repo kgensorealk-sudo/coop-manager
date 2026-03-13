@@ -396,7 +396,7 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard index={0} title="Treasury Balance" value={`₱${treasuryStats.balance.toLocaleString()}`} icon={Wallet} trend="Liquid Assets" trendUp={true} colorClass="text-emerald-700" />
           <StatCard index={1} title="Gains Realized" value={`₱${(treasuryStats.totalInterestCollected + treasuryStats.totalPenaltyCollected).toLocaleString()}`} icon={TrendingUp} trend="Interest + Penalties" trendUp={true} colorClass="text-purple-700" />
           <StatCard index={2} title="Total Receivables" value={`₱${activeVolume.toLocaleString()}`} icon={Coins} trend="Loan Book Value" trendUp={true} colorClass="text-blue-700" />
@@ -671,7 +671,7 @@ const App: React.FC = () => {
       <AnnouncementModal isOpen={isSystemAnnouncementOpen} onClose={() => setIsSystemAnnouncementOpen(false)} announcements={systemAnnouncements} />
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} currentUser={currentUser} onLogout={handleLogout} />
       <MobileNav activeTab={activeTab} onTabChange={setActiveTab} currentUser={currentUser} onLogout={handleLogout} />
-      <main className="flex-1 lg:ml-72 min-h-screen p-6 md:p-12 pt-24 lg:pt-12">
+      <main className="flex-1 lg:ml-72 min-h-screen p-6 md:p-12 pt-28 md:pt-32 lg:pt-12">
         <div className="max-w-7xl mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
