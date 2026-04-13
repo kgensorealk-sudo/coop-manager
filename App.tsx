@@ -608,7 +608,7 @@ const App: React.FC = () => {
             const debtDetails = dataService.calculateDetailedDebt(loan, loanPayments);
             const totalPaid = loanPayments.reduce((sum, p) => sum + p.amount, 0);
             
-            const isEffectivelyPaid = loan.status === 'active' && (loan.remaining_principal + liveInterestDue + debtDetails.remainingPenalty) <= 0.01;
+            const isEffectivelyPaid = loan.status === 'active' && debtDetails.liveTotalDue <= 0.01;
             const displayStatus = isEffectivelyPaid ? 'paid' : loan.status;
 
             const nextDue = debtDetails.schedule.find((_, idx) => {

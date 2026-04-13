@@ -59,6 +59,13 @@ class DataService {
     const startDate = new Date(loan.start_date || loan.created_at);
     const now = new Date();
     
+    // STOP THE CLOCK: If loan is paid, use the updated_at date (date of settlement)
+    // instead of 'now' to calculate months overdue. This prevents surcharges from growing after payment.
+    let referenceDate = now;
+    if (loan.status === 'paid' && loan.updated_at) {
+      referenceDate = new Date(loan.updated_at);
+    }
+
     // 1. Core Term Math: Use loan.interest_rate (monthly)
     const totalInstallments = loan.duration_months * 2;
     const rate = (loan.interest_rate || 10) / 100;
@@ -72,9 +79,9 @@ class DataService {
     let penaltyTotal = 0;
     let monthsOverdue = 0;
 
-    if (now > termEndDate) {
-      monthsOverdue = (now.getFullYear() - termEndDate.getFullYear()) * 12 + (now.getMonth() - termEndDate.getMonth());
-      if (now.getDate() > termEndDate.getDate()) monthsOverdue += 1;
+    if (referenceDate > termEndDate) {
+      monthsOverdue = (referenceDate.getFullYear() - termEndDate.getFullYear()) * 12 + (referenceDate.getMonth() - termEndDate.getMonth());
+      if (referenceDate.getDate() > termEndDate.getDate()) monthsOverdue += 1;
       
       const monthlyInterest = loan.principal * rate;
       const surchargePerMonth = monthlyInterest * 0.10;
@@ -332,14 +339,43 @@ class DataService {
       const loan = MOCK_LOANS.find(l => l.id === loanId);
       if (loan) {
         loan.waived_penalty = (loan.waived_penalty || 0) + amount;
+        const payments = MOCK_PAYMENTS.filter(p => p.loan_id === loanId);
+        const debt = this.calculateDetailedDebt(loan, payments);
+        if ((loan.remaining_principal + debt.remainingTermInterest + debt.remainingPenalty) <= 0.01) {
+          loan.status = 'paid';
+        }
       }
       return;
     }
     
-    const { data: loan } = await this.supabase!.from('loans').select('waived_penalty').eq('id', loanId).single();
-    const currentWaived = loan?.waived_penalty || 0;
+    const { data: loanData } = await this.supabase!.from('loans').select('*').eq('id', loanId).single();
+    if (!loanData) throw new Error('Loan not found');
     
-    const { error } = await this.supabase!.from('loans').update({ waived_penalty: currentWaived + amount }).eq('id', loanId);
+    const { data: payments } = await this.supabase!.from('payments').select('*').eq('loan_id', loanId);
+    
+    const currentWaived = loanData.waived_penalty || 0;
+    const newWaived = currentWaived + amount;
+    
+    const updatedLoan = { ...loanData, waived_penalty: newWaived };
+    const debt = this.calculateDetailedDebt(updatedLoan, payments || []);
+    
+    const isFullySettled = (updatedLoan.remaining_principal + debt.remainingTermInterest + debt.remainingPenalty) <= 0.01;
+    
+    const { error } = await this.supabase!.from('loans').update({ 
+      waived_penalty: newWaived,
+      status: isFullySettled ? 'paid' : loanData.status
+    }).eq('id', loanId);
+    
+    if (error) throw error;
+  }
+
+  async markAsPaid(loanId: string): Promise<void> {
+    if (this.isMock()) {
+      const loan = MOCK_LOANS.find(l => l.id === loanId);
+      if (loan) loan.status = 'paid';
+      return;
+    }
+    const { error } = await this.supabase!.from('loans').update({ status: 'paid' }).eq('id', loanId);
     if (error) throw error;
   }
 

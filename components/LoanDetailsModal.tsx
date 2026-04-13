@@ -18,7 +18,8 @@ import {
   Scale,
   History,
   AlertTriangle,
-  Download
+  Download,
+  ShieldCheck
 } from 'lucide-react';
 
 interface LoanDetailsModalProps {
@@ -150,6 +151,21 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
     }
   };
 
+  const handleMarkAsPaid = async () => {
+    if (!loan) return;
+    
+    setIsSubmitting(true);
+    try {
+      await dataService.markAsPaid(loan.id);
+      await fetchHistory();
+      onPaymentSuccess();
+    } catch (err: any) {
+      setError(err.message || 'Failed to mark as paid');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const paymentsWithRunningPrincipal = useMemo(() => {
     if (!loan) return [];
     // Sort by date ascending to calculate running principal
@@ -190,9 +206,9 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="bg-paper-50 rounded-sm shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh] border-4 border-double border-paper-300 relative z-10"
           >
-            <div className={`p-8 relative overflow-hidden shrink-0 min-h-[300px] transition-colors duration-500 ${debt.isPostTerm ? 'bg-wax-950 text-paper-50' : 'bg-[#0f172a] text-paper-50'}`}>
-          <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none rotate-12">
-             <Receipt size={180} />
+            <div className={`p-8 relative overflow-hidden shrink-0 min-h-[300px] transition-colors duration-500 ${displayStatus === 'paid' ? 'bg-emerald-900 text-paper-50' : debt.isPostTerm ? 'bg-wax-950 text-paper-50' : 'bg-[#0f172a] text-paper-50'}`}>
+          <div className="absolute top-0 right-0 p-4 opacity-[0.05] pointer-events-none rotate-12">
+             {displayStatus === 'paid' ? <ShieldCheck size={220} /> : <Receipt size={180} />}
           </div>
           
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 relative z-10">
@@ -202,16 +218,17 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                    {(() => {
                       return (
                          <span className={`px-2.5 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] border ${
-                            debt.isPostTerm && displayStatus !== 'paid' ? 'bg-wax-500/20 text-wax-400 border-wax-500/30 animate-pulse' :
+                            displayStatus === 'paid' ? 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30' :
+                            debt.isPostTerm ? 'bg-wax-500/20 text-wax-400 border-wax-500/30 animate-pulse' :
                             displayStatus === 'active' ? 'bg-[#059669]/20 text-[#10b981] border-[#059669]/30' :
-                            displayStatus === 'paid' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-white/10 text-white/40'
+                            'bg-white/10 text-white/40'
                          }`}>
-                            {debt.isPostTerm && displayStatus !== 'paid' ? 'PENALTY PHASE' : displayStatus}
+                            {displayStatus === 'paid' ? 'FULLY SETTLED' : debt.isPostTerm ? 'PENALTY PHASE' : displayStatus}
                          </span>
                       );
                    })()}
                 </div>
-                <p className="text-paper-400 font-serif italic text-lg">{loan.borrower.full_name} • {loan.purpose}</p>
+                <p className="text-paper-300 font-serif italic text-lg">{loan.borrower.full_name} • {loan.purpose}</p>
              </div>
              <div className="flex items-center gap-3">
                 {onViewAgreement && displayStatus !== 'pending' && (
@@ -303,6 +320,15 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                                >
                                   {isSubmitting ? 'Processing...' : 'Waive Surcharge'}
                                 </button>
+                            )}
+                            {isAdmin && displayStatus === 'active' && (
+                               <button 
+                                 onClick={handleMarkAsPaid}
+                                 disabled={isSubmitting}
+                                 className="mt-2 w-full py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-[9px] font-black uppercase tracking-widest rounded-sm transition-colors border border-emerald-500/30 text-emerald-400"
+                               >
+                                 {isSubmitting ? 'Processing...' : 'Mark as Paid'}
+                               </button>
                             )}
                          </div>
                       </div>
@@ -415,25 +441,25 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                               </td>
                               <td className="px-6 py-5 space-y-1">
                                   {(payment.penalty_paid || 0) > 0 && (
-                                      <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-wax-600">
-                                          <div className="w-1.5 h-1.5 rounded-full bg-wax-600"></div>
+                                      <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-wax-700">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-wax-700"></div>
                                           <span>Pen: ₱{payment.penalty_paid.toLocaleString()}</span>
                                       </div>
                                   )}
                                   {(payment.interest_paid || 0) > 0 && (
-                                      <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-amber-600">
-                                          <div className="w-1.5 h-1.5 rounded-full bg-amber-600"></div>
+                                      <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-amber-700">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-amber-700"></div>
                                           <span>Int: ₱{payment.interest_paid.toLocaleString()}</span>
                                       </div>
                                   )}
                                   {(payment.principal_paid || 0) > 0 && (
-                                      <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-600">
-                                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
+                                      <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-700">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-700"></div>
                                           <span>Pri: ₱{payment.principal_paid.toLocaleString()}</span>
                                       </div>
                                   )}
                                   {!(payment.penalty_paid || 0) && !(payment.interest_paid || 0) && !(payment.principal_paid || 0) && (
-                                      <span className="text-ink-300 italic">Unallocated</span>
+                                      <span className="text-ink-400 italic">Unallocated</span>
                                   )}
                               </td>
                               <td className="px-6 py-5 text-right font-black text-ink-900 text-lg">
@@ -508,7 +534,7 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                       </thead>
                       <tbody className="divide-y divide-paper-100 font-mono text-xs">
                           {amortizationSchedule.map((step) => (
-                              <tr key={step.number} className={`hover:bg-paper-50 transition-colors ${step.status === 'paid' ? 'opacity-40' : ''}`}>
+                              <tr key={step.number} className={`hover:bg-paper-50 transition-colors ${step.status === 'paid' ? 'opacity-70 bg-emerald-50/10' : ''}`}>
                                   <td className="px-6 py-5 text-ink-400 font-bold">#{step.number}</td>
                                   <td className="px-6 py-5 text-ink-900 font-serif italic text-base">
                                       {step.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -519,7 +545,7 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                                           {step.isInterestPaid && <CheckCircle2 size={12} className="text-emerald-500" />}
                                       </div>
                                   </td>
-                                  <td className="px-6 py-5 text-ink-400">₱0.00</td>
+                                  <td className="px-6 py-4 text-ink-400">₱0.00</td>
                                   <td className="px-6 py-5 text-right">
                                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-sm text-[9px] font-black uppercase tracking-widest border ${
                                           step.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
@@ -550,7 +576,7 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                   {/* Mobile Cards */}
                   <div className="md:hidden divide-y divide-paper-100">
                     {amortizationSchedule.map((step) => (
-                      <div key={step.number} className={`p-6 space-y-4 ${step.status === 'paid' ? 'opacity-40' : ''}`}>
+                      <div key={step.number} className={`p-6 space-y-4 ${step.status === 'paid' ? 'opacity-70 bg-emerald-50/10' : ''}`}>
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="text-ink-400 font-bold text-xs">#{step.number}</div>
