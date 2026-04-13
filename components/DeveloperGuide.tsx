@@ -32,6 +32,13 @@ create trigger on_payment_inserted
   for each row execute procedure public.handle_loan_payment();
 
 -- =========================================================
+-- WAIVE SURCHARGE UPDATE
+-- =========================================================
+
+-- Add waived_penalty column to loans table
+ALTER TABLE public.loans ADD COLUMN IF NOT EXISTS waived_penalty numeric DEFAULT 0;
+
+-- =========================================================
 -- AUTH TRIGGER (AUTOMATIC PROFILE CREATION)
 -- =========================================================
 -- ... (rest of the previous schema remains same)

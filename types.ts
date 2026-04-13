@@ -28,6 +28,7 @@ export interface Loan {
   purpose: string;
   remaining_principal: number;
   interest_accrued: number; // Accumulated unpaid interest
+  waived_penalty?: number;
   created_at: string;
   updated_at?: string;
 }

@@ -64,7 +64,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       {/* Mobile Header */}
       <div className="lg:hidden flex items-center justify-between px-6 py-4 bg-leather-900 text-paper-50 fixed top-0 left-0 right-0 z-40 border-b border-leather-800 shadow-lg">
         <div className="flex items-center space-x-3">
-          <div className="bg-paper-100 p-1.5 rounded-sm rotate-3 border border-paper-300">
+          <div className="bg-paper-100 p-1.5 rounded-xl rotate-3 border border-paper-300">
             <Feather size={18} className="text-ink-900" />
           </div>
           <span className="text-lg font-serif font-bold tracking-wide text-paper-50">The 13th Page</span>
@@ -99,7 +99,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             >
               <div className="p-8 border-b border-leather-800 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-sm bg-paper-200 border-2 border-paper-400 overflow-hidden">
+                  <div className="w-10 h-10 rounded-xl bg-paper-200 border-2 border-paper-400 overflow-hidden">
                     <img 
                       src={currentUser.avatar_url || "https://picsum.photos/200"} 
                       alt={currentUser.full_name} 
@@ -127,7 +127,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                     <button
                       key={item.id}
                       onClick={() => handleTabClick(item.id)}
-                      className={`w-full flex items-center space-x-4 px-4 py-4 rounded-sm transition-all ${
+                      className={`w-full flex items-center space-x-4 px-4 py-4 rounded-xl transition-all ${
                         isActive 
                           ? 'text-paper-50 bg-white/10 border-l-4 border-gold-500' 
                           : 'text-paper-400 hover:text-paper-100 hover:bg-white/5 border-l-4 border-transparent'
@@ -143,7 +143,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
               <div className="p-6 bg-leather-800 border-t border-white/5">
                 <button 
                   onClick={onLogout}
-                  className="flex items-center justify-between w-full px-4 py-4 text-xs text-paper-400 hover:text-paper-100 bg-white/5 transition-all uppercase tracking-widest font-bold rounded-sm"
+                  className="flex items-center justify-between w-full px-4 py-4 text-xs text-paper-400 hover:text-paper-100 bg-white/5 transition-all uppercase tracking-widest font-bold rounded-xl"
                 >
                   <span>Sign Out</span>
                   <LogOut size={16} />

@@ -264,9 +264,9 @@ const App: React.FC = () => {
     setIsDetailsModalOpen(true);
   };
 
-  const handleApproveLoan = async (loanId: string, customRate: number) => {
+  const handleApproveLoan = async (loanId: string, customRate: number, startDate?: Date) => {
     try {
-      await dataService.updateLoanStatus(loanId, 'active', customRate);
+      await dataService.updateLoanStatus(loanId, 'active', customRate, startDate);
       await refreshData();
       setIsApprovalModalOpen(false);
       setSelectedLoan(null);
@@ -696,7 +696,13 @@ const App: React.FC = () => {
         </div>
       </main>
       {currentUser.role === 'admin' && <LoanApprovalModal isOpen={isApprovalModalOpen} onClose={() => setIsApprovalModalOpen(false)} loan={selectedLoan} onApprove={handleApproveLoan} onReject={handleRejectLoan} treasuryBalance={treasuryStats.balance} />}
-      <LoanDetailsModal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} loan={selectedLoan} onPaymentSuccess={refreshData} />
+      <LoanDetailsModal 
+        isOpen={isDetailsModalOpen} 
+        onClose={() => setIsDetailsModalOpen(false)} 
+        loan={selectedLoan} 
+        onPaymentSuccess={refreshData} 
+        isAdmin={currentUser?.role === 'admin'}
+      />
       <LoanApplicationForm isOpen={isApplicationModalOpen} onClose={() => setIsApplicationModalOpen(false)} onSubmit={handleCreateLoan} members={members} currentUser={currentUser} />
       <ContributionModal isOpen={isContributionModalOpen} onClose={() => setIsContributionModalOpen(false)} onSubmit={handleAddContribution} members={members} currentUser={currentUser} />
       <CreateAnnouncementModal isOpen={isAnnouncementModalOpen} onClose={() => { setIsAnnouncementModalOpen(false); setEditingAnnouncement(null); }} onSubmit={handleSaveAnnouncement} editingAnnouncement={editingAnnouncement} />

@@ -25,13 +25,15 @@ interface LoanDetailsModalProps {
   onClose: () => void;
   loan: LoanWithBorrower | null;
   onPaymentSuccess: () => void;
+  isAdmin?: boolean;
 }
 
 const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({ 
   isOpen, 
   onClose, 
   loan,
-  onPaymentSuccess
+  onPaymentSuccess,
+  isAdmin
 }) => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [amount, setAmount] = useState<number | ''>('');
@@ -125,6 +127,21 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
       onPaymentSuccess(); 
     } catch (err: any) {
       setError(err.message || 'Failed to record payment');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleWaivePenalty = async () => {
+    if (!loan || !debt || debt.remainingPenalty <= 0) return;
+    
+    setIsSubmitting(true);
+    try {
+      await dataService.waivePenalty(loan.id, debt.remainingPenalty);
+      await fetchHistory();
+      onPaymentSuccess();
+    } catch (err: any) {
+      setError(err.message || 'Failed to waive surcharge');
     } finally {
       setIsSubmitting(false);
     }
@@ -259,9 +276,20 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                             <span className="block text-[10px] font-black uppercase text-wax-600 mb-1">Months Overdue</span>
                             <span className="font-mono font-bold">{debt.monthsOverdue} Mo.</span>
                          </div>
-                         <div className="p-3 bg-wax-600 text-white rounded-sm shadow-md">
-                            <span className="block text-[10px] font-black uppercase text-wax-100 mb-1">Total Surcharge Owed</span>
-                            <span className="font-mono font-bold text-lg">₱{debt.remainingPenalty.toLocaleString()}</span>
+                         <div className="p-3 bg-wax-600 text-white rounded-sm shadow-md flex flex-col justify-between">
+                            <div>
+                               <span className="block text-[10px] font-black uppercase text-wax-100 mb-1">Total Surcharge Owed</span>
+                               <span className="font-mono font-bold text-lg">₱{debt.remainingPenalty.toLocaleString()}</span>
+                            </div>
+                            {isAdmin && debt.remainingPenalty > 0 && (
+                               <button 
+                                  onClick={handleWaivePenalty}
+                                  disabled={isSubmitting}
+                                  className="mt-2 w-full py-1.5 bg-white/20 hover:bg-white/30 text-[9px] font-black uppercase tracking-widest rounded-sm transition-colors border border-white/30"
+                               >
+                                  {isSubmitting ? 'Processing...' : 'Waive Surcharge'}
+                                </button>
+                            )}
                          </div>
                       </div>
                    </div>

@@ -60,7 +60,7 @@ const BreakdownRow: React.FC<BreakdownRowProps> = ({
   return (
     <div className="relative pt-1">
        <div 
-         className={`flex justify-between items-center mb-1 text-sm font-serif ${items ? 'cursor-pointer hover:bg-paper-100 p-1.5 -mx-1.5 rounded-sm transition-colors' : ''}`}
+         className={`flex justify-between items-center mb-1 text-sm font-serif ${items ? 'cursor-pointer hover:bg-paper-100 p-1.5 -mx-1.5 rounded-xl transition-colors' : ''}`}
          onClick={() => items && toggleSection(id)}
        >
           <span className="text-ink-700 flex items-center gap-2 font-bold tracking-tight">
@@ -262,7 +262,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
       
       {isEditingGoal && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-leather-900/60 backdrop-blur-sm p-4">
-            <div className="bg-paper-50 rounded-sm border-2 border-paper-300 shadow-2xl p-8 w-full max-w-sm animate-slide-up">
+            <div className="bg-paper-50 rounded-xl border-2 border-paper-300 shadow-2xl p-8 w-full max-w-sm animate-slide-up">
                <h3 className="text-xl font-serif font-bold text-ink-900 mb-2">Set Collection Target</h3>
                <p className="text-base text-ink-500 mb-6 font-serif italic">The projected cooperative equity growth for this month.</p>
                <form onSubmit={handleUpdateGoal}>
@@ -281,7 +281,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                   </div>
                   <div className="flex justify-end gap-3">
                      <button type="button" onClick={() => setIsEditingGoal(false)} className="px-4 py-2 text-ink-500 hover:text-ink-900 font-bold uppercase text-xs tracking-widest transition-colors">Dismiss</button>
-                     <button type="submit" className="px-6 py-2 bg-ink-900 text-white rounded-sm hover:bg-black font-bold uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">Apply Target</button>
+                     <button type="submit" className="px-6 py-2 bg-ink-900 text-white rounded-xl hover:bg-black font-bold uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">Apply Target</button>
                   </div>
                </form>
             </div>
@@ -309,7 +309,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
            </button>
            <button 
              onClick={onAddContribution}
-             className="bg-ink-900 hover:bg-black text-white px-5 py-2.5 rounded-sm font-bold uppercase tracking-widest text-sm shadow-lg transition-transform active:scale-95 flex items-center space-x-2 border-b-2 border-ink-950"
+             className="bg-ink-900 hover:bg-black text-white px-5 py-2.5 rounded-xl font-bold uppercase tracking-widest text-sm shadow-lg transition-transform active:scale-95 flex items-center space-x-2 border-b-2 border-ink-950"
            >
               <Plus size={14} />
               <span>New Entry</span>
@@ -357,14 +357,14 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
       </motion.div>
 
       {/* REFINED: Interest Realization Stack Analysis */}
-      <motion.div variants={itemVariants} className="bg-paper-50 border-4 border-double border-paper-300 rounded-sm p-8 shadow-card relative overflow-hidden">
+      <motion.div variants={itemVariants} className="bg-paper-50 border-4 border-double border-paper-300 rounded-xl p-8 shadow-card relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-5">
              <PieChart size={160} />
           </div>
           
           <div className="relative z-10">
               <div className="flex items-center gap-3 mb-8 border-b border-paper-200 pb-4">
-                  <div className="p-2 bg-ink-900 text-gold-500 rounded-sm">
+                  <div className="p-2 bg-ink-900 text-gold-500 rounded-xl">
                       <LineChart size={20} />
                   </div>
                   <div>
@@ -376,7 +376,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                   {/* Left: 3-Stage Pipeline Breakdown */}
                   <div className="space-y-6">
-                      <div className="bg-white p-5 border border-paper-200 rounded-sm shadow-sm group hover:border-emerald-300 transition-colors">
+                      <div className="bg-white p-5 border border-paper-200 rounded-xl shadow-sm group hover:border-emerald-300 transition-colors">
                           <div className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-1 flex items-center gap-2">
                              <Check size={12}/> 1. Realized Gains (Paid)
                           </div>
@@ -384,7 +384,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                           <p className="text-xs text-ink-400 mt-2 font-serif italic">Interest and penalties already collected and sitting in the vault.</p>
                       </div>
 
-                      <div className="bg-white p-5 border border-paper-200 rounded-sm shadow-sm group hover:border-amber-300 transition-colors">
+                      <div className="bg-white p-5 border border-paper-200 rounded-xl shadow-sm group hover:border-amber-300 transition-colors">
                           <div className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1 flex items-center gap-2">
                              <TrendingUp size={12}/> 2. Arrears Burden (Accrued)
                           </div>
@@ -392,7 +392,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                           <p className="text-xs text-ink-400 mt-2 font-serif italic">Interest that has matured based on time but is not yet paid.</p>
                       </div>
 
-                      <div className="bg-white p-5 border border-paper-200 rounded-sm shadow-sm group hover:border-violet-300 transition-colors">
+                      <div className="bg-white p-5 border border-paper-200 rounded-xl shadow-sm group hover:border-violet-300 transition-colors">
                           <div className="text-[10px] font-black text-violet-700 uppercase tracking-widest mb-1 flex items-center gap-2">
                              <LineChart size={12}/> 3. Pipeline Forecast (Future)
                           </div>
@@ -408,7 +408,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                               <h3 className="text-sm font-black text-ink-800 uppercase tracking-[0.2em]">Total Interest Contracted</h3>
                               <span className="text-lg font-mono font-bold text-violet-700">₱{financialMetrics.totalContractInterest.toLocaleString()}</span>
                           </div>
-                          <div className="h-6 w-full bg-paper-200 rounded-sm border border-paper-300 overflow-hidden flex shadow-inner">
+                          <div className="h-6 w-full bg-paper-200 rounded-xl border border-paper-300 overflow-hidden flex shadow-inner">
                               <div 
                                 style={{ width: `${(financialMetrics.totalPaidFromActive / financialMetrics.totalContractInterest) * 100}%` }} 
                                 className="h-full bg-emerald-600 border-r border-white/20"
@@ -457,7 +457,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                               </ul>
                           </div>
 
-                          <div className="bg-ink-900 rounded-sm p-6 text-paper-50 relative overflow-hidden">
+                          <div className="bg-ink-900 rounded-xl p-6 text-paper-50 relative overflow-hidden">
                               <div className="absolute top-0 right-0 p-2 opacity-10">
                                  <ShieldCheck size={48} />
                               </div>
@@ -479,7 +479,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
       </motion.div>
 
       {/* Composition Visualizer */}
-      <motion.div variants={itemVariants} className="bg-white border-2 border-paper-200 rounded-sm p-6 shadow-sm">
+      <motion.div variants={itemVariants} className="bg-white border-2 border-paper-200 rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
               <h3 className="text-sm font-black text-ink-500 uppercase tracking-widest flex items-center gap-2">
                   <BarChart3 size={16} />
@@ -491,7 +491,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
               </div>
           </div>
           
-          <div className="flex w-full h-10 rounded-sm overflow-hidden mb-8 border border-paper-200 shadow-inner">
+          <div className="flex w-full h-10 rounded-xl overflow-hidden mb-8 border border-paper-200 shadow-inner">
               <div 
                   style={{ width: `${cashPercent}%` }} 
                   className="bg-emerald-600 h-full flex items-center justify-center group relative cursor-help transition-all duration-700"
@@ -543,10 +543,10 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
           </div>
       </motion.div>
 
-      <motion.div variants={itemVariants} className="bg-paper-50 rounded-sm border-2 border-paper-200 shadow-card overflow-hidden">
+      <motion.div variants={itemVariants} className="bg-paper-50 rounded-xl border-2 border-paper-200 shadow-card overflow-hidden">
          <div className="p-5 border-b border-paper-200 bg-paper-100/50 flex items-center justify-between">
             <div className="flex items-center space-x-3">
-               <div className="p-2 bg-ink-900 text-gold-500 rounded-sm">
+               <div className="p-2 bg-ink-900 text-gold-500 rounded-xl">
                   <ArrowRightLeft size={18} />
                </div>
                <h2 className="text-xl font-serif font-bold text-ink-900">Cash Flow Breakdown</h2>
@@ -663,7 +663,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
 
                   <div className="pt-2 opacity-50">
                      <div className="text-sm text-ink-400 font-bold uppercase mb-3 border-b border-paper-200 pb-1">Operating Outflows</div>
-                     <div className="p-4 rounded-sm border-2 border-dashed border-paper-300 flex flex-col items-center justify-center">
+                     <div className="p-4 rounded-xl border-2 border-dashed border-paper-300 flex flex-col items-center justify-center">
                         <span className="text-base font-serif italic text-ink-400">No active operating expenses</span>
                      </div>
                   </div>
@@ -690,7 +690,7 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
                   <span className="text-xs uppercase text-ink-400 font-bold">Total Out</span>
                </div>
                <span className="text-ink-300">=</span>
-               <div className="flex flex-col items-end bg-paper-50 px-4 py-2 rounded-sm border border-paper-300 shadow-sm">
+               <div className="flex flex-col items-end bg-paper-50 px-4 py-2 rounded-xl border border-paper-300 shadow-sm">
                   <span className="text-xl font-bold text-ink-900 tracking-tighter">₱{treasuryStats.balance.toLocaleString()}</span>
                   <span className="text-xs uppercase text-ink-400 font-bold">Balance</span>
                </div>

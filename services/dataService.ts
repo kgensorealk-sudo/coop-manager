@@ -78,7 +78,7 @@ class DataService {
       
       const monthlyInterest = loan.principal * rate;
       const surchargePerMonth = monthlyInterest * 0.10;
-      penaltyTotal = Math.max(0, monthsOverdue * surchargePerMonth);
+      penaltyTotal = Math.max(0, (monthsOverdue * surchargePerMonth) - (loan.waived_penalty || 0));
     }
 
     const totalInterestPaid = payments.reduce((sum, p) => sum + (p.interest_paid || 0), 0);
@@ -285,6 +285,7 @@ class DataService {
         purpose: data.purpose,
         remaining_principal: data.principal,
         interest_accrued: 0,
+        waived_penalty: 0,
         created_at: new Date().toISOString()
       });
       return;
@@ -294,19 +295,20 @@ class DataService {
       remaining_principal: data.principal,
       interest_rate: 10,
       status: 'pending',
-      interest_accrued: 0
+      interest_accrued: 0,
+      waived_penalty: 0
     });
     if (error) throw error;
   }
 
-  async updateLoanStatus(loanId: string, status: LoanStatus, customRate?: number): Promise<void> {
+  async updateLoanStatus(loanId: string, status: LoanStatus, customRate?: number, startDate?: Date): Promise<void> {
     if (this.isMock()) {
       const loan = MOCK_LOANS.find(l => l.id === loanId);
       if (loan) {
         loan.status = status;
         if (customRate !== undefined) loan.interest_rate = customRate;
         if (status === 'active') {
-          loan.start_date = new Date().toISOString();
+          loan.start_date = (startDate || new Date()).toISOString();
           loan.interest_accrued = 0;
         }
       }
@@ -318,10 +320,26 @@ class DataService {
     
     if (status === 'active') {
       updates.interest_accrued = 0;
-      updates.start_date = new Date().toISOString();
+      updates.start_date = (startDate || new Date()).toISOString();
     }
     
     const { error } = await this.supabase!.from('loans').update(updates).eq('id', loanId);
+    if (error) throw error;
+  }
+
+  async waivePenalty(loanId: string, amount: number): Promise<void> {
+    if (this.isMock()) {
+      const loan = MOCK_LOANS.find(l => l.id === loanId);
+      if (loan) {
+        loan.waived_penalty = (loan.waived_penalty || 0) + amount;
+      }
+      return;
+    }
+    
+    const { data: loan } = await this.supabase!.from('loans').select('waived_penalty').eq('id', loanId).single();
+    const currentWaived = loan?.waived_penalty || 0;
+    
+    const { error } = await this.supabase!.from('loans').update({ waived_penalty: currentWaived + amount }).eq('id', loanId);
     if (error) throw error;
   }
 

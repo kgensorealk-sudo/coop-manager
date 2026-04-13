@@ -56,6 +56,7 @@ export const MOCK_LOANS: Loan[] = [
     purpose: 'Home Renovation',
     remaining_principal: 3500, // 5000 - 500 - 1000 from payments
     interest_accrued: 2000,    // Total (3000) - 500 - 500 from payments
+    waived_penalty: 0,
     created_at: '2023-09-28T10:00:00Z'
   },
   {
@@ -68,6 +69,7 @@ export const MOCK_LOANS: Loan[] = [
     purpose: 'Business Capital',
     remaining_principal: 10000,
     interest_accrued: 0,
+    waived_penalty: 0,
     created_at: '2023-10-15T14:30:00Z'
   },
   {
@@ -80,6 +82,7 @@ export const MOCK_LOANS: Loan[] = [
     purpose: 'Emergency Fund',
     remaining_principal: 2000,
     interest_accrued: 0,
+    waived_penalty: 0,
     created_at: '2023-10-25T09:00:00Z'
   }
 ];

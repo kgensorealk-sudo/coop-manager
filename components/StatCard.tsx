@@ -51,9 +51,9 @@ export const StatCard: React.FC<StatCardProps> = ({
         </div>
         
         {/* Icon Container with "Seal" effect */}
-        <div className={`relative p-3 rounded-sm border border-dashed border-paper-300 ${colorClass} bg-paper-100 group-hover:rotate-12 group-hover:scale-110 transition-all duration-500 shadow-sm`}>
+        <div className={`relative p-3 rounded-xl border border-dashed border-paper-300 ${colorClass} bg-paper-100 group-hover:rotate-12 group-hover:scale-110 transition-all duration-500 shadow-sm`}>
           <Icon size={22} strokeWidth={1.5} className="relative z-10" />
-          <div className="absolute inset-0 bg-white/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-sm"></div>
+          <div className="absolute inset-0 bg-white/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl"></div>
         </div>
       </div>
       

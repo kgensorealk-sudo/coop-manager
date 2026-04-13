@@ -75,14 +75,19 @@ const ContributionModal: React.FC<ContributionModalProps> = ({
         type,
         status: isAdmin ? 'approved' : 'pending', // Admins approve immediately, Members go to pending
       });
-      // Reset form
+      
+      // Reset form state immediately
       setMemberId('');
       setAmount('');
       setType('monthly_deposit');
-      handleClose();
+      setError('');
+      
+      // Close the modal
+      onClose();
     } catch (err) {
       console.error(err);
       setError('Failed to record contribution.');
+    } finally {
       setIsSubmitting(false);
     }
   };

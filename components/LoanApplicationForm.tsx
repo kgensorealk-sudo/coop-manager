@@ -154,13 +154,13 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="bg-paper-50 rounded-sm shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] border-4 border-double border-paper-300 relative z-10"
+            className="bg-paper-50 rounded-xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] border-4 border-double border-paper-300 relative z-10"
           >
             
             {/* Header */}
         <div className="bg-paper-100 border-b border-paper-200 p-6 flex justify-between items-center">
           <div className="flex items-center gap-3">
-             <div className="p-2 bg-ink-900 text-gold-500 rounded-sm shadow-md">
+             <div className="p-2 bg-ink-900 text-gold-500 rounded-xl shadow-md">
                 <ScrollText size={20} />
              </div>
              <div>
@@ -175,7 +175,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
         {step === 1 && (
           <div className="p-8 space-y-6 overflow-y-auto">
             {error && (
-              <div className="bg-wax-50 text-wax-700 p-4 rounded-sm text-sm flex items-start border border-wax-200 animate-fade-in">
+              <div className="bg-wax-50 text-wax-700 p-4 rounded-xl text-sm flex items-start border border-wax-200 animate-fade-in">
                 <AlertCircle size={18} className="mr-2 shrink-0 mt-0.5" />
                 <span className="font-serif italic">{error}</span>
               </div>
@@ -188,7 +188,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
                   <select
                     value={borrowerId}
                     onChange={(e) => setBorrowerId(e.target.value)}
-                    className="w-full p-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none transition-all font-serif text-lg text-ink-900"
+                    className="w-full p-3 bg-white border border-paper-300 rounded-xl focus:border-ink-900 outline-none transition-all font-serif text-lg text-ink-900"
                   >
                     <option value="" disabled>Select shareholder...</option>
                     {members.map(member => (
@@ -196,7 +196,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
                     ))}
                   </select>
                 ) : (
-                  <div className="w-full p-3 bg-paper-100 border border-paper-300 rounded-sm text-ink-600 font-serif italic text-lg">
+                  <div className="w-full p-3 bg-paper-100 border border-paper-300 rounded-xl text-ink-600 font-serif italic text-lg">
                     {currentUser?.full_name} (Self)
                   </div>
                 )}
@@ -213,7 +213,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
                       step="100"
                       value={principal}
                       onChange={(e) => setPrincipal(e.target.value ? Number(e.target.value) : '')}
-                      className="w-full pl-8 pr-4 py-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none transition-all font-mono text-2xl font-bold text-ink-900"
+                      className="w-full pl-8 pr-4 py-3 bg-white border border-paper-300 rounded-xl focus:border-ink-900 outline-none transition-all font-mono text-2xl font-bold text-ink-900"
                       placeholder="0.00"
                     />
                   </div>
@@ -226,7 +226,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
                     <select
                       value={durationMonths}
                       onChange={(e) => setDurationMonths(Number(e.target.value))}
-                      className="w-full pl-10 pr-4 py-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none transition-all font-mono text-xl font-bold text-ink-900 appearance-none"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-paper-300 rounded-xl focus:border-ink-900 outline-none transition-all font-mono text-xl font-bold text-ink-900 appearance-none"
                     >
                       {[1, 2, 3, 4, 5, 6, 8, 10, 12].map(m => (
                         <option key={m} value={m}>{m} Month{m > 1 ? 's' : ''}</option>
@@ -246,7 +246,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
                   onChange={(e) => setPurpose(e.target.value)}
                   placeholder="State the intended use of these funds..."
                   rows={3}
-                  className="w-full p-3 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none transition-all font-serif italic text-lg text-ink-900 resize-none"
+                  className="w-full p-3 bg-white border border-paper-300 rounded-xl focus:border-ink-900 outline-none transition-all font-serif italic text-lg text-ink-900 resize-none"
                 />
               </div>
             </div>
@@ -254,7 +254,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
             <div className="pt-6 border-t border-paper-200">
                <button 
                  onClick={handleNextStep}
-                 className="w-full bg-ink-900 hover:bg-black text-paper-50 py-4 rounded-sm font-black uppercase tracking-[0.3em] text-xs shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 border-b-4 border-black"
+                 className="w-full bg-ink-900 hover:bg-black text-paper-50 py-4 rounded-xl font-black uppercase tracking-[0.3em] text-xs shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 border-b-4 border-black"
                >
                   <span>Review Covenant</span>
                   <ArrowRight size={16} />
@@ -280,7 +280,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
                   <div className="space-y-6 font-serif text-ink-800 leading-relaxed text-base">
                      <p>I, <strong className="text-ink-950 underline decoration-gold-500 decoration-2">{borrowerName}</strong>, hereby acknowledge the filing of a loan request for <strong className="text-ink-950 font-mono text-lg">₱{Number(principal).toLocaleString()}</strong>.</p>
                      
-                     <div className="bg-white border border-paper-300 p-6 rounded-sm space-y-3 font-mono text-sm shadow-inner">
+                     <div className="bg-white border border-paper-300 p-6 rounded-xl space-y-3 font-mono text-sm shadow-inner">
                         <div className="flex justify-between border-b border-paper-100 pb-2">
                            <span className="text-ink-400 font-sans font-bold uppercase text-[10px] tracking-widest">Total Indebtedness (P+I):</span>
                            <span className="font-bold text-ink-900 text-base">₱{totalRepayment.toLocaleString()}</span>
@@ -296,7 +296,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
                      </div>
 
                      {/* Proposed Schedule Examination */}
-                     <div className="border border-paper-300 rounded-sm overflow-hidden bg-paper-100/50">
+                     <div className="border border-paper-300 rounded-xl overflow-hidden bg-paper-100/50">
                         <button 
                           onClick={() => setShowSchedule(!showSchedule)}
                           className="w-full px-5 py-4 flex items-center justify-between hover:bg-paper-200 transition-colors"
@@ -310,7 +310,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
                         
                         {showSchedule && (
                            <div className="p-5 pt-0 animate-fade-in">
-                              <div className="bg-white border border-paper-200 rounded-sm overflow-hidden shadow-sm">
+                              <div className="bg-white border border-paper-200 rounded-xl overflow-hidden shadow-sm">
                                  <table className="w-full text-left font-mono text-xs border-collapse">
                                     <thead className="bg-paper-200 text-ink-500 uppercase font-black tracking-tighter">
                                        <tr>
@@ -358,12 +358,12 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
                   </div>
 
                   <div className="pt-8 border-t border-dashed border-paper-300">
-                     <label className="flex items-start gap-4 cursor-pointer group p-4 bg-paper-100/30 rounded-sm hover:bg-paper-100 transition-colors">
+                     <label className="flex items-start gap-4 cursor-pointer group p-4 bg-paper-100/30 rounded-xl hover:bg-paper-100 transition-colors">
                         <input 
                            type="checkbox" 
                            checked={acceptedTerms}
                            onChange={(e) => setAcceptedTerms(e.target.checked)}
-                           className="mt-1 w-6 h-6 accent-ink-900 border-paper-300 rounded-sm cursor-pointer"
+                           className="mt-1 w-6 h-6 accent-ink-900 border-paper-300 rounded-xl cursor-pointer"
                         />
                         <span className="text-base font-serif font-bold text-ink-900 group-hover:text-ink-950 transition-colors">
                            I have read the Covenant and understand that my digital signature here is legally binding to the cooperative books.
@@ -375,7 +375,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
 
             {error && step === 2 && (
                <div className="px-8 pb-4">
-                  <div className="bg-wax-50 text-wax-700 p-4 rounded-sm text-sm flex items-center border border-wax-200 font-serif italic">
+                  <div className="bg-wax-50 text-wax-700 p-4 rounded-xl text-sm flex items-center border border-wax-200 font-serif italic">
                      <AlertCircle size={18} className="mr-3 shrink-0" />
                      {error}
                   </div>
@@ -395,7 +395,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting || !acceptedTerms}
-                className={`flex items-center gap-3 px-12 py-4 font-black uppercase text-sm tracking-[0.2em] rounded-sm shadow-xl transition-all active:scale-95 border-b-4 ${
+                className={`flex items-center gap-3 px-12 py-4 font-black uppercase text-sm tracking-[0.2em] rounded-xl shadow-xl transition-all active:scale-95 border-b-4 ${
                   !acceptedTerms 
                     ? 'bg-paper-300 text-paper-400 border-paper-400 cursor-not-allowed shadow-none' 
                     : 'bg-ink-900 hover:bg-black text-paper-50 border-black'

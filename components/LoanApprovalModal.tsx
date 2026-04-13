@@ -8,7 +8,7 @@ interface LoanApprovalModalProps {
   isOpen: boolean;
   onClose: () => void;
   loan: LoanWithBorrower | null;
-  onApprove: (loanId: string, interestRate: number) => void;
+  onApprove: (loanId: string, interestRate: number, startDate: Date) => void;
   onReject: (loanId: string) => void;
   treasuryBalance: number;
 }
@@ -22,6 +22,7 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
   treasuryBalance
 }) => {
   const [interestRate, setInterestRate] = useState<number>(10);
+  const [loanStartDate, setLoanStartDate] = useState<Date>(new Date());
   
   // Animation state
   const [isClosing, setIsClosing] = useState(false);
@@ -34,6 +35,7 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
         }
         if (loan) {
           setInterestRate(loan.interest_rate);
+          setLoanStartDate(new Date());
         }
       }, 0);
       return () => clearTimeout(timer);
@@ -64,8 +66,7 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
     const installmentPrincipal = loan.principal / (loan.duration_months * 2);
     const totalInstallment = installmentInterest + installmentPrincipal;
     
-    const loanStart = new Date();
-    const scheduleDates = dataService.getInstallmentDates(loanStart, loan.duration_months * 2);
+    const scheduleDates = dataService.getInstallmentDates(loanStartDate, loan.duration_months * 2);
 
     return scheduleDates.map((paydayDate, index) => ({
         number: index + 1,
@@ -74,7 +75,7 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
         principal: installmentPrincipal,
         total: totalInstallment
     }));
-  }, [loan, interestRate]);
+  }, [loan, interestRate, loanStartDate]);
 
   if (!isOpen || !loan) return null;
 
@@ -206,11 +207,20 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
 
           {/* Simulated Amortization Table */}
           <div className="space-y-4">
-             <div className="flex justify-between items-center border-b border-paper-200 pb-2">
+             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-paper-200 pb-2 gap-2">
                 <h3 className="text-sm font-black text-ink-900 uppercase tracking-widest flex items-center gap-2">
                    <Calendar size={16} className="text-[#C5A028]" /> Simulated Amortization
                 </h3>
-                <span className="text-[10px] font-mono text-ink-400">10TH & 25TH ALIGNMENT</span>
+                
+                <div className="flex items-center gap-2 bg-paper-100 px-2 py-1 rounded-sm border border-paper-200">
+                   <label className="text-[10px] font-black text-ink-400 uppercase tracking-tighter">Start Date:</label>
+                   <input 
+                      type="date" 
+                      value={loanStartDate.toISOString().split('T')[0]}
+                      onChange={(e) => setLoanStartDate(new Date(e.target.value))}
+                      className="bg-transparent text-[10px] font-mono font-bold text-ink-800 outline-none cursor-pointer"
+                   />
+                </div>
              </div>
              
              <div className="bg-white border border-paper-200 rounded-sm overflow-hidden shadow-sm max-h-64 overflow-y-auto custom-scrollbar">
@@ -289,7 +299,7 @@ const LoanApprovalModal: React.FC<LoanApprovalModalProps> = ({
           </button>
           <button
             onClick={() => {
-               onApprove(loan.id, interestRate);
+               onApprove(loan.id, interestRate, loanStartDate);
                handleClose();
             }}
             disabled={hasInsufficientFunds}

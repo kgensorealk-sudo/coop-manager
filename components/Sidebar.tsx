@@ -58,7 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Brand Header */}
       <div className="p-10 pb-8 relative">
         <div className="flex items-center space-x-4">
-          <div className="bg-paper-100 p-2.5 rounded-sm shadow-md rotate-3 border border-paper-300">
+          <div className="bg-paper-100 p-2.5 rounded-xl shadow-md rotate-3 border border-paper-300">
             <Feather size={22} className="text-ink-900" />
           </div>
           <div>
@@ -86,7 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               animate="visible"
               variants={itemVariants}
               onClick={() => onTabChange(item.id)}
-              className={`w-full flex items-center space-x-4 px-4 py-3.5 rounded-sm transition-all duration-300 group relative overflow-hidden ${
+              className={`w-full flex items-center space-x-4 px-4 py-3.5 rounded-xl transition-all duration-300 group relative overflow-hidden ${
                 isActive 
                   ? 'text-paper-50 bg-white/5' 
                   : 'text-paper-400 hover:text-paper-100 hover:bg-white/5'
@@ -112,7 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               animate="visible"
               variants={itemVariants}
               onClick={() => onTabChange('dev-guide')}
-              className={`w-full flex items-center space-x-4 px-4 py-3.5 rounded-sm transition-all duration-300 group relative ${
+              className={`w-full flex items-center space-x-4 px-4 py-3.5 rounded-xl transition-all duration-300 group relative ${
                 activeTab === 'dev-guide'
                   ? 'text-paper-50 bg-white/5' 
                   : 'text-paper-400 hover:text-paper-100 hover:bg-white/5'
@@ -136,7 +136,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex items-center space-x-4 mb-4 relative z-10">
           <div className="relative">
             {/* The aesthetic frame - Vintage Photo Style */}
-            <div className="w-12 h-12 rounded-sm bg-paper-200 border-2 border-paper-400 shadow-[0_2px_8px_rgba(0,0,0,0.3)] overflow-hidden relative group">
+            <div className="w-12 h-12 rounded-xl bg-paper-200 border-2 border-paper-400 shadow-[0_2px_8px_rgba(0,0,0,0.3)] overflow-hidden relative group">
                <img 
                  src={currentUser.avatar_url || "https://picsum.photos/200"} 
                  alt={currentUser.full_name} 
@@ -160,7 +160,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         
         <button 
           onClick={onLogout}
-          className="flex items-center justify-between w-full px-4 py-3 text-xs text-paper-400 hover:text-paper-100 hover:bg-white/5 transition-all uppercase tracking-widest font-bold border border-white/5 rounded-sm group"
+          className="flex items-center justify-between w-full px-4 py-3 text-xs text-paper-400 hover:text-paper-100 hover:bg-white/5 transition-all uppercase tracking-widest font-bold border border-white/5 rounded-xl group"
         >
           <span>Sign Out</span>
           <LogOut size={14} className="group-hover:translate-x-1 transition-transform" />

@@ -70,18 +70,16 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
       let is10th;
 
       /**
-       * NEW TIMING RULES: Window-based (+/- 7 days)
-       * 3-17 -> Next month 10th
-       * 18-2 -> Next month 25th
+       * NEW TIMING RULES: Closer payday number (10 or 25)
+       * 1-17 -> Next month 10th
+       * 18-31 -> Next month 25th
        */
-      if (startDay >= 3 && startDay <= 17) {
+      if (startDay <= 17) {
         is10th = true;
         firstMonth++;
       } else {
         is10th = false;
-        if (startDay >= 18) {
-          firstMonth++;
-        }
+        firstMonth++;
       }
 
       if (firstMonth > 11) {
@@ -190,7 +188,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
         </div>
         
         {isAdmin && (
-          <button onClick={openAddModal} className="bg-ink-900 hover:bg-black text-white px-6 py-3 rounded-sm font-bold uppercase tracking-widest text-sm shadow-lg transition-transform active:scale-95 flex items-center space-x-2 border-b-2 border-ink-950">
+          <button onClick={openAddModal} className="bg-ink-900 hover:bg-black text-white px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-sm shadow-lg transition-transform active:scale-95 flex items-center space-x-2 border-b-2 border-ink-950">
             <Plus size={18} />
             <span>Add Shareholder</span>
           </button>
@@ -204,21 +202,21 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
         <StatCard title="Arrears Notice" value={summaryStats.totalArrearsCount.toString()} icon={AlertTriangle} trend={summaryStats.totalArrearsCount > 0 ? "Review Required" : "Clean Books"} trendUp={summaryStats.totalArrearsCount === 0} colorClass={summaryStats.totalArrearsCount > 0 ? "text-wax-600" : "text-ink-400"} />
       </motion.div>
 
-      <motion.div variants={itemVariants} className="bg-paper-50 p-4 rounded-sm shadow-sm border border-paper-200 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <motion.div variants={itemVariants} className="bg-paper-50 p-4 rounded-xl shadow-sm border border-paper-200 flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative w-full md:w-96 group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 group-focus-within:text-ink-900 transition-colors" size={18} />
           <input type="text" placeholder="Search by name or email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-transparent border-b border-paper-300 focus:border-ink-900 outline-none font-serif placeholder:italic text-ink-800" />
         </div>
 
         <div className="relative">
-          <button onClick={() => setIsFilterOpen(!isFilterOpen)} className={`flex items-center space-x-2 px-4 py-2 border rounded-sm text-xs font-black uppercase tracking-widest transition-all ${activeFilter !== 'all' ? 'bg-ink-900 text-white border-ink-900 shadow-md' : 'border-paper-300 text-ink-600 hover:bg-paper-100'}`}>
+          <button onClick={() => setIsFilterOpen(!isFilterOpen)} className={`flex items-center space-x-2 px-4 py-2 border rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeFilter !== 'all' ? 'bg-ink-900 text-white border-ink-900 shadow-md' : 'border-paper-300 text-ink-600 hover:bg-paper-100'}`}>
             <Filter size={14} />
             <span>Filter: {activeFilter.replace('-', ' ')}</span>
             <ChevronDown size={14} className={`transition-transform duration-300 ${isFilterOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {isFilterOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-white border border-paper-300 shadow-float z-30 rounded-sm overflow-hidden animate-zoom-in">
+            <div className="absolute right-0 mt-2 w-56 bg-white border border-paper-300 shadow-float z-30 rounded-xl overflow-hidden animate-zoom-in">
               <div className="p-2 border-b border-paper-100 bg-paper-50 flex justify-between items-center text-[10px] font-black uppercase text-ink-400 px-2 tracking-widest">Criteria</div>
               <div className="py-1">
                 {(['all', 'active-loans', 'admins', 'external', 'arrears'] as MemberFilter[]).map((f) => (
@@ -241,7 +239,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
           const isArrears = checkArrears(member.id);
 
           return (
-            <div key={member.id} className="bg-paper-50 rounded-sm border-2 border-paper-200 p-8 flex flex-col items-center text-center shadow-card hover:shadow-float transition-all duration-300 group relative overflow-hidden">
+            <div key={member.id} className="bg-paper-50 rounded-xl border-2 border-paper-200 p-8 flex flex-col items-center text-center shadow-card hover:shadow-float transition-all duration-300 group relative overflow-hidden">
               {isArrears && (
                 <div className="absolute top-0 right-0 bg-wax-600 text-white px-3 py-1 text-[10px] font-black uppercase tracking-widest flex items-center gap-1 animate-pulse z-10">
                   <AlertTriangle size={12} /> Arrears
@@ -250,18 +248,18 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
 
               <div className="absolute top-4 left-4">
                  {member.role === 'admin' ? (
-                   <div className="bg-ink-900 text-gold-500 p-1.5 rounded-sm shadow-md rotate-3 border border-gold-500/20" title="System Administrator"><Shield size={14} /></div>
+                   <div className="bg-ink-900 text-gold-500 p-1.5 rounded-xl shadow-md rotate-3 border border-gold-500/20" title="System Administrator"><Shield size={14} /></div>
                  ) : (
-                   <div className="bg-paper-200 text-ink-400 p-1.5 rounded-sm" title="Member"><UserIcon size={14} /></div>
+                   <div className="bg-paper-200 text-ink-400 p-1.5 rounded-xl" title="Member"><UserIcon size={14} /></div>
                  )}
               </div>
 
               {isAdmin && (
-                <button onClick={() => openEditModal(member)} className="absolute top-4 right-4 p-2 text-ink-300 hover:text-ink-900 hover:bg-paper-100 rounded-sm transition-all opacity-0 group-hover:opacity-100 border border-transparent hover:border-paper-300"><Edit2 size={16} /></button>
+                <button onClick={() => openEditModal(member)} className="absolute top-4 right-4 p-2 text-ink-300 hover:text-ink-900 hover:bg-paper-100 rounded-xl transition-all opacity-0 group-hover:opacity-100 border border-transparent hover:border-paper-300"><Edit2 size={16} /></button>
               )}
 
               <div className="relative mb-6">
-                <div className="w-24 h-24 rounded-sm bg-white p-1 border-2 border-paper-300 shadow-float rotate-2 group-hover:rotate-0 transition-transform duration-500 overflow-hidden">
+                <div className="w-24 h-24 rounded-xl bg-white p-1 border-2 border-paper-300 shadow-float rotate-2 group-hover:rotate-0 transition-transform duration-500 overflow-hidden">
                   <img src={member.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.full_name)}&background=random`} alt={member.full_name} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" />
                 </div>
                 {!member.is_coop_member && <span className="absolute -bottom-2 -right-2 bg-paper-100 text-ink-400 text-[9px] font-black px-2 py-0.5 border border-paper-300 uppercase tracking-tighter">External</span>}
@@ -272,7 +270,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
                 <div className="flex items-center justify-center gap-1.5 text-sm text-ink-400 font-serif italic mt-1"><Mail size={12} /><span className="truncate">{member.email}</span></div>
               </div>
 
-              <div className="w-full bg-paper-100/50 rounded-sm p-4 mb-6 border border-paper-200 space-y-4">
+              <div className="w-full bg-paper-100/50 rounded-xl p-4 mb-6 border border-paper-200 space-y-4">
                 <div className="text-center flex-1">
                   <div className="text-[10px] font-black uppercase text-ink-400 tracking-widest mb-1 flex items-center justify-center gap-1"><PiggyBank size={12} className="text-emerald-600" /><span>Net Equity</span></div>
                   <div className="text-lg font-mono font-bold text-emerald-700">₱{member.equity.toLocaleString()}</div>
@@ -291,7 +289,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
               
               <div className="w-full pt-4 border-t border-dashed border-paper-300">
                 <div className="flex justify-between items-center">
-                  <span className={`px-3 py-1 rounded-sm text-[10px] font-black uppercase tracking-widest border ${member.is_coop_member ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-paper-100 text-ink-400 border-paper-200'}`}>{member.is_coop_member ? 'Coop Shareholder' : 'Associate User'}</span>
+                  <span className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border ${member.is_coop_member ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-paper-100 text-ink-400 border-paper-200'}`}>{member.is_coop_member ? 'Coop Shareholder' : 'Associate User'}</span>
                   {hasActiveLoans && (
                     <div className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-widest ${isArrears ? 'text-wax-600' : 'text-emerald-600'}`}>
                        {isArrears ? <AlertTriangle size={12} /> : <TrendingUp size={12} />}
