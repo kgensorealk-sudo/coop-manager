@@ -86,19 +86,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
               animate="visible"
               variants={itemVariants}
               onClick={() => onTabChange(item.id)}
-              className={`w-full flex items-center space-x-4 px-4 py-3.5 rounded-xl transition-all duration-300 group relative overflow-hidden ${
+              className={`w-full flex items-center space-x-4 px-4 py-3.5 rounded-xl transition-all duration-300 group relative overflow-hidden active:scale-[0.98] ${
                 isActive 
-                  ? 'text-paper-50 bg-white/5' 
+                  ? 'text-paper-50 bg-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]' 
                   : 'text-paper-400 hover:text-paper-100 hover:bg-white/5'
               }`}
             >
               {/* Active Indicator Line */}
               {isActive && (
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-gold-500 shadow-[0_0_10px_rgba(197,160,40,0.5)]"></div>
+                <motion.div 
+                  layoutId="sidebar-active"
+                  className="absolute left-0 top-0 bottom-0 w-1 bg-gold-500 shadow-[0_0_15px_rgba(197,160,40,0.6)]"
+                ></motion.div>
               )}
               
-              <Icon size={18} strokeWidth={1.5} className={isActive ? 'text-gold-400' : 'text-paper-500 group-hover:text-paper-300 transition-colors'} />
-              <span className={`text-base tracking-wide ${isActive ? 'font-medium' : 'font-light'}`}>{item.label}</span>
+              <Icon size={18} strokeWidth={isActive ? 2 : 1.5} className={isActive ? 'text-gold-400' : 'text-paper-500 group-hover:text-paper-300 transition-colors'} />
+              <span className={`text-base tracking-wide transition-all ${isActive ? 'font-bold text-paper-50' : 'font-light'}`}>{item.label}</span>
+              
+              {isActive && (
+                <div className="absolute right-4 opacity-20">
+                  <Feather size={14} className="rotate-45" />
+                </div>
+              )}
             </motion.button>
           );
         })}

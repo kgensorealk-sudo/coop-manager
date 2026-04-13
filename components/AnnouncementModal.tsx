@@ -130,7 +130,7 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
           iconColor: 'text-paper-50',
           icon: <AlertTriangle size={90} className="opacity-10 transform rotate-12 absolute -right-4 -bottom-6" />,
           smallIcon: <AlertTriangle size={16} />,
-          btnClass: 'bg-wax-600 hover:bg-wax-500 text-white'
+          btnClass: 'bg-wax-600 hover:bg-wax-700 text-white border-wax-800'
         };
       case 'high': 
         return { 
@@ -139,7 +139,7 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
           iconColor: 'text-ink-900',
           icon: <AlertCircle size={90} className="opacity-10 transform rotate-12 absolute -right-4 -bottom-6" />,
           smallIcon: <AlertCircle size={16} />,
-          btnClass: 'bg-gold-500 hover:bg-gold-400 text-ink-900'
+          btnClass: 'bg-gold-500 hover:bg-gold-600 text-ink-900 border-gold-700'
         };
       case 'low': 
         return { 
@@ -148,16 +148,16 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
           iconColor: 'text-ink-600',
           icon: <CheckCircle2 size={90} className="opacity-10 transform rotate-12 absolute -right-4 -bottom-6" />,
           smallIcon: <CheckCircle2 size={16} />,
-          btnClass: 'bg-ink-500 hover:bg-ink-400 text-white'
+          btnClass: 'bg-ink-700 hover:bg-ink-800 text-white border-ink-900'
         };
       default: // normal
         return { 
-          headerBg: 'bg-ink-800', 
-          headerText: 'text-white',
-          iconColor: 'text-white',
+          headerBg: 'bg-ink-900', 
+          headerText: 'text-paper-50',
+          iconColor: 'text-paper-50',
           icon: <Megaphone size={90} className="opacity-10 transform rotate-12 absolute -right-4 -bottom-6" />,
           smallIcon: <Info size={16} />,
-          btnClass: 'bg-ink-800 hover:bg-ink-700 text-white'
+          btnClass: 'bg-ink-900 hover:bg-black text-white border-black'
         };
     }
   };
@@ -274,7 +274,7 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({ isOpen, onClose, 
                 <button 
                   onClick={handleMainAction}
                   disabled={isExiting}
-                  className={`w-full py-4 rounded-xl font-bold uppercase tracking-[0.2em] text-sm shadow-lg transition-all transform active:scale-[0.98] ${theme.btnClass}`}
+                  className={`w-full py-4 rounded-xl font-bold uppercase tracking-[0.2em] text-sm shadow-lg transition-all transform active:scale-[0.98] border-b-4 ${theme.btnClass}`}
                 >
                   {isLast ? 'Close Notice' : 'Next Announcement'}
                 </button>

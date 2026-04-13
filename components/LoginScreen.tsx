@@ -137,9 +137,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading, erro
                     required={isSignup}
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-transparent border-b border-paper-300 focus:border-ink-900 outline-none transition-all placeholder:text-paper-300 font-serif text-lg text-ink-900 focus:bg-paper-100"
+                    className="w-full pl-12 pr-4 py-3 bg-transparent border-b border-paper-300 focus:border-ink-900 outline-none transition-all placeholder:text-paper-300 font-serif text-lg text-ink-900 focus:bg-paper-100"
                     placeholder="John Doe"
-                    style={{ paddingLeft: '2.5rem' }} // Forcing padding via inline style as backup
                   />
                 </div>
               </div>
@@ -154,9 +153,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading, erro
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-transparent border-b border-paper-300 focus:border-ink-900 outline-none transition-all placeholder:text-paper-300 font-serif text-lg text-ink-900 focus:bg-paper-100"
+                  className="w-full pl-12 pr-4 py-3 bg-transparent border-b border-paper-300 focus:border-ink-900 outline-none transition-all placeholder:text-paper-300 font-serif text-lg text-ink-900 focus:bg-paper-100"
                   placeholder="name@company.com"
-                  style={{ paddingLeft: '2.5rem' }}
                 />
               </div>
             </div>
@@ -170,9 +168,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading, erro
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-transparent border-b border-paper-300 focus:border-ink-900 outline-none transition-all placeholder:text-paper-300 font-serif text-lg text-ink-900 focus:bg-paper-100"
+                  className="w-full pl-12 pr-4 py-3 bg-transparent border-b border-paper-300 focus:border-ink-900 outline-none transition-all placeholder:text-paper-300 font-serif text-lg text-ink-900 focus:bg-paper-100"
                   placeholder="••••••••"
-                  style={{ paddingLeft: '2.5rem' }}
                 />
               </div>
             </div>
@@ -191,7 +188,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, loading, erro
                 <Loader2 size={16} className="animate-spin" />
               ) : (
                 <>
-                  <span className="relative z-10">{isSignup ? 'Sign In Registry' : 'Access Ledger'}</span>
+                  <span className="relative z-10">{isSignup ? 'Join Registry' : 'Access Ledger'}</span>
                   <div className="absolute inset-0 bg-white/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                   <ArrowRight size={16} className="relative z-10" />
                 </>

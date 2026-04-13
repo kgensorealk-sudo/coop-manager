@@ -40,7 +40,7 @@ export const AnnouncementHistory: React.FC<AnnouncementHistoryProps> = ({ onOpen
         setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, is_active: !currentStatus } : a));
         await dataService.updateAnnouncementStatus(id, !currentStatus);
     } catch (e: any) {
-        alert("Failed to update status: " + e.message);
+        console.error("Failed to update status:", e.message);
         fetchAnnouncements();
     }
   };
@@ -67,11 +67,11 @@ export const AnnouncementHistory: React.FC<AnnouncementHistoryProps> = ({ onOpen
 
   const getPriorityStyle = (priority: string) => {
     switch (priority) {
-      case 'urgent': return { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', icon: <AlertTriangle size={16} /> };
-      case 'high': return { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', icon: <AlertCircle size={16} /> };
-      case 'normal': return { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', icon: <Info size={16} /> };
-      case 'low': return { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-600', icon: <CheckCircle2 size={16} /> };
-      default: return { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-600', icon: <Info size={16} /> };
+      case 'urgent': return { bg: 'bg-wax-50', border: 'border-wax-200', text: 'text-wax-700', icon: <AlertTriangle size={16} /> };
+      case 'high': return { bg: 'bg-gold-50', border: 'border-gold-200', text: 'text-gold-700', icon: <AlertCircle size={16} /> };
+      case 'normal': return { bg: 'bg-paper-100', border: 'border-paper-300', text: 'text-ink-700', icon: <Info size={16} /> };
+      case 'low': return { bg: 'bg-paper-50', border: 'border-paper-200', text: 'text-ink-400', icon: <CheckCircle2 size={16} /> };
+      default: return { bg: 'bg-paper-50', border: 'border-paper-200', text: 'text-ink-400', icon: <Info size={16} /> };
     }
   };
 
@@ -81,43 +81,43 @@ export const AnnouncementHistory: React.FC<AnnouncementHistoryProps> = ({ onOpen
      const end = announcement.scheduled_end ? new Date(announcement.scheduled_end) : null;
 
      if (!start && !end) return null;
-     if (start && start > now) return <span className="text-amber-600 flex items-center gap-1"><Clock size={12}/> Scheduled</span>;
-     if (end && end < now) return <span className="text-slate-400 flex items-center gap-1"><Clock size={12}/> Expired</span>;
-     return <span className="text-green-600 flex items-center gap-1"><Clock size={12}/> Active Now</span>;
+     if (start && start > now) return <span className="text-gold-600 flex items-center gap-1"><Clock size={12}/> Scheduled</span>;
+     if (end && end < now) return <span className="text-ink-400 flex items-center gap-1"><Clock size={12}/> Expired</span>;
+     return <span className="text-emerald-600 flex items-center gap-1"><Clock size={12}/> Active Now</span>;
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-8 animate-fade-in relative">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-paper-300 pb-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">{readOnly ? 'Official Notices' : 'Announcements'}</h1>
-          <p className="text-slate-500 mt-2">
+          <h1 className="text-4xl font-serif font-bold text-ink-900">{readOnly ? 'Official Notices' : 'Registry Announcements'}</h1>
+          <p className="text-ink-500 mt-2 font-serif italic text-xl">
              {readOnly ? 'Archive of official cooperative communications.' : 'Manage communications, broadcast updates, and schedule notifications.'}
           </p>
         </div>
         {!readOnly && (
            <button 
              onClick={onOpenCreate}
-             className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-indigo-200 transition-transform active:scale-95 flex items-center space-x-2"
+             className="bg-ink-900 hover:bg-black text-white px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-sm shadow-lg transition-transform active:scale-95 flex items-center space-x-2 border-b-2 border-ink-950"
            >
               <Plus size={18} />
-              <span>Post New</span>
+              <span>Post New Notice</span>
            </button>
         )}
       </div>
 
       {/* Tabs (Only for Admins) */}
       {!readOnly && (
-        <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl w-fit">
+        <div className="flex space-x-1 bg-paper-200/50 p-1 rounded-xl w-fit border border-paper-300">
           <button
             onClick={() => setActiveTab('active')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'active' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-ink-900 text-paper-50 shadow-md' : 'text-ink-400 hover:text-ink-600'}`}
           >
             Active / Scheduled
           </button>
           <button
             onClick={() => setActiveTab('archived')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'archived' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'archived' ? 'bg-ink-900 text-paper-50 shadow-md' : 'text-ink-400 hover:text-ink-600'}`}
           >
             Archived / Disabled
           </button>
@@ -125,11 +125,11 @@ export const AnnouncementHistory: React.FC<AnnouncementHistoryProps> = ({ onOpen
       )}
 
       {/* Card Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
          {filteredAnnouncements.length === 0 ? (
-            <div className="col-span-full py-16 text-center text-slate-400 flex flex-col items-center bg-white rounded-2xl border border-dashed border-slate-200">
-               <Megaphone size={48} className="mb-4 opacity-20" />
-               <p className="font-medium">No announcements found.</p>
+            <div className="col-span-full py-20 text-center text-ink-300 flex flex-col items-center bg-paper-50 rounded-2xl border-2 border-dashed border-paper-200">
+               <Megaphone size={64} className="mb-4 opacity-10" />
+               <p className="font-serif italic text-xl">No notices currently posted in the registry.</p>
             </div>
          ) : (
             filteredAnnouncements.map((item, index) => {
@@ -140,33 +140,36 @@ export const AnnouncementHistory: React.FC<AnnouncementHistoryProps> = ({ onOpen
                   <div 
                     key={item.id} 
                     onClick={() => setViewIndex(index)}
-                    className={`group relative bg-white rounded-2xl border ${style.border} shadow-sm hover:shadow-md transition-all duration-300 flex flex-col overflow-hidden cursor-pointer active:scale-[0.99]`}
+                    className={`group relative bg-paper-50 rounded-xl border-2 ${style.border} shadow-card hover:shadow-float transition-all duration-500 flex flex-col overflow-hidden cursor-pointer active:scale-[0.98]`}
                   >
                      {/* Priority Stripe */}
-                     <div className={`h-1.5 w-full ${style.bg.replace('bg-', 'bg-').replace('50', '500')}`}></div>
+                     <div className={`h-1.5 w-full ${style.bg.replace('bg-', 'bg-').replace('50', '500').replace('100', '500')}`}></div>
                      
-                     <div className="p-6 flex-1 flex flex-col">
-                        <div className="flex justify-between items-start mb-4">
-                           <div className="flex flex-col gap-1">
-                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide w-fit ${style.bg} ${style.text}`}>
+                     <div className="p-8 flex-1 flex flex-col relative">
+                        {/* Paper Texture Overlay */}
+                        <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'6\' height=\'6\' viewBox=\'0 0 6 6\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'0.03\' fill-rule=\'evenodd\'%3E%3Cpath d=\'M5 0h1L0 6V5zM6 5v1H5z\'/%3E%3C/g%3E%3C/svg%3E")' }}></div>
+
+                        <div className="flex justify-between items-start mb-6 relative z-10">
+                           <div className="flex flex-col gap-2">
+                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest w-fit border ${style.bg} ${style.text} ${style.border}`}>
                                  {style.icon}
                                  {item.priority || 'Normal'}
                               </span>
-                              {scheduleLabel && !readOnly && <div className="text-xs font-semibold ml-1">{scheduleLabel}</div>}
+                              {scheduleLabel && !readOnly && <div className="text-[10px] font-black uppercase tracking-tighter ml-1">{scheduleLabel}</div>}
                            </div>
 
                            {!readOnly && (
-                              <div className="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 relative">
+                              <div className="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300 z-10 relative">
                                  <button 
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       onEdit(item);
                                     }}
-                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                    className="p-2 text-ink-300 hover:text-ink-900 hover:bg-paper-100 rounded-xl border border-transparent hover:border-paper-300 transition-all"
                                     title="Edit"
                                  >
-                                    <Edit2 size={18} />
+                                    <Edit2 size={16} />
                                  </button>
                                  <button 
                                     type="button"
@@ -174,34 +177,34 @@ export const AnnouncementHistory: React.FC<AnnouncementHistoryProps> = ({ onOpen
                                       e.stopPropagation();
                                       handleToggleStatus(item.id, item.is_active);
                                     }}
-                                    className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    className="p-2 text-ink-300 hover:text-ink-900 hover:bg-paper-100 rounded-xl border border-transparent hover:border-paper-300 transition-all"
                                     title={item.is_active ? "Archive" : "Activate"}
                                  >
-                                    {item.is_active ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    {item.is_active ? <EyeOff size={16} /> : <Eye size={16} />}
                                  </button>
                               </div>
                            )}
                         </div>
 
-                        <h3 className="text-lg font-bold text-slate-900 mb-2 leading-tight">{item.title}</h3>
-                        <p className="text-slate-600 text-sm leading-relaxed mb-6 line-clamp-3">
+                        <h3 className="text-2xl font-serif font-bold text-ink-900 mb-3 leading-tight relative z-10">{item.title}</h3>
+                        <p className="text-ink-600 text-base font-serif italic leading-relaxed mb-8 line-clamp-3 relative z-10">
                            {item.message}
                         </p>
 
-                        <div className="mt-auto pt-4 border-t border-slate-100 flex flex-col gap-2 text-xs text-slate-400">
+                        <div className="mt-auto pt-6 border-t border-dashed border-paper-300 flex flex-col gap-3 text-[10px] text-ink-400 font-mono relative z-10">
                            <div className="flex justify-between items-center">
-                              <div className="flex items-center gap-1.5">
-                                 <Calendar size={14} />
-                                 <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                              <div className="flex items-center gap-2">
+                                 <Calendar size={14} className="text-paper-400" />
+                                 <span className="uppercase tracking-tighter">{new Date(item.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                               </div>
-                              {!readOnly && <span>{item.is_active ? 'Visible' : 'Hidden'}</span>}
+                              {!readOnly && <span className="font-black uppercase tracking-widest">{item.is_active ? 'Visible' : 'Hidden'}</span>}
                            </div>
                            
                            {/* Schedule Details if available */}
                            {!readOnly && (item.scheduled_start || item.scheduled_end) && (
-                              <div className="bg-slate-50 p-2 rounded-lg space-y-1">
-                                 {item.scheduled_start && <div>Starts: {new Date(item.scheduled_start).toLocaleString()}</div>}
-                                 {item.scheduled_end && <div>Ends: {new Date(item.scheduled_end).toLocaleString()}</div>}
+                              <div className="bg-paper-100/50 p-3 rounded-xl space-y-1 border border-paper-200">
+                                 {item.scheduled_start && <div className="flex justify-between"><span>Starts:</span> <span className="text-ink-600">{new Date(item.scheduled_start).toLocaleString()}</span></div>}
+                                 {item.scheduled_end && <div className="flex justify-between"><span>Ends:</span> <span className="text-ink-600">{new Date(item.scheduled_end).toLocaleString()}</span></div>}
                               </div>
                            )}
                         </div>

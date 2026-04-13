@@ -46,8 +46,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ currentUser }) => {
       await dataService.uploadGalleryItem(file, caption, currentUser.id);
       await fetchGallery();
     } catch (e) {
-      console.error(e);
-      alert("Upload failed. Please try again.");
+      console.error("Upload failed:", e);
     } finally {
       setIsUploading(false);
     }
@@ -92,8 +91,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ currentUser }) => {
       
       handleCloseEdit();
     } catch (e: any) {
-      console.error(e);
-      alert(e.message || "Failed to update caption");
+      console.error("Update caption failed:", e);
     } finally {
       setIsSavingEdit(false);
     }
@@ -106,8 +104,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ currentUser }) => {
           item.id === id ? { ...item, is_archived: isArchived, archived_at: isArchived ? new Date().toISOString() : null } : item
        ));
      } catch (e: any) {
-        console.error(e);
-        alert("Failed to update status: " + e.message);
+        console.error("Toggle archive failed:", e);
         fetchGallery();
      }
   };

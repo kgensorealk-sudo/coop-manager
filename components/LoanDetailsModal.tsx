@@ -206,47 +206,43 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="bg-paper-50 rounded-sm shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh] border-4 border-double border-paper-300 relative z-10"
           >
-            <div className={`p-8 relative overflow-hidden shrink-0 min-h-[300px] transition-colors duration-500 ${displayStatus === 'paid' ? 'bg-emerald-900 text-paper-50' : debt.isPostTerm ? 'bg-wax-950 text-paper-50' : 'bg-[#0f172a] text-paper-50'}`}>
-          <div className="absolute top-0 right-0 p-4 opacity-[0.05] pointer-events-none rotate-12">
-             {displayStatus === 'paid' ? <ShieldCheck size={220} /> : <Receipt size={180} />}
+            <div className={`p-10 relative overflow-hidden shrink-0 min-h-[300px] transition-colors duration-700 ${displayStatus === 'paid' ? 'bg-emerald-900 text-paper-50' : debt.isPostTerm ? 'bg-wax-950 text-paper-50' : 'bg-ink-900 text-paper-50'}`}>
+          <div className="absolute -top-12 -right-12 opacity-[0.08] pointer-events-none rotate-12">
+             {displayStatus === 'paid' ? <ShieldCheck size={280} /> : <Receipt size={240} />}
           </div>
           
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 relative z-10">
-             <div>
-                <div className="flex items-center gap-3 mb-1">
-                   <h2 className="text-3xl font-serif font-bold tracking-tight text-paper-50">Sovereign Ledger</h2>
-                   {(() => {
-                      return (
-                         <span className={`px-2.5 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] border ${
-                            displayStatus === 'paid' ? 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30' :
-                            debt.isPostTerm ? 'bg-wax-500/20 text-wax-400 border-wax-500/30 animate-pulse' :
-                            displayStatus === 'active' ? 'bg-[#059669]/20 text-[#10b981] border-[#059669]/30' :
-                            'bg-white/10 text-white/40'
-                         }`}>
-                            {displayStatus === 'paid' ? 'FULLY SETTLED' : debt.isPostTerm ? 'PENALTY PHASE' : displayStatus}
-                         </span>
-                      );
-                   })()}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 relative z-10">
+             <div className="space-y-2">
+                <div className="flex items-center gap-4">
+                   <h2 className="text-4xl font-serif font-bold tracking-tight text-white">Sovereign Ledger</h2>
+                   <span className={`px-3 py-1 rounded-sm text-[10px] font-black uppercase tracking-[0.25em] border shadow-lg ${
+                      displayStatus === 'paid' ? 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30' :
+                      debt.isPostTerm ? 'bg-wax-500/20 text-wax-400 border-wax-500/30 animate-pulse' :
+                      displayStatus === 'active' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                      'bg-white/10 text-white/40 border-white/10'
+                   }`}>
+                      {displayStatus === 'paid' ? 'FULLY SETTLED' : debt.isPostTerm ? 'PENALTY PHASE' : displayStatus}
+                   </span>
                 </div>
-                <p className="text-paper-300 font-serif italic text-lg">{loan.borrower.full_name} • {loan.purpose}</p>
+                <p className="text-paper-200 font-serif italic text-xl opacity-90">{loan.borrower.full_name} <span className="mx-2 opacity-30">|</span> {loan.purpose}</p>
              </div>
-             <div className="flex items-center gap-3">
+             <div className="flex items-center gap-4">
                 {onViewAgreement && displayStatus !== 'pending' && (
                   <button 
                     onClick={onViewAgreement}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-paper-50 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all border border-white/10"
+                    className="flex items-center gap-2.5 px-5 py-2.5 bg-white/10 hover:bg-white/20 text-paper-50 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border border-white/10 shadow-lg group active:scale-95"
                   >
-                    <Download size={14} className="text-gold-500" />
-                    <span>Agreement</span>
+                    <Download size={16} className="text-gold-500 group-hover:translate-y-0.5 transition-transform" />
+                    <span>Download Agreement</span>
                   </button>
                 )}
-                <button onClick={handleClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-paper-400 hover:text-white">
-                   <X size={24} />
+                <button onClick={handleClose} className="p-3 hover:bg-white/10 rounded-full transition-all text-paper-400 hover:text-white hover:rotate-90 active:scale-90">
+                   <X size={28} />
                 </button>
              </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10 border-t border-white/10 pt-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 relative z-10 border-t border-white/10 pt-10">
              <div className="space-y-1">
                 <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#C5A028] flex items-center gap-2">
                    <Scale size={12} /> Live Interest & Penalties

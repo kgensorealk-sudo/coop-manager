@@ -288,7 +288,7 @@ const App: React.FC = () => {
       await refreshData();
       setIsApprovalModalOpen(false);
     } catch (error) {
-      alert(getErrorMessage(error));
+      setError(getErrorMessage(error));
     }
   };
 
@@ -299,7 +299,7 @@ const App: React.FC = () => {
       setIsApprovalModalOpen(false);
       setSelectedLoan(null);
     } catch (error) {
-      alert(getErrorMessage(error));
+      setError(getErrorMessage(error));
     }
   };
 
@@ -320,7 +320,7 @@ const App: React.FC = () => {
       await dataService.updateContributionStatus(id, 'approved');
       await refreshData();
     } catch (e) {
-      alert(getErrorMessage(e));
+      setError(getErrorMessage(e));
     }
   };
 
@@ -329,7 +329,7 @@ const App: React.FC = () => {
       await dataService.updateContributionStatus(id, 'rejected');
       await refreshData();
     } catch (e) {
-      alert(getErrorMessage(e));
+      setError(getErrorMessage(e));
     }
   };
   

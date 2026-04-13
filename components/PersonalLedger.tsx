@@ -49,6 +49,38 @@ interface PersonalLedgerProps {
   currentUser: User;
 }
 
+const DeleteConfirmButton: React.FC<{ onDelete: () => void }> = ({ onDelete }) => {
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  if (isConfirming) {
+    return (
+      <div className="flex items-center gap-1 animate-fade-in">
+        <button 
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="px-2 py-1 bg-wax-600 text-white text-[10px] font-black uppercase rounded-sm shadow-sm"
+        >
+          Confirm
+        </button>
+        <button 
+          onClick={(e) => { e.stopPropagation(); setIsConfirming(false); }}
+          className="px-2 py-1 bg-paper-200 text-ink-400 text-[10px] font-black uppercase rounded-sm"
+        >
+          No
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button 
+      onClick={(e) => { e.stopPropagation(); setIsConfirming(true); }}
+      className="p-2.5 md:p-2 text-ink-400 sm:text-ink-300 hover:text-wax-600 hover:bg-wax-50 border border-paper-200 rounded-sm transition-all"
+    >
+      <Trash2 size={16} />
+    </button>
+  );
+};
+
 export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) => {
   const [entries, setEntries] = useState<PersonalLedgerEntry[]>([]);
   const [accounts, setAccounts] = useState<PersonalAccount[]>([]);
@@ -196,7 +228,8 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this entry?")) return;
+    // Note: In a production app, we'd use a custom modal here.
+    // Proceeding directly to comply with iframe restrictions on window.confirm.
     try {
       await dataService.deletePersonalEntry(id);
       fetchAllData();
@@ -650,7 +683,7 @@ export const PersonalLedger: React.FC<PersonalLedgerProps> = ({ currentUser }) =
                                           </div>
                                           <div className="flex gap-1 md:gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                              <button onClick={() => setEditingEntry(entry)} className="p-2.5 md:p-2 text-ink-400 sm:text-ink-300 hover:text-ink-900 hover:bg-paper-100 border border-paper-200 rounded-sm"><Edit2 size={16} /></button>
-                                             <button onClick={() => handleDelete(entry.id)} className="p-2.5 md:p-2 text-ink-400 sm:text-ink-300 hover:text-wax-600 hover:bg-wax-50 border border-paper-200 rounded-sm"><Trash2 size={16} /></button>
+                                             <DeleteConfirmButton onDelete={() => handleDelete(entry.id)} />
                                           </div>
                                        </div>
                                     </motion.div>
