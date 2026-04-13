@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar';
 import { MobileNav } from './components/MobileNav';
 import { StatCard } from './components/StatCard';
 import LoanApprovalModal from './components/LoanApprovalModal';
+import LoanAgreementModal from './components/LoanAgreementModal';
 import LoanApplicationForm from './components/LoanApplicationForm';
 import LoanDetailsModal from './components/LoanDetailsModal';
 import ContributionModal from './components/ContributionModal';
@@ -36,7 +37,8 @@ import {
   ArrowRight,
   ClipboardCheck,
   Coins,
-  CalendarDays
+  CalendarDays,
+  Download
 } from 'lucide-react';
 
 const getErrorMessage = (err: any): string => {
@@ -74,6 +76,7 @@ const App: React.FC = () => {
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isAgreementModalOpen, setIsAgreementModalOpen] = useState(false);
   const [isContributionModalOpen, setIsContributionModalOpen] = useState(false);
   
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
@@ -267,9 +270,23 @@ const App: React.FC = () => {
   const handleApproveLoan = async (loanId: string, customRate: number, startDate?: Date) => {
     try {
       await dataService.updateLoanStatus(loanId, 'active', customRate, startDate);
+      
+      // Find the loan before refreshing to show in the agreement modal
+      const approvedLoan = loans.find(l => l.id === loanId);
+      if (approvedLoan) {
+        // Create a copy with updated values for the modal
+        const updatedLoan: LoanWithBorrower = {
+          ...approvedLoan,
+          status: 'active',
+          interest_rate: customRate,
+          created_at: startDate ? startDate.toISOString() : approvedLoan.created_at
+        };
+        setSelectedLoan(updatedLoan);
+        setIsAgreementModalOpen(true);
+      }
+      
       await refreshData();
       setIsApprovalModalOpen(false);
-      setSelectedLoan(null);
     } catch (error) {
       alert(getErrorMessage(error));
     }
@@ -655,7 +672,20 @@ const App: React.FC = () => {
                    {loan.status === 'pending' ? (
                      <button onClick={(e) => { e.stopPropagation(); handleReviewLoan(loan); }} className="w-full py-2 bg-ink-800 text-white rounded-sm text-xs font-bold uppercase tracking-widest hover:bg-ink-900 shadow-sm transition-colors">Review Request</button>
                    ) : (
-                     <button className="w-full py-2 bg-transparent text-ink-600 rounded-sm text-xs font-bold uppercase tracking-widest hover:bg-paper-100 transition-colors border border-paper-300">Detailed Ledger</button>
+                     <>
+                       <button className="flex-1 py-2 bg-transparent text-ink-600 rounded-sm text-xs font-bold uppercase tracking-widest hover:bg-paper-100 transition-colors border border-paper-300">Detailed Ledger</button>
+                       <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedLoan(loan);
+                          setIsAgreementModalOpen(true);
+                        }}
+                        className="px-3 py-2 bg-paper-100 text-ink-600 rounded-sm hover:bg-paper-200 transition-colors border border-paper-300 flex items-center justify-center"
+                        title="Download Agreement"
+                       >
+                        <Download size={14} />
+                       </button>
+                     </>
                    )}
                 </div>
               </div>
@@ -683,7 +713,21 @@ const App: React.FC = () => {
             >
               {activeTab === 'dashboard' && renderAdminDashboard()}
               {activeTab === 'loans' && renderLoansTab()}
-              {activeTab === 'my-dashboard' && <MemberDashboard user={currentUser} memberLoans={loans.filter(l => l.borrower_id === currentUser.id)} memberContributions={contributions.filter(c => c.member_id === currentUser.id)} memberSavingGoals={savingGoals} allPayments={allPayments} onApplyLoan={() => setIsApplicationModalOpen(true)} onAddContribution={() => setIsContributionModalOpen(true)} />}
+              {activeTab === 'my-dashboard' && (
+                <MemberDashboard 
+                  user={currentUser} 
+                  memberLoans={loans.filter(l => l.borrower_id === currentUser.id)} 
+                  memberContributions={contributions.filter(c => c.member_id === currentUser.id)} 
+                  memberSavingGoals={savingGoals} 
+                  allPayments={allPayments} 
+                  onApplyLoan={() => setIsApplicationModalOpen(true)} 
+                  onAddContribution={() => setIsContributionModalOpen(true)} 
+                  onViewAgreement={(loan) => {
+                    setSelectedLoan(loan);
+                    setIsAgreementModalOpen(true);
+                  }}
+                />
+              )}
               {activeTab === 'members' && <MemberDirectory members={members} loans={loans} onRefresh={refreshData} currentUserRole={currentUser.role} />}
               {activeTab === 'treasury' && <TreasuryDashboard treasuryStats={treasuryStats} contributions={contributions} loans={loans} allPayments={allPayments} activeLoanVolume={activeVolume} totalInterestGained={totalInterestGained} onAddContribution={() => setIsContributionModalOpen(true)} onApproveContribution={handleApproveContribution} onRejectContribution={handleRejectContribution} loading={loading} />}
               {activeTab === 'announcements' && <AnnouncementHistory onOpenCreate={handleOpenAnnouncementCreate} onEdit={handleOpenAnnouncementEdit} readOnly={currentUser.role === 'member'} />}
@@ -702,6 +746,18 @@ const App: React.FC = () => {
         loan={selectedLoan} 
         onPaymentSuccess={refreshData} 
         isAdmin={currentUser?.role === 'admin'}
+        onViewAgreement={() => {
+          setIsDetailsModalOpen(false);
+          setIsAgreementModalOpen(true);
+        }}
+      />
+      <LoanAgreementModal 
+        isOpen={isAgreementModalOpen} 
+        onClose={() => {
+          setIsAgreementModalOpen(false);
+          setSelectedLoan(null);
+        }} 
+        loan={selectedLoan} 
       />
       <LoanApplicationForm isOpen={isApplicationModalOpen} onClose={() => setIsApplicationModalOpen(false)} onSubmit={handleCreateLoan} members={members} currentUser={currentUser} />
       <ContributionModal isOpen={isContributionModalOpen} onClose={() => setIsContributionModalOpen(false)} onSubmit={handleAddContribution} members={members} currentUser={currentUser} />

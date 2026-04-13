@@ -17,7 +17,8 @@ import {
   Receipt,
   Scale,
   History,
-  AlertTriangle
+  AlertTriangle,
+  Download
 } from 'lucide-react';
 
 interface LoanDetailsModalProps {
@@ -26,6 +27,7 @@ interface LoanDetailsModalProps {
   loan: LoanWithBorrower | null;
   onPaymentSuccess: () => void;
   isAdmin?: boolean;
+  onViewAgreement?: () => void;
 }
 
 const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({ 
@@ -33,7 +35,8 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
   onClose, 
   loan,
   onPaymentSuccess,
-  isAdmin
+  isAdmin,
+  onViewAgreement
 }) => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [amount, setAmount] = useState<number | ''>('');
@@ -210,9 +213,20 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                 </div>
                 <p className="text-paper-400 font-serif italic text-lg">{loan.borrower.full_name} • {loan.purpose}</p>
              </div>
-             <button onClick={handleClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-paper-400 hover:text-white">
-                <X size={24} />
-             </button>
+             <div className="flex items-center gap-3">
+                {onViewAgreement && displayStatus !== 'pending' && (
+                  <button 
+                    onClick={onViewAgreement}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-paper-50 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all border border-white/10"
+                  >
+                    <Download size={14} className="text-gold-500" />
+                    <span>Agreement</span>
+                  </button>
+                )}
+                <button onClick={handleClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-paper-400 hover:text-white">
+                   <X size={24} />
+                </button>
+             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10 border-t border-white/10 pt-8">

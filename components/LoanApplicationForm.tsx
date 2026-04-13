@@ -22,7 +22,7 @@ import {
 interface LoanApplicationFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { borrower_id: string; principal: number; duration_months: number; purpose: string }) => Promise<void>;
+  onSubmit: (data: { borrower_id: string; principal: number; duration_months: number; purpose: string; interest_rate: number }) => Promise<void>;
   members: User[];
   currentUser?: User;
 }
@@ -38,6 +38,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
   const [borrowerId, setBorrowerId] = useState('');
   const [principal, setPrincipal] = useState<number | ''>('');
   const [durationMonths, setDurationMonths] = useState<number>(2);
+  const [interestRate, setInterestRate] = useState<number>(DEFAULT_INTEREST_RATE);
   const [purpose, setPurpose] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,7 +50,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
     // Safety guard inside the hook
     if (!isOpen || !principal) return [];
     
-    const totalRepaymentLocal = Number(principal) * (1 + ((DEFAULT_INTEREST_RATE / 100) * durationMonths));
+    const totalRepaymentLocal = Number(principal) * (1 + ((interestRate / 100) * durationMonths));
     const totalInstallmentsLocal = durationMonths * 2;
     const installmentAmountLocal = totalRepaymentLocal / totalInstallmentsLocal;
     
@@ -57,7 +58,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
     const dates = dataService.getInstallmentDates(startDate, totalInstallmentsLocal);
     
     const principalPerPayment = Number(principal) / totalInstallmentsLocal;
-    const interestPerPayment = (Number(principal) * (DEFAULT_INTEREST_RATE / 100) * durationMonths) / totalInstallmentsLocal;
+    const interestPerPayment = (Number(principal) * (interestRate / 100) * durationMonths) / totalInstallmentsLocal;
 
     return dates.map((date, index) => ({
       number: index + 1,
@@ -66,7 +67,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
       interest: interestPerPayment,
       total: installmentAmountLocal
     }));
-  }, [isOpen, principal, durationMonths]);
+  }, [isOpen, principal, durationMonths, interestRate]);
 
   useEffect(() => {
     if (isOpen) {
@@ -74,6 +75,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
         setStep(1);
         setAcceptedTerms(false);
         setDurationMonths(2);
+        setInterestRate(DEFAULT_INTEREST_RATE);
         setShowSchedule(false);
         if (currentUser && currentUser.role === 'member') {
           setBorrowerId(currentUser.id);
@@ -94,7 +96,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
   const borrowerName = members.find(m => m.id === borrowerId)?.full_name || currentUser?.full_name || 'Borrower';
   
   // Logic: Default interest per month. Total interest = principal * (rate * months)
-  const interestMultiplier = 1 + ((DEFAULT_INTEREST_RATE / 100) * durationMonths);
+  const interestMultiplier = 1 + ((interestRate / 100) * durationMonths);
   const totalRepayment = principal ? Number(principal) * interestMultiplier : 0;
   const totalInstallments = durationMonths * 2;
   const installmentAmount = totalRepayment / totalInstallments;
@@ -103,6 +105,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
     setError('');
     if (!borrowerId) { setError('Please select a member.'); return false; }
     if (!principal || principal <= 0) { setError('Please enter a valid amount.'); return false; }
+    if (interestRate < 0 || interestRate > 100) { setError('Interest rate must be between 0 and 100.'); return false; }
     if (durationMonths < 1 || durationMonths > 12) { setError('Loan term must be between 1 and 12 months.'); return false; }
     if (!purpose.trim()) { setError('Please enter a loan purpose.'); return false; }
     return true;
@@ -125,6 +128,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
         borrower_id: borrowerId,
         principal: Number(principal),
         duration_months: durationMonths,
+        interest_rate: interestRate,
         purpose: purpose
       });
       setPrincipal('');
@@ -202,7 +206,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase text-ink-400 tracking-widest block mb-1">Principal Amount (₱)</label>
                   <div className="relative">
@@ -216,6 +220,23 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
                       className="w-full pl-8 pr-4 py-3 bg-white border border-paper-300 rounded-xl focus:border-ink-900 outline-none transition-all font-mono text-2xl font-bold text-ink-900"
                       placeholder="0.00"
                     />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-ink-400 tracking-widest block mb-1">Interest Rate (%)</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={interestRate}
+                      onChange={(e) => setInterestRate(e.target.value ? Number(e.target.value) : 0)}
+                      className="w-full px-4 py-3 bg-white border border-paper-300 rounded-xl focus:border-ink-900 outline-none transition-all font-mono text-xl font-bold text-ink-900"
+                      placeholder="10.0"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-300 font-serif font-bold text-xl">%</span>
                   </div>
                 </div>
 
@@ -343,7 +364,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
                            <div className="w-1.5 h-1.5 bg-gold-600 rounded-full"></div> Repayment Terms
                         </h4>
                         <p className="italic text-sm text-ink-700 leading-relaxed pl-3 border-l border-paper-300">
-                           Repayments are strictly bi-monthly, scheduled on the <strong>10th and 25th</strong> of each month, starting the month following disbursement. Total interest of {durationMonths * DEFAULT_INTEREST_RATE}% has been applied to the principal sum.
+                           Repayments are strictly bi-monthly, scheduled on the <strong>10th and 25th</strong> of each month, starting the month following disbursement. Total interest of {durationMonths * interestRate}% has been applied to the principal sum.
                         </p>
                      </section>
 

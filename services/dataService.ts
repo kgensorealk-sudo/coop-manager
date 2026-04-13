@@ -273,13 +273,13 @@ class DataService {
     return data as Announcement[];
   }
 
-  async createLoan(data: { borrower_id: string; principal: number; duration_months: number; purpose: string }): Promise<void> {
+  async createLoan(data: { borrower_id: string; principal: number; duration_months: number; purpose: string; interest_rate?: number }): Promise<void> {
     if (this.isMock()) {
       MOCK_LOANS.push({
         id: `l${MOCK_LOANS.length + 1}`,
         borrower_id: data.borrower_id,
         principal: data.principal,
-        interest_rate: 10,
+        interest_rate: data.interest_rate || 10,
         duration_months: data.duration_months,
         status: 'pending',
         purpose: data.purpose,
@@ -293,7 +293,7 @@ class DataService {
     const { error } = await this.supabase!.from('loans').insert({
       ...data,
       remaining_principal: data.principal,
-      interest_rate: 10,
+      interest_rate: data.interest_rate || 10,
       status: 'pending',
       interest_accrued: 0,
       waived_penalty: 0

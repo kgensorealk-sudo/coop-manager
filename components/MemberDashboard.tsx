@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { User, LoanWithBorrower, ContributionWithMember, SavingGoal, Payment } from '../types';
 import { StatCard } from './StatCard';
 import { dataService } from '../services/dataService';
-import { Wallet, CreditCard, Calendar, Clock, AlertCircle, Plus, PiggyBank, Lock, TrendingDown, CheckCircle2, XCircle, ArrowRightLeft, Target } from 'lucide-react';
+import { Wallet, CreditCard, Calendar, Clock, AlertCircle, Plus, PiggyBank, Lock, TrendingDown, CheckCircle2, XCircle, ArrowRightLeft, Target, Download } from 'lucide-react';
 
 interface MemberDashboardProps {
   user: User;
@@ -14,6 +14,7 @@ interface MemberDashboardProps {
   allPayments: Payment[];
   onApplyLoan: () => void;
   onAddContribution: () => void;
+  onViewAgreement?: (loan: LoanWithBorrower) => void;
 }
 
 const containerVariants = {
@@ -38,7 +39,8 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   memberSavingGoals,
   allPayments,
   onApplyLoan, 
-  onAddContribution 
+  onAddContribution,
+  onViewAgreement
 }) => {
   
   // Calculate total active balance (sum of all active loans)
@@ -219,6 +221,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] font-sans">Total Principal</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] font-sans">Principal Paid</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] font-sans">Rem. Balance</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] font-sans text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -257,6 +260,17 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                           </div>
                           {displayStatus === 'active' && (
                             <div className="text-[10px] text-blue-500 font-sans uppercase font-bold tracking-tighter">Current Debt</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-5 text-right">
+                          {onViewAgreement && displayStatus !== 'pending' && (
+                            <button 
+                              onClick={() => onViewAgreement(loan)}
+                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-sm transition-all"
+                              title="Download Agreement"
+                            >
+                              <Download size={18} />
+                            </button>
                           )}
                         </td>
                       </tr>
