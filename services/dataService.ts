@@ -83,9 +83,11 @@ class DataService {
       monthsOverdue = (referenceDate.getFullYear() - termEndDate.getFullYear()) * 12 + (referenceDate.getMonth() - termEndDate.getMonth());
       if (referenceDate.getDate() > termEndDate.getDate()) monthsOverdue += 1;
       
-      const monthlyInterest = loan.principal * rate;
-      const surchargePerMonth = monthlyInterest * 0.10;
-      penaltyTotal = Math.max(0, (monthsOverdue * surchargePerMonth) - (loan.waived_penalty || 0));
+      // T&C: Monthly penalty is 110% of the monthly interest amount (Monthly Interest + 10% surcharge)
+      const monthlyInterestAmount = loan.principal * rate;
+      const penaltyPerMonth = monthlyInterestAmount * 1.1;
+      
+      penaltyTotal = Math.max(0, (monthsOverdue * penaltyPerMonth) - (loan.waived_penalty || 0));
     }
 
     const totalInterestPaid = payments.reduce((sum, p) => sum + (p.interest_paid || 0), 0);

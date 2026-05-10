@@ -31,55 +31,59 @@ const LoanAgreementModal: React.FC<LoanAgreementModalProps> = ({ isOpen, onClose
     const doc = new jsPDF();
     
     // Header
-    doc.setFontSize(22);
+    doc.setFontSize(18);
     doc.setTextColor(20, 20, 20);
-    doc.text('MASTER LOAN COVENANT', 105, 20, { align: 'center' });
+    doc.text('MASTER LOAN COVENANT', 105, 15, { align: 'center' });
     
-    doc.setFontSize(10);
+    doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
-    doc.text('The 13th Page Cooperative • Registry Office', 105, 28, { align: 'center' });
-    doc.text(`Reference: ${loan.id.toUpperCase()}`, 105, 33, { align: 'center' });
+    doc.text('The 13th Page Cooperative • Registry Office', 105, 21, { align: 'center' });
+    doc.text(`Reference: ${loan.id.toUpperCase()}`, 105, 25, { align: 'center' });
 
     // Borrower Info
     doc.setDrawColor(200, 200, 200);
-    doc.line(20, 40, 190, 40);
+    doc.line(20, 30, 190, 30);
     
-    doc.setFontSize(12);
+    doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'bold');
-    doc.text('BORROWER INFORMATION', 20, 50);
+    doc.text('BORROWER INFORMATION', 20, 38);
     
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Name: ${loan.borrower.full_name}`, 20, 60);
-    doc.text(`Equity: PHP ${loan.borrower.equity.toLocaleString()}`, 20, 67);
-    doc.text(`Date of Agreement: ${new Date(loan.created_at).toLocaleDateString()}`, 20, 74);
+    doc.text(`Name: ${loan.borrower.full_name}`, 20, 45);
+    doc.text(`Equity: PHP ${loan.borrower.equity.toLocaleString()}`, 20, 50);
+    doc.text(`Date of Agreement: ${new Date(loan.created_at).toLocaleDateString()}`, 20, 55);
 
     // Loan Terms
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('LOAN TERMS', 120, 50);
+    doc.text('LOAN TERMS', 120, 38);
     
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Principal: PHP ${loan.principal.toLocaleString()}`, 120, 60);
-    doc.text(`Interest Rate: ${loan.interest_rate}% per month`, 120, 67);
-    doc.text(`Duration: ${loan.duration_months} Months`, 120, 74);
+    doc.text(`Principal: PHP ${loan.principal.toLocaleString()}`, 120, 45);
+    doc.text(`Interest Rate: ${loan.interest_rate}% per month`, 120, 50);
+    doc.text(`Duration: ${loan.duration_months} Months`, 120, 55);
 
     // Financial Summary
     doc.setFillColor(245, 245, 245);
-    doc.rect(20, 85, 170, 30, 'F');
-    
-    doc.setFont('helvetica', 'bold');
-    doc.text('FINANCIAL SUMMARY', 105, 95, { align: 'center' });
-    
-    doc.setFontSize(14);
-    doc.text(`Total Repayment: PHP ${totalRepayment.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 105, 105, { align: 'center' });
+    doc.rect(20, 65, 170, 22, 'F');
     
     doc.setFontSize(10);
-    doc.text(`Bi-Monthly Installment: PHP ${installmentAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 105, 112, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.text('FINANCIAL SUMMARY', 105, 71, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.text(`Total Repayment: PHP ${totalRepayment.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 105, 78, { align: 'center' });
+    
+    doc.setFontSize(8);
+    doc.text(`Bi-Monthly Installment: PHP ${installmentAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 105, 83, { align: 'center' });
 
     // Amortization Schedule
-    doc.setFontSize(12);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('REPAYMENT SCHEDULE', 20, 130);
+    doc.text('REPAYMENT SCHEDULE', 20, 95);
 
     const tableData = schedule.map(item => [
       item.number.toString(),
@@ -88,52 +92,71 @@ const LoanAgreementModal: React.FC<LoanAgreementModalProps> = ({ isOpen, onClose
     ]);
 
     autoTable(doc, {
-      startY: 135,
+      startY: 98,
       head: [['No.', 'Due Date', 'Installment Amount']],
       body: tableData,
       theme: 'striped',
       headStyles: { fillColor: [40, 40, 40] },
-      styles: { fontSize: 9 }
+      styles: { fontSize: 8, cellPadding: 1.5 },
+      margin: { top: 10, bottom: 10 }
     });
 
-    // Terms & Conditions
-    const termsY = (doc as any).lastAutoTable.finalY + 15;
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('TERMS & CONDITIONS', 20, termsY);
+    // Terms & Conditions - Handle page overflow
+    let currentY = (doc as any).lastAutoTable.finalY + 10;
+    
+    if (currentY > 230) {
+      doc.addPage();
+      currentY = 20;
+    }
 
-    doc.setFontSize(9);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TERMS & CONDITIONS', 20, currentY);
+
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
+    const monthlyInterestAmount = loan.principal * (loan.interest_rate / 100);
+    const penaltyPerMonth = monthlyInterestAmount * 1.1;
+
     const terms = [
       `1. REPAYMENT: The borrower, ${loan.borrower.full_name}, agrees to repay the total sum of PHP ${totalRepayment.toLocaleString(undefined, { minimumFractionDigits: 2 })} in ${totalInstallments} bi-monthly installments.`,
       `2. SCHEDULE: Payments are due on the 10th and 25th of each month as specified in the Repayment Schedule above.`,
       `3. INTEREST: A fixed interest rate of ${loan.interest_rate}% per month has been applied for the duration of ${loan.duration_months} months.`,
       `4. DEFAULT & PENALTIES: Failure to settle the full balance by the final installment date triggers the "Penalty Phase".`,
-      `   a. A one-time penalty of 10% of the original principal (PHP ${(loan.principal * 0.1).toLocaleString()}) will be applied immediately upon default.`,
-      `   b. An additional monthly surcharge of 10% of the total penalty amount will be accrued every 30 days until the debt is fully settled.`,
+      `   a. A monthly penalty equivalent to the monthly interest plus a 10% surcharge (totaling PHP ${penaltyPerMonth.toLocaleString()}) will be applied immediately upon default.`,
+      `   b. This penalty will accrue for every subsequent 30-day period (or part thereof) until the debt is fully settled.`,
       `5. GOVERNANCE: This agreement is governed by the bylaws of The 13th Page Cooperative. Any disputes shall be resolved through the cooperative's internal mediation board.`
     ];
 
-    let currentY = termsY + 8;
+    currentY += 6;
     terms.forEach(term => {
       const splitTerm = doc.splitTextToSize(term, 170);
+      if (currentY + (splitTerm.length * 4) > 280) {
+        doc.addPage();
+        currentY = 20;
+      }
       doc.text(splitTerm, 20, currentY);
-      currentY += (splitTerm.length * 5);
+      currentY += (splitTerm.length * 4);
     });
 
     // Signatures
-    const finalY = currentY + 15;
-    doc.setFont('helvetica', 'normal');
-    doc.line(20, finalY + 25, 80, finalY + 25);
-    doc.text(loan.borrower.full_name, 20, finalY + 30);
-    doc.setFontSize(8);
-    doc.text('Borrower Signature', 20, finalY + 34);
+    if (currentY + 30 > 280) {
+      doc.addPage();
+      currentY = 20;
+    }
+    
+    const finalY = currentY + 10;
+    doc.setFontSize(9);
+    doc.line(20, finalY + 15, 80, finalY + 15);
+    doc.text(loan.borrower.full_name, 20, finalY + 20);
+    doc.setFontSize(7);
+    doc.text('Borrower Signature', 20, finalY + 24);
     
     doc.setFontSize(9);
-    doc.line(130, finalY + 25, 190, finalY + 25);
-    doc.text('Registry Office', 130, finalY + 30);
-    doc.setFontSize(8);
-    doc.text('Cooperative Admin', 130, finalY + 34);
+    doc.line(130, finalY + 15, 190, finalY + 15);
+    doc.text('Registry Office', 130, finalY + 20);
+    doc.setFontSize(7);
+    doc.text('Cooperative Admin', 130, finalY + 24);
 
     doc.save(`Loan_Agreement_${loan.borrower.full_name.replace(/\s+/g, '_')}.pdf`);
   };
@@ -245,6 +268,21 @@ const LoanAgreementModal: React.FC<LoanAgreementModalProps> = ({ isOpen, onClose
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-6 border-t border-paper-100">
+                <h4 className="text-[10px] font-black uppercase text-ink-400 tracking-widest flex items-center gap-2">
+                  <ShieldCheck size={14} /> Covenant Clause
+                </h4>
+                <div className="space-y-4 text-xs font-serif text-ink-700 italic leading-relaxed">
+                  <p>1. <span className="font-bold font-sans not-italic text-[10px] uppercase">Repayment:</span> Borrower agrees to repay the PHP {totalRepayment.toLocaleString()} in {totalInstallments} bi-monthly installments.</p>
+                  <p>2. <span className="font-bold font-sans not-italic text-[10px] uppercase">Default:</span> Late settlement triggers the Penalty Phase immediately.</p>
+                  <div className="pl-4 border-l-2 border-gold-500 bg-paper-50 p-3 rounded-lg">
+                    <p className="font-bold not-italic text-ink-900 mb-1">Penalty Phase Calculation:</p>
+                    <p>• Early Default: PHP {(loan.principal * (loan.interest_rate / 100) * 1.1).toLocaleString()} per month.</p>
+                    <p className="mt-1 opacity-70">Based on monthly interest (₱{ (loan.principal * (loan.interest_rate / 100)).toLocaleString() }) + 10% delay fee.</p>
+                  </div>
                 </div>
               </div>
 
