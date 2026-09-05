@@ -1,6 +1,7 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Sidebar } from './components/Sidebar';
 import { MobileNav } from './components/MobileNav';
 import { StatCard } from './components/StatCard';
@@ -391,11 +392,73 @@ const App: React.FC = () => {
     );
   }
 
+  // Aggregates the last 6 months of approved contributions vs. loan disbursements
+  // so the Executive Summary can show cash-flow direction at a glance, not just totals.
+  const dashboardTrendData = useMemo(() => {
+    const months: { key: string; label: string; inflow: number; outflow: number }[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        key: `${d.getFullYear()}-${d.getMonth()}`,
+        label: d.toLocaleDateString('en-US', { month: 'short' }),
+        inflow: 0,
+        outflow: 0,
+      });
+    }
+    const bucket = new Map(months.map(m => [m.key, m]));
+
+    contributions.forEach(c => {
+      if (c.status !== 'approved' || !c.date) return;
+      const d = new Date(c.date);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const m = bucket.get(key);
+      if (m) m.inflow += c.amount;
+    });
+
+    loans.forEach(l => {
+      if (l.status === 'pending' || l.status === 'rejected' || !l.created_at) return;
+      const d = new Date(l.created_at);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const m = bucket.get(key);
+      if (m) m.outflow += l.principal;
+    });
+
+    return months;
+  }, [contributions, loans]);
+
+  const renderDashboardSkeleton = () => (
+    <div className="space-y-8 animate-fade-in">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="space-y-3">
+          <div className="h-9 w-64 bg-paper-200 rounded-sm animate-pulse" />
+          <div className="h-5 w-80 bg-paper-100 rounded-sm animate-pulse" />
+        </div>
+        <div className="h-10 w-44 bg-paper-100 rounded-sm animate-pulse" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} className="bg-paper-50 border-2 border-paper-200 rounded-xl p-6 space-y-4">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <div className="h-2.5 w-20 bg-paper-200 rounded-sm animate-pulse" />
+                <div className="h-7 w-28 bg-paper-200 rounded-sm animate-pulse" />
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-paper-100 animate-pulse" />
+            </div>
+            <div className="h-3 w-24 bg-paper-100 rounded-sm animate-pulse" />
+          </div>
+        ))}
+      </div>
+      <div className="bg-white p-8 rounded-sm border-2 border-paper-200 h-[320px] animate-pulse" />
+    </div>
+  );
+
   const renderAdminDashboard = () => {
     const pendingLoans = loans.filter(l => l.status === 'pending');
     const pendingContributions = contributions.filter(c => c.status === 'pending');
 
-    if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ink-600"></div></div>;
+    if (loading) return renderDashboardSkeleton();
 
     return (
       <div className="space-y-8 animate-fade-in">
@@ -418,6 +481,55 @@ const App: React.FC = () => {
           <StatCard index={1} title="Gains Realized" value={`₱${(treasuryStats.totalInterestCollected + treasuryStats.totalPenaltyCollected).toLocaleString()}`} icon={TrendingUp} trend="Interest + Penalties" trendUp={true} colorClass="text-purple-700" />
           <StatCard index={2} title="Total Receivables" value={`₱${activeVolume.toLocaleString()}`} icon={Coins} trend="Loan Book Value" trendUp={true} colorClass="text-blue-700" />
           <StatCard index={3} title="Assessments Due" value={`${pendingLoans.length + pendingContributions.length}`} icon={ClipboardCheck} colorClass={pendingLoans.length > 0 ? "text-wax-600" : "text-ink-600"} />
+        </div>
+
+        <div className="bg-white p-6 sm:p-8 rounded-sm border-2 border-paper-200 shadow-card">
+          <div className="flex items-center justify-between mb-8 gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-ink-900 text-gold-500 rounded-sm shadow-md -rotate-3">
+                <TrendingUp size={18} />
+              </div>
+              <div>
+                <h2 className="text-xl font-serif font-bold text-ink-900">Treasury Trend</h2>
+                <p className="text-xs text-ink-400 uppercase tracking-widest font-black">Last 6 Months, Inflows vs. Disbursed</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-5">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+                <span className="text-xs font-serif italic text-ink-600">Contributions</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-wax-500" />
+                <span className="text-xs font-serif italic text-ink-600">Disbursed</span>
+              </div>
+            </div>
+          </div>
+          <div className="h-[280px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={dashboardTrendData}>
+                <defs>
+                  <linearGradient id="colorInflow" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#065F46" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#065F46" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorOutflow" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#B45309" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#B45309" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E4E3E0" />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontFamily: 'monospace', fill: '#8A8579' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontFamily: 'monospace', fill: '#8A8579' }} tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#F5F2ED', border: '1px solid #DED9D1', fontFamily: 'serif', borderRadius: 2 }}
+                  formatter={(value, name) => [`₱${Number(value ?? 0).toLocaleString()}`, String(name)]}
+                />
+                <Area type="monotone" dataKey="inflow" name="Contributions" stroke="#065F46" strokeWidth={2.5} fillOpacity={1} fill="url(#colorInflow)" />
+                <Area type="monotone" dataKey="outflow" name="Disbursed" stroke="#B45309" strokeWidth={2.5} fillOpacity={1} fill="url(#colorOutflow)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-8">
