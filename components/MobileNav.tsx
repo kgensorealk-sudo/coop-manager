@@ -35,6 +35,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
 
   const adminMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'my-dashboard', label: 'My Ledger', icon: LayoutDashboard },
     { id: 'loans', label: 'Loan Ledger', icon: FileText },
     { id: 'members', label: 'Membership', icon: Users },
     { id: 'treasury', label: 'Treasury', icon: PiggyBank },

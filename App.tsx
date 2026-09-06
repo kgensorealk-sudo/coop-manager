@@ -988,15 +988,13 @@ const App: React.FC = () => {
       />
       <LoanApplicationForm isOpen={isApplicationModalOpen} onClose={() => setIsApplicationModalOpen(false)} onSubmit={handleCreateLoan} members={members} currentUser={currentUser} />
       <ContributionModal isOpen={isContributionModalOpen} onClose={() => setIsContributionModalOpen(false)} onSubmit={handleAddContribution} members={members} currentUser={currentUser} />
-      {currentUser.role === 'member' && (
-        <WithdrawalModal
-          isOpen={isWithdrawalModalOpen}
-          onClose={() => setIsWithdrawalModalOpen(false)}
-          onSubmit={handleRequestWithdrawal}
-          currentUser={currentUser}
-          hasActiveLoan={loans.some(l => l.borrower_id === currentUser.id && l.status === 'active')}
-        />
-      )}
+      <WithdrawalModal
+        isOpen={isWithdrawalModalOpen}
+        onClose={() => setIsWithdrawalModalOpen(false)}
+        onSubmit={handleRequestWithdrawal}
+        currentUser={currentUser}
+        hasActiveLoan={loans.some(l => l.borrower_id === currentUser.id && l.status === 'active')}
+      />
       <CreateAnnouncementModal isOpen={isAnnouncementModalOpen} onClose={() => { setIsAnnouncementModalOpen(false); setEditingAnnouncement(null); }} onSubmit={handleSaveAnnouncement} editingAnnouncement={editingAnnouncement} />
     </div>
   );
