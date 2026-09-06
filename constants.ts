@@ -1,5 +1,5 @@
 
-import { User, Loan, Contribution, Payment, Announcement, PersonalLedgerEntry } from './types';
+import { User, Loan, Contribution, Payment, Announcement, PersonalLedgerEntry, Withdrawal } from './types';
 
 // Default Interest Rate as per requirements
 export const DEFAULT_INTEREST_RATE = 10;
@@ -92,6 +92,11 @@ export const MOCK_CONTRIBUTIONS: Contribution[] = [
   { id: 'c2', member_id: 'u2', amount: 2500, date: '2023-02-15', type: 'monthly_deposit', status: 'approved' },
   { id: 'c3', member_id: 'u3', amount: 2500, date: '2023-03-01', type: 'monthly_deposit', status: 'approved' },
   { id: 'c4', member_id: 'u2', amount: 500, date: '2023-10-25', type: 'monthly_deposit', status: 'pending' },
+];
+
+// Members requesting to cash out equity. Full withdrawals end coop membership once approved.
+export const MOCK_WITHDRAWALS: Withdrawal[] = [
+  { id: 'w1', member_id: 'u3', amount: 2500, date: '2023-11-10', status: 'pending', is_full_withdrawal: true, created_at: '2023-11-10T09:00:00Z' },
 ];
 
 export const MOCK_PAYMENTS: Payment[] = [

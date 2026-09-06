@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { User, LoanWithBorrower, ContributionWithMember, SavingGoal, Payment } from '../types';
 import { StatCard } from './StatCard';
 import { dataService } from '../services/dataService';
-import { Wallet, CreditCard, Calendar, Clock, AlertCircle, Plus, PiggyBank, Lock, TrendingDown, CheckCircle2, XCircle, ArrowRightLeft, Target, Download } from 'lucide-react';
+import { Wallet, CreditCard, Calendar, Clock, AlertCircle, Plus, PiggyBank, Lock, TrendingDown, CheckCircle2, XCircle, ArrowRightLeft, Target, Download, Banknote } from 'lucide-react';
 
 interface MemberDashboardProps {
   user: User;
@@ -14,6 +14,7 @@ interface MemberDashboardProps {
   allPayments: Payment[];
   onApplyLoan: () => void;
   onAddContribution: () => void;
+  onRequestWithdrawal: () => void;
   onViewAgreement?: (loan: LoanWithBorrower) => void;
 }
 
@@ -40,6 +41,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   allPayments,
   onApplyLoan, 
   onAddContribution,
+  onRequestWithdrawal,
   onViewAgreement
 }) => {
   
@@ -103,6 +105,21 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
           <p className="text-ink-500 mt-2 font-serif italic text-lg opacity-80">Overview of your equity and loan status.</p>
         </div>
         <div className="flex gap-4">
+           <motion.button 
+             whileHover={(activeLoans.length > 0 || user.equity <= 0) ? {} : { scale: 1.02 }}
+             whileTap={(activeLoans.length > 0 || user.equity <= 0) ? {} : { scale: 0.98 }}
+             onClick={(activeLoans.length > 0 || user.equity <= 0) ? undefined : onRequestWithdrawal}
+             disabled={activeLoans.length > 0 || user.equity <= 0}
+             title={activeLoans.length > 0 ? "Settle your active loan before withdrawing equity" : user.equity <= 0 ? "No equity available to withdraw" : "Request a withdrawal of your equity"}
+             className={`px-8 py-4 rounded-xl font-black uppercase tracking-[0.2em] shadow-lg flex items-center justify-center space-x-3 border-b-4 transition-all text-xs ${
+               (activeLoans.length > 0 || user.equity <= 0)
+                ? 'bg-paper-200 text-paper-400 border-paper-300 cursor-not-allowed shadow-none'
+                : 'bg-wax-600 hover:bg-wax-700 text-white border-wax-800'
+             }`}
+           >
+              {activeLoans.length > 0 ? <Lock size={20} /> : <Banknote size={20} />}
+              <span>Withdraw Equity</span>
+           </motion.button>
            <motion.button 
              whileHover={{ scale: 1.02 }}
              whileTap={{ scale: 0.98 }}

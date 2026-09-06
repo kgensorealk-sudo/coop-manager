@@ -1,12 +1,12 @@
 
 import { supabase } from '../lib/supabaseClient';
 import { 
-  User, LoanWithBorrower, ContributionWithMember, 
+  User, LoanWithBorrower, ContributionWithMember, WithdrawalWithMember,
   Payment, Announcement, AnnouncementPriority, GalleryItem, PersonalLedgerEntry,
   LoanStatus, ContributionStatus, Role, CategoryBudget, PersonalAccount, SavingGoal
 } from '../types';
 import { 
-  MOCK_USERS, MOCK_LOANS, MOCK_CONTRIBUTIONS, MOCK_PAYMENTS, 
+  MOCK_USERS, MOCK_LOANS, MOCK_CONTRIBUTIONS, MOCK_PAYMENTS, MOCK_WITHDRAWALS,
   MOCK_ANNOUNCEMENTS, MOCK_PERSONAL_LEDGER 
 } from '../constants';
 
@@ -201,10 +201,11 @@ class DataService {
 
   async getTreasuryMetrics() {
     try {
-      const [loans, contributions, payments] = await Promise.all([
+      const [loans, contributions, payments, withdrawals] = await Promise.all([
         this.getLoans(),
         this.getContributions(),
-        this.getAllPayments()
+        this.getAllPayments(),
+        this.getWithdrawals()
       ]);
 
       const totalContributions = contributions.filter(c => c.status === 'approved').reduce((s, c) => s + c.amount, 0);
@@ -213,20 +214,23 @@ class DataService {
       const totalInterestCollected = payments.reduce((s, p) => s + (p.interest_paid || 0), 0);
       const totalPenaltyCollected = payments.reduce((s, p) => s + (p.penalty_paid || 0), 0);
       const totalPrincipalRepaid = payments.reduce((s, p) => s + (p.principal_paid || 0), 0);
+      const totalWithdrawn = withdrawals.filter(w => w.status === 'approved').reduce((s, w) => s + w.amount, 0);
 
       return {
-        balance: totalContributions + totalPayments - totalDisbursed,
+        balance: totalContributions + totalPayments - totalDisbursed - totalWithdrawn,
         totalContributions,
         totalPayments,
         totalDisbursed,
         totalInterestCollected,
         totalPenaltyCollected,
-        totalPrincipalRepaid
+        totalPrincipalRepaid,
+        totalWithdrawn
       };
     } catch {
-      return { balance: 0, totalContributions: 0, totalPayments: 0, totalDisbursed: 0, totalInterestCollected: 0, totalPenaltyCollected: 0, totalPrincipalRepaid: 0 };
+      return { balance: 0, totalContributions: 0, totalPayments: 0, totalDisbursed: 0, totalInterestCollected: 0, totalPenaltyCollected: 0, totalPrincipalRepaid: 0, totalWithdrawn: 0 };
     }
   }
+
 
   async getActiveLoanVolume(): Promise<number> {
     if (this.isMock()) return MOCK_LOANS.filter(l => l.status === 'active').reduce((s, l) => s + l.remaining_principal, 0);
@@ -262,6 +266,78 @@ class DataService {
       .order('date', { ascending: false });
     if (error) throw error;
     return data as ContributionWithMember[];
+  }
+
+  async getWithdrawals(): Promise<WithdrawalWithMember[]> {
+    if (this.isMock()) {
+      return MOCK_WITHDRAWALS.map(w => ({
+        ...w,
+        member: MOCK_USERS.find(u => u.id === w.member_id)!
+      }));
+    }
+    const { data, error } = await this.supabase!
+      .from('withdrawals')
+      .select('*, member:profiles(*)')
+      .order('date', { ascending: false });
+    if (error) throw error;
+    return data as WithdrawalWithMember[];
+  }
+
+  /**
+   * Member cashes out equity. `is_full_withdrawal` should be set by the caller by
+   * comparing `amount` against the member's current equity (see App.tsx).
+   * Always lands as 'pending' — an admin must approve it before equity actually moves.
+   */
+  async requestWithdrawal(data: { member_id: string; amount: number; is_full_withdrawal: boolean }): Promise<void> {
+    if (this.isMock()) {
+      MOCK_WITHDRAWALS.push({
+        id: `w${MOCK_WITHDRAWALS.length + 1}`,
+        ...data,
+        date: new Date().toISOString().split('T')[0],
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      });
+      return;
+    }
+    const { error } = await this.supabase!.from('withdrawals').insert({
+      ...data,
+      date: new Date().toISOString().split('T')[0],
+      status: 'pending',
+    });
+    if (error) throw error;
+  }
+
+  /**
+   * Approving deducts the withdrawal amount from the member's equity. If it's a full
+   * withdrawal, the member is also marked as no longer an active coop member.
+   * Rejecting just changes the status - no balance impact.
+   *
+   * IMPORTANT: on the real Supabase backend this ONLY updates withdrawals.status.
+   * The `on_withdrawal_status_change` trigger on the `withdrawals` table (see the
+   * migration `create_withdrawals_table`) is what actually moves equity, atomically,
+   * server-side. Do NOT also write to profiles.equity here - that would double-deduct.
+   * The mock branch below has no trigger, so it replicates the same math manually.
+   */
+  async updateWithdrawalStatus(id: string, status: ContributionStatus): Promise<void> {
+    if (this.isMock()) {
+      const withdrawal = MOCK_WITHDRAWALS.find(w => w.id === id);
+      if (withdrawal) {
+        withdrawal.status = status;
+        if (status === 'approved') {
+          const user = MOCK_USERS.find(u => u.id === withdrawal.member_id);
+          if (user) {
+            user.equity = Math.max(0, user.equity - withdrawal.amount);
+            if (withdrawal.is_full_withdrawal || user.equity <= 0.01) {
+              user.is_coop_member = false;
+            }
+          }
+        }
+      }
+      return;
+    }
+
+    const { error } = await this.supabase!.from('withdrawals').update({ status }).eq('id', id);
+    if (error) throw error;
   }
 
   async getActiveAnnouncements(): Promise<Announcement[]> {

@@ -42,6 +42,18 @@ export interface Contribution {
   status: ContributionStatus;
 }
 
+// A member cashing out some or all of their equity. Reuses ContributionStatus
+// (pending/approved/rejected) since withdrawals go through the same admin review flow.
+export interface Withdrawal {
+  id: string;
+  member_id: string;
+  amount: number;
+  date: string;
+  status: ContributionStatus;
+  is_full_withdrawal: boolean; // true if this request would zero out the member's equity
+  created_at: string;
+}
+
 export interface Payment {
   id: string;
   loan_id: string;
@@ -119,5 +131,10 @@ export interface LoanWithBorrower extends Loan {
 
 // Helper type for joining contribution with member data
 export interface ContributionWithMember extends Contribution {
+  member: User;
+}
+
+// Helper type for joining withdrawal with member data
+export interface WithdrawalWithMember extends Withdrawal {
   member: User;
 }

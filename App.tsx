@@ -10,6 +10,7 @@ import LoanAgreementModal from './components/LoanAgreementModal';
 import LoanApplicationForm from './components/LoanApplicationForm';
 import LoanDetailsModal from './components/LoanDetailsModal';
 import ContributionModal from './components/ContributionModal';
+import WithdrawalModal from './components/WithdrawalModal';
 import CreateAnnouncementModal from './components/CreateAnnouncementModal';
 import AnnouncementModal from './components/AnnouncementModal';
 import { MemberDashboard } from './components/MemberDashboard';
@@ -22,7 +23,7 @@ import { ScheduleView } from './components/ScheduleView';
 import { GalleryView } from './components/GalleryView';
 import { PersonalLedger } from './components/PersonalLedger';
 import { dataService } from './services/dataService';
-import { LoanWithBorrower, User, ContributionWithMember, ContributionStatus, Announcement, AnnouncementPriority, LoanStatus, Payment, SavingGoal } from './types';
+import { LoanWithBorrower, User, ContributionWithMember, WithdrawalWithMember, ContributionStatus, Announcement, AnnouncementPriority, LoanStatus, Payment, SavingGoal } from './types';
 import { 
   CreditCard, 
   Wallet, 
@@ -39,7 +40,9 @@ import {
   ClipboardCheck,
   Coins,
   CalendarDays,
-  Download
+  Download,
+  Banknote,
+  ShieldAlert
 } from 'lucide-react';
 
 const getErrorMessage = (err: any): string => {
@@ -65,6 +68,7 @@ const App: React.FC = () => {
   const [loans, setLoans] = useState<LoanWithBorrower[]>([]);
   const [members, setMembers] = useState<User[]>([]);
   const [contributions, setContributions] = useState<ContributionWithMember[]>([]);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalWithMember[]>([]);
   const [savingGoals, setSavingGoals] = useState<SavingGoal[]>([]);
   const [allPayments, setAllPayments] = useState<Payment[]>([]);
   
@@ -79,6 +83,7 @@ const App: React.FC = () => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isAgreementModalOpen, setIsAgreementModalOpen] = useState(false);
   const [isContributionModalOpen, setIsContributionModalOpen] = useState(false);
+  const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
   
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
@@ -98,7 +103,8 @@ const App: React.FC = () => {
     totalDisbursed: 0,
     totalInterestCollected: 0,
     totalPenaltyCollected: 0,
-    totalPrincipalRepaid: 0
+    totalPrincipalRepaid: 0,
+    totalWithdrawn: 0
   });
   const [activeVolume, setActiveVolume] = useState(0);
   const [totalInterestGained, setTotalInterestGained] = useState(0);
@@ -140,13 +146,14 @@ const App: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [fetchedLoans, fetchedMetrics, fetchedVolume, fetchedInterest, fetchedUsers, fetchedContributions, fetchedAnnouncements, fetchedSavingGoals, fetchedPayments] = await Promise.all([
+      const [fetchedLoans, fetchedMetrics, fetchedVolume, fetchedInterest, fetchedUsers, fetchedContributions, fetchedWithdrawals, fetchedAnnouncements, fetchedSavingGoals, fetchedPayments] = await Promise.all([
         dataService.getLoans(),
         dataService.getTreasuryMetrics(),
         dataService.getActiveLoanVolume(),
         dataService.getTotalInterestGained(),
         dataService.getUsers(),
         dataService.getContributions(),
+        dataService.getWithdrawals(),
         dataService.getActiveAnnouncements(),
         dataService.getSavingGoals(currentUser.id),
         dataService.getAllPayments()
@@ -158,6 +165,7 @@ const App: React.FC = () => {
       setTotalInterestGained(fetchedInterest);
       setMembers(fetchedUsers);
       setContributions(fetchedContributions);
+      setWithdrawals(fetchedWithdrawals);
       setSavingGoals(fetchedSavingGoals);
       setAllPayments(fetchedPayments);
       
@@ -246,6 +254,7 @@ const App: React.FC = () => {
       setLoans([]);
       setMembers([]);
       setContributions([]);
+      setWithdrawals([]);
       setSavingGoals([]);
       setHasShownAnnouncement(false);
       setSystemAnnouncements([]);
@@ -333,6 +342,29 @@ const App: React.FC = () => {
       setError(getErrorMessage(e));
     }
   };
+
+  const handleRequestWithdrawal = async (data: { member_id: string; amount: number; is_full_withdrawal: boolean }) => {
+    await dataService.requestWithdrawal(data);
+    await refreshData();
+  };
+
+  const handleApproveWithdrawal = async (id: string) => {
+    try {
+      await dataService.updateWithdrawalStatus(id, 'approved');
+      await refreshData();
+    } catch (e) {
+      setError(getErrorMessage(e));
+    }
+  };
+
+  const handleRejectWithdrawal = async (id: string) => {
+    try {
+      await dataService.updateWithdrawalStatus(id, 'rejected');
+      await refreshData();
+    } catch (e) {
+      setError(getErrorMessage(e));
+    }
+  };
   
   const handleSaveAnnouncement = async (title: string, message: string, priority: AnnouncementPriority, start: string | null, end: string | null) => {
     if (!currentUser) return;
@@ -354,6 +386,42 @@ const App: React.FC = () => {
      setEditingAnnouncement(announcement);
      setIsAnnouncementModalOpen(true);
   };
+
+  // Aggregates the last 6 months of approved contributions vs. loan disbursements
+  // so the Executive Summary can show cash-flow direction at a glance, not just totals.
+  // Must live before any early `return` below - Hooks can't be called conditionally.
+  const dashboardTrendData = useMemo(() => {
+    const months: { key: string; label: string; inflow: number; outflow: number }[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        key: `${d.getFullYear()}-${d.getMonth()}`,
+        label: d.toLocaleDateString('en-US', { month: 'short' }),
+        inflow: 0,
+        outflow: 0,
+      });
+    }
+    const bucket = new Map(months.map(m => [m.key, m]));
+
+    contributions.forEach(c => {
+      if (c.status !== 'approved' || !c.date) return;
+      const d = new Date(c.date);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const m = bucket.get(key);
+      if (m) m.inflow += c.amount;
+    });
+
+    loans.forEach(l => {
+      if (l.status === 'pending' || l.status === 'rejected' || !l.created_at) return;
+      const d = new Date(l.created_at);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const m = bucket.get(key);
+      if (m) m.outflow += l.principal;
+    });
+
+    return months;
+  }, [contributions, loans]);
 
   if (initialLoading) {
     return (
@@ -392,41 +460,6 @@ const App: React.FC = () => {
     );
   }
 
-  // Aggregates the last 6 months of approved contributions vs. loan disbursements
-  // so the Executive Summary can show cash-flow direction at a glance, not just totals.
-  const dashboardTrendData = useMemo(() => {
-    const months: { key: string; label: string; inflow: number; outflow: number }[] = [];
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      months.push({
-        key: `${d.getFullYear()}-${d.getMonth()}`,
-        label: d.toLocaleDateString('en-US', { month: 'short' }),
-        inflow: 0,
-        outflow: 0,
-      });
-    }
-    const bucket = new Map(months.map(m => [m.key, m]));
-
-    contributions.forEach(c => {
-      if (c.status !== 'approved' || !c.date) return;
-      const d = new Date(c.date);
-      const key = `${d.getFullYear()}-${d.getMonth()}`;
-      const m = bucket.get(key);
-      if (m) m.inflow += c.amount;
-    });
-
-    loans.forEach(l => {
-      if (l.status === 'pending' || l.status === 'rejected' || !l.created_at) return;
-      const d = new Date(l.created_at);
-      const key = `${d.getFullYear()}-${d.getMonth()}`;
-      const m = bucket.get(key);
-      if (m) m.outflow += l.principal;
-    });
-
-    return months;
-  }, [contributions, loans]);
-
   const renderDashboardSkeleton = () => (
     <div className="space-y-8 animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -457,6 +490,7 @@ const App: React.FC = () => {
   const renderAdminDashboard = () => {
     const pendingLoans = loans.filter(l => l.status === 'pending');
     const pendingContributions = contributions.filter(c => c.status === 'pending');
+    const pendingWithdrawals = withdrawals.filter(w => w.status === 'pending');
 
     if (loading) return renderDashboardSkeleton();
 
@@ -480,7 +514,7 @@ const App: React.FC = () => {
           <StatCard index={0} title="Treasury Balance" value={`₱${treasuryStats.balance.toLocaleString()}`} icon={Wallet} trend="Liquid Assets" trendUp={true} colorClass="text-emerald-700" />
           <StatCard index={1} title="Gains Realized" value={`₱${(treasuryStats.totalInterestCollected + treasuryStats.totalPenaltyCollected).toLocaleString()}`} icon={TrendingUp} trend="Interest + Penalties" trendUp={true} colorClass="text-purple-700" />
           <StatCard index={2} title="Total Receivables" value={`₱${activeVolume.toLocaleString()}`} icon={Coins} trend="Loan Book Value" trendUp={true} colorClass="text-blue-700" />
-          <StatCard index={3} title="Assessments Due" value={`${pendingLoans.length + pendingContributions.length}`} icon={ClipboardCheck} colorClass={pendingLoans.length > 0 ? "text-wax-600" : "text-ink-600"} />
+          <StatCard index={3} title="Assessments Due" value={`${pendingLoans.length + pendingContributions.length + pendingWithdrawals.length}`} icon={ClipboardCheck} colorClass={pendingLoans.length > 0 ? "text-wax-600" : "text-ink-600"} />
         </div>
 
         <div className="bg-white p-6 sm:p-8 rounded-sm border-2 border-paper-200 shadow-card">
@@ -663,6 +697,86 @@ const App: React.FC = () => {
                  </div>
               </div>
            </div>
+
+           <div className="mt-4">
+              <div className="flex items-center justify-between border-b border-paper-300 pb-4 mb-6">
+                 <div className="flex items-center gap-3">
+                    <div className="p-2 bg-wax-50 text-wax-600 rounded-sm border border-wax-100">
+                       <Banknote size={20} />
+                    </div>
+                    <h2 className="text-2xl font-serif font-bold text-ink-900">Withdrawal Requests</h2>
+                 </div>
+              </div>
+              <div className="bg-paper-50 rounded-sm border-2 border-paper-200 shadow-card overflow-hidden">
+                 {/* Desktop Table */}
+                 <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left">
+                       <thead className="bg-paper-100 border-b border-paper-200 text-sm font-bold text-ink-500 uppercase">
+                          <tr>
+                             <th className="px-6 py-4">Member</th>
+                             <th className="px-6 py-4">Type</th>
+                             <th className="px-6 py-4">Amount</th>
+                             <th className="px-6 py-4 text-right">Actions</th>
+                          </tr>
+                       </thead>
+                       <tbody className="divide-y divide-paper-200">
+                          {pendingWithdrawals.length === 0 ? (
+                             <tr><td colSpan={4} className="px-6 py-12 text-center text-ink-400 font-serif italic text-lg">No pending withdrawal requests.</td></tr>
+                          ) : (
+                             pendingWithdrawals.map((w) => (
+                                <tr key={w.id} className="hover:bg-paper-100/50 transition-colors">
+                                   <td className="px-6 py-4 font-serif font-bold text-ink-900 text-lg">{w.member.full_name}</td>
+                                   <td className="px-6 py-4">
+                                      {w.is_full_withdrawal ? (
+                                         <span className="text-xs font-black uppercase text-wax-700 bg-wax-50 px-2 py-0.5 rounded-sm border border-wax-200 flex items-center gap-1 w-fit"><ShieldAlert size={12} /> Full Exit</span>
+                                      ) : (
+                                         <span className="text-xs font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-sm border border-blue-100">Partial</span>
+                                      )}
+                                   </td>
+                                   <td className="px-6 py-4 font-mono font-bold text-wax-700 text-lg">-₱{w.amount.toLocaleString()}</td>
+                                   <td className="px-6 py-4 text-right">
+                                      <div className="flex justify-end gap-2">
+                                         <button onClick={() => handleRejectWithdrawal(w.id)} className="px-3 py-1.5 text-wax-600 hover:bg-wax-50 rounded-sm text-xs font-black uppercase transition-colors">Decline</button>
+                                         <button onClick={() => handleApproveWithdrawal(w.id)} className="px-4 py-1.5 bg-ink-900 text-white hover:bg-black rounded-sm text-xs font-black transition-all">Confirm</button>
+                                      </div>
+                                   </td>
+                                </tr>
+                             ))
+                          )}
+                       </tbody>
+                    </table>
+                 </div>
+
+                 {/* Mobile Card List */}
+                 <div className="md:hidden divide-y divide-paper-200">
+                    {pendingWithdrawals.length === 0 ? (
+                       <div className="px-6 py-12 text-center text-ink-400 font-serif italic text-lg">No pending withdrawal requests.</div>
+                    ) : (
+                       pendingWithdrawals.map((w) => (
+                          <div key={w.id} className="p-4 space-y-4">
+                             <div className="flex justify-between items-start">
+                                <div>
+                                   <div className="font-serif font-bold text-ink-900 text-lg">{w.member.full_name}</div>
+                                   <div className="mt-1">
+                                      {w.is_full_withdrawal ? (
+                                         <span className="text-[10px] font-black uppercase text-wax-700 bg-wax-50 px-2 py-0.5 rounded-sm border border-wax-200">Full Exit</span>
+                                      ) : (
+                                         <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-sm border border-blue-100">Partial</span>
+                                      )}
+                                   </div>
+                                </div>
+                                <div className="font-mono font-bold text-wax-700 text-lg">-₱{w.amount.toLocaleString()}</div>
+                             </div>
+                             <div className="flex gap-2">
+                                <button onClick={() => handleRejectWithdrawal(w.id)} className="flex-1 py-2 text-wax-600 bg-wax-50 rounded-sm text-xs font-black uppercase transition-colors border border-wax-200">Decline</button>
+                                <button onClick={() => handleApproveWithdrawal(w.id)} className="flex-1 py-2 bg-ink-900 text-white hover:bg-black rounded-sm text-xs font-black uppercase transition-all">Confirm</button>
+                             </div>
+                          </div>
+                       ))
+                    )}
+                 </div>
+              </div>
+           </div>
         </div>
       </div>
     );
@@ -834,6 +948,7 @@ const App: React.FC = () => {
                   allPayments={allPayments} 
                   onApplyLoan={() => setIsApplicationModalOpen(true)} 
                   onAddContribution={() => setIsContributionModalOpen(true)} 
+                  onRequestWithdrawal={() => setIsWithdrawalModalOpen(true)}
                   onViewAgreement={(loan) => {
                     setSelectedLoan(loan);
                     setIsAgreementModalOpen(true);
@@ -873,6 +988,15 @@ const App: React.FC = () => {
       />
       <LoanApplicationForm isOpen={isApplicationModalOpen} onClose={() => setIsApplicationModalOpen(false)} onSubmit={handleCreateLoan} members={members} currentUser={currentUser} />
       <ContributionModal isOpen={isContributionModalOpen} onClose={() => setIsContributionModalOpen(false)} onSubmit={handleAddContribution} members={members} currentUser={currentUser} />
+      {currentUser.role === 'member' && (
+        <WithdrawalModal
+          isOpen={isWithdrawalModalOpen}
+          onClose={() => setIsWithdrawalModalOpen(false)}
+          onSubmit={handleRequestWithdrawal}
+          currentUser={currentUser}
+          hasActiveLoan={loans.some(l => l.borrower_id === currentUser.id && l.status === 'active')}
+        />
+      )}
       <CreateAnnouncementModal isOpen={isAnnouncementModalOpen} onClose={() => { setIsAnnouncementModalOpen(false); setEditingAnnouncement(null); }} onSubmit={handleSaveAnnouncement} editingAnnouncement={editingAnnouncement} />
     </div>
   );
