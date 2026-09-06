@@ -783,7 +783,31 @@ const App: React.FC = () => {
   };
 
   const renderLoansTab = () => {
-    if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ink-600"></div></div>;
+    if (loading) return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex justify-between items-center">
+          <div className="h-9 w-48 bg-paper-200 rounded-sm animate-pulse" />
+          <div className="h-11 w-32 bg-paper-200 rounded-sm animate-pulse" />
+        </div>
+        <div className="bg-paper-50 p-4 rounded-sm shadow-sm border border-paper-200 h-[68px] animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[0, 1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="bg-paper-50 rounded-sm border-2 border-paper-200 p-6 space-y-5">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-sm bg-paper-200 animate-pulse" />
+                <div className="space-y-2 flex-1">
+                  <div className="h-3.5 w-28 bg-paper-200 rounded-sm animate-pulse" />
+                  <div className="h-2.5 w-20 bg-paper-100 rounded-sm animate-pulse" />
+                </div>
+              </div>
+              <div className="h-7 w-32 bg-paper-200 rounded-sm animate-pulse" />
+              <div className="h-2 w-full bg-paper-100 rounded-sm animate-pulse" />
+              <div className="h-2.5 w-24 bg-paper-100 rounded-sm animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
     
     const filteredLoans = loans.filter(l => {
       const matchesSearch = l.borrower.full_name.toLowerCase().includes(loanSearchTerm.toLowerCase()) || l.purpose.toLowerCase().includes(loanSearchTerm.toLowerCase());
@@ -955,7 +979,7 @@ const App: React.FC = () => {
                   }}
                 />
               )}
-              {activeTab === 'members' && <MemberDirectory members={members} loans={loans} onRefresh={refreshData} currentUserRole={currentUser.role} />}
+              {activeTab === 'members' && <MemberDirectory members={members} loans={loans} onRefresh={refreshData} currentUserRole={currentUser.role} loading={loading} />}
               {activeTab === 'treasury' && <TreasuryDashboard treasuryStats={treasuryStats} contributions={contributions} loans={loans} allPayments={allPayments} activeLoanVolume={activeVolume} totalInterestGained={totalInterestGained} onAddContribution={() => setIsContributionModalOpen(true)} onApproveContribution={handleApproveContribution} onRejectContribution={handleRejectContribution} loading={loading} />}
               {activeTab === 'announcements' && <AnnouncementHistory onOpenCreate={handleOpenAnnouncementCreate} onEdit={handleOpenAnnouncementEdit} readOnly={currentUser.role === 'member'} />}
               {activeTab === 'gallery' && <GalleryView currentUser={currentUser} />}

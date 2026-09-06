@@ -211,8 +211,18 @@ export const TreasuryDashboard: React.FC<TreasuryDashboardProps> = ({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ink-600"></div>
+      <div className="space-y-8 animate-fade-in">
+        <div className="h-9 w-56 bg-paper-200 rounded-sm animate-pulse" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="bg-paper-50 border-2 border-paper-200 rounded-xl p-6 space-y-4">
+              <div className="h-2.5 w-20 bg-paper-200 rounded-sm animate-pulse" />
+              <div className="h-7 w-28 bg-paper-200 rounded-sm animate-pulse" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-paper-50 border-2 border-paper-200 rounded-sm h-[280px] animate-pulse" />
+        <div className="bg-paper-50 border-2 border-paper-200 rounded-sm h-[200px] animate-pulse" />
       </div>
     );
   }

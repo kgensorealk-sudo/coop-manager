@@ -27,6 +27,7 @@ interface MemberDirectoryProps {
   loans: LoanWithBorrower[];
   onRefresh: () => void;
   currentUserRole?: string;
+  loading?: boolean;
 }
 
 type MemberFilter = 'all' | 'active-loans' | 'admins' | 'external' | 'arrears';
@@ -50,7 +51,8 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
   members, 
   loans, 
   onRefresh, 
-  currentUserRole = 'admin' 
+  currentUserRole = 'admin',
+  loading = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<MemberFilter>('all');
@@ -173,6 +175,37 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
   };
 
   const isAdmin = currentUserRole === 'admin';
+
+  if (loading) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-paper-300 pb-6">
+          <div className="space-y-3">
+            <div className="h-10 w-72 bg-paper-200 rounded-sm animate-pulse" />
+            <div className="h-5 w-56 bg-paper-100 rounded-sm animate-pulse" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="bg-paper-50 border-2 border-paper-200 rounded-xl p-6 space-y-4">
+              <div className="h-2.5 w-20 bg-paper-200 rounded-sm animate-pulse" />
+              <div className="h-7 w-20 bg-paper-200 rounded-sm animate-pulse" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-paper-50 p-4 rounded-xl border border-paper-200 h-[68px] animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {[0, 1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="bg-paper-50 rounded-xl border-2 border-paper-200 p-8 flex flex-col items-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-paper-200 animate-pulse" />
+              <div className="h-4 w-32 bg-paper-200 rounded-sm animate-pulse" />
+              <div className="h-3 w-24 bg-paper-100 rounded-sm animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div 
