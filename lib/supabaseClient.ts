@@ -22,14 +22,18 @@ const getStoredValue = (key: string) => {
   return '';
 };
 
-// User provided credentials (Default connection)
-// Populated from Developer Resources to enable automatic connection
-const PROVIDED_URL = 'https://ygnxgcqnfwcecrtjqwnb.supabase.co';
-const PROVIDED_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlnbnhnY3FuZndjZWNydGpxd25iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0ODAzOTIsImV4cCI6MjA4MjA1NjM5Mn0.ThbIV7hKzY8Za_at7WBclNbScTQT3fMT2RJR2JpQ64A';
+// No hardcoded fallback credentials here on purpose. This file used to embed the
+// project's real Supabase URL and anon key directly in source - and therefore in the
+// public GitHub repo. Anon keys are only safe to expose when RLS policies are correct
+// (which we've since audited and hardened), but hardcoding one as a silent fallback
+// meant anyone who cloned the repo connected to the real database by default, with no
+// visibility that that was even happening. Credentials now come exclusively from
+// environment variables or the runtime-configured value below - if neither is present,
+// isSupabaseConfigured() correctly reports false instead of silently using a secret.
 
-// Priority: 1. Environment Variable, 2. LocalStorage, 3. Hardcoded (User provided)
-const SUPABASE_URL = getEnvVar('NEXT_PUBLIC_SUPABASE_URL') || getEnvVar('VITE_SUPABASE_URL') || getStoredValue('supabase_url') || PROVIDED_URL; 
-const SUPABASE_ANON_KEY = getEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY') || getEnvVar('VITE_SUPABASE_ANON_KEY') || getStoredValue('supabase_key') || PROVIDED_KEY;
+// Priority: 1. Environment Variable, 2. LocalStorage (runtime-configured connection)
+const SUPABASE_URL = getEnvVar('NEXT_PUBLIC_SUPABASE_URL') || getEnvVar('VITE_SUPABASE_URL') || getStoredValue('supabase_url');
+const SUPABASE_ANON_KEY = getEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY') || getEnvVar('VITE_SUPABASE_ANON_KEY') || getStoredValue('supabase_key');
 
 // Check if keys are present
 export const isSupabaseConfigured = () => {

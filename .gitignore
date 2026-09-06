@@ -28,4 +28,8 @@ dist-ssr
 # Environment Variables
 .env
 .env.*
+
+# Supabase CLI local cache (project refs, version pins - not meant to be shared)
+supabase/.temp
+
 !.env.example
