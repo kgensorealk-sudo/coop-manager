@@ -13,7 +13,8 @@ import {
   Megaphone, 
   Feather, 
   Image, 
-  Book
+  Book,
+  Calculator
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -39,6 +40,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     { id: 'loans', label: 'Loan Ledger', icon: FileText },
     { id: 'members', label: 'Membership', icon: Users },
     { id: 'treasury', label: 'Treasury', icon: PiggyBank },
+    { id: 'distribution', label: 'Distribution', icon: Calculator },
     { id: 'announcements', label: 'Notices', icon: Megaphone },
     { id: 'gallery', label: 'Gallery', icon: Image },
     { id: 'personal-ledger', label: 'Personal Books', icon: Book },

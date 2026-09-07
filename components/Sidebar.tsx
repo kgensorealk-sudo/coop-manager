@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion } from 'motion/react';
-import { LayoutDashboard, Users, PiggyBank, FileText, LogOut, Code2, Calendar, Megaphone, Feather, Image, Book } from 'lucide-react';
+import { LayoutDashboard, Users, PiggyBank, FileText, LogOut, Code2, Calendar, Megaphone, Feather, Image, Book, Calculator } from 'lucide-react';
 import { User } from '../types';
 
 interface SidebarProps {
@@ -37,6 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'loans', label: 'Loan Ledger', icon: FileText },
     { id: 'members', label: 'Membership', icon: Users },
     { id: 'treasury', label: 'Treasury', icon: PiggyBank },
+    { id: 'distribution', label: 'Distribution', icon: Calculator },
     { id: 'announcements', label: 'Notices', icon: Megaphone },
     { id: 'gallery', label: 'Gallery', icon: Image },
     { id: 'personal-ledger', label: 'Personal Books', icon: Book },
