@@ -11,6 +11,7 @@ import LoanApplicationForm from './components/LoanApplicationForm';
 import LoanDetailsModal from './components/LoanDetailsModal';
 import ContributionModal from './components/ContributionModal';
 import WithdrawalModal from './components/WithdrawalModal';
+import DistributionReport from './components/DistributionReport';
 import CreateAnnouncementModal from './components/CreateAnnouncementModal';
 import AnnouncementModal from './components/AnnouncementModal';
 import { MemberDashboard } from './components/MemberDashboard';
@@ -981,6 +982,7 @@ const App: React.FC = () => {
               )}
               {activeTab === 'members' && <MemberDirectory members={members} loans={loans} onRefresh={refreshData} currentUserRole={currentUser.role} loading={loading} />}
               {activeTab === 'treasury' && <TreasuryDashboard treasuryStats={treasuryStats} contributions={contributions} loans={loans} allPayments={allPayments} activeLoanVolume={activeVolume} totalInterestGained={totalInterestGained} onAddContribution={() => setIsContributionModalOpen(true)} onApproveContribution={handleApproveContribution} onRejectContribution={handleRejectContribution} loading={loading} />}
+              {activeTab === 'distribution' && <DistributionReport members={members} contributions={contributions} loans={loans} allPayments={allPayments} treasuryBalance={treasuryStats.balance} />}
               {activeTab === 'announcements' && <AnnouncementHistory onOpenCreate={handleOpenAnnouncementCreate} onEdit={handleOpenAnnouncementEdit} readOnly={currentUser.role === 'member'} />}
               {activeTab === 'gallery' && <GalleryView currentUser={currentUser} />}
               {activeTab === 'personal-ledger' && <PersonalLedger currentUser={currentUser} />}
