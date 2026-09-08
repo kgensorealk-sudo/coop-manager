@@ -5,7 +5,7 @@ import { StatCard } from './StatCard';
 import MemberDistributionDetailModal from './MemberDistributionDetailModal';
 import {
   Coins, PiggyBank, TrendingUp, Wallet, AlertTriangle, ChevronRight,
-  Calendar, Percent, Landmark, ClipboardList, ListOrdered, ShieldAlert
+  Calendar, Percent, Landmark, ClipboardList, ListOrdered, ShieldAlert, Sliders
 } from 'lucide-react';
 
 interface DistributionReportProps {
@@ -23,6 +23,8 @@ const DistributionReport: React.FC<DistributionReportProps> = ({
   const [coopSharePercent, setCoopSharePercent] = useState<number>(5);
   const [treasuryOverride, setTreasuryOverride] = useState<number>(treasuryBalance);
   const [selectedMember, setSelectedMember] = useState<MemberDistributionRow | null>(null);
+  const [paceOverrides, setPaceOverrides] = useState<Record<string, number>>({});
+  const [bulkPaceInput, setBulkPaceInput] = useState<string>('1000');
 
   const result = useMemo(() => {
     return computeDistribution(
@@ -34,12 +36,47 @@ const DistributionReport: React.FC<DistributionReportProps> = ({
         distributionDate: new Date(distributionDate + 'T00:00:00'),
         coopSharePercent,
         treasuryBalance: treasuryOverride,
+        paceOverrides,
       }
     );
-  }, [members, contributions, loans, allPayments, distributionDate, coopSharePercent, treasuryOverride]);
+  }, [members, contributions, loans, allPayments, distributionDate, coopSharePercent, treasuryOverride, paceOverrides]);
 
   const fmt = (n: number) => `₱${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
   const reconciliation = result.totalNetPayout + result.coopShareAmount - result.projectedTreasuryBalance;
+
+  const applyBulkPaceToAll = () => {
+    const val = Number(bulkPaceInput);
+    if (Number.isNaN(val) || val < 0) return;
+    const next: Record<string, number> = {};
+    result.memberRows.forEach(r => { next[r.member.id] = val; });
+    setPaceOverrides(next);
+  };
+
+  const resetAllPaces = () => setPaceOverrides({});
+
+  const setMemberPace = (memberId: string, value: string) => {
+    if (value === '') {
+      setPaceOverrides(prev => {
+        const next = { ...prev };
+        delete next[memberId];
+        return next;
+      });
+      return;
+    }
+    const val = Number(value);
+    if (Number.isNaN(val) || val < 0) return;
+    setPaceOverrides(prev => ({ ...prev, [memberId]: val }));
+  };
+
+  const resetMemberPace = (memberId: string) => {
+    setPaceOverrides(prev => {
+      const next = { ...prev };
+      delete next[memberId];
+      return next;
+    });
+  };
+
+  const simulationActive = Object.keys(paceOverrides).length > 0;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -131,6 +168,58 @@ const DistributionReport: React.FC<DistributionReportProps> = ({
         </p>
       </div>
 
+      {/* Simulate future contributions */}
+      <div className="bg-white rounded-sm border-2 border-paper-200 shadow-card p-6 sm:p-8">
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-600 text-white rounded-sm -rotate-3">
+              <Sliders size={18} />
+            </div>
+            <div>
+              <h2 className="text-xl font-serif font-bold text-ink-900">Simulate Future Contributions</h2>
+              <p className="text-xs text-ink-500 mt-0.5">By default, each member is projected at their own historical pace. Override it here to test "what if" scenarios.</p>
+            </div>
+          </div>
+          {simulationActive && (
+            <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-sm tracking-widest">
+              Simulation active — {Object.keys(paceOverrides).length} member{Object.keys(paceOverrides).length > 1 ? 's' : ''} overridden
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="text-[10px] font-black uppercase text-ink-400 tracking-widest block mb-2">Set every member to (₱/month)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-300 font-serif font-bold">₱</span>
+              <input
+                type="number"
+                min={0}
+                value={bulkPaceInput}
+                onChange={e => setBulkPaceInput(e.target.value)}
+                className="pl-7 pr-4 py-2.5 w-40 bg-white border border-paper-300 rounded-sm focus:border-ink-900 outline-none font-mono text-ink-900"
+              />
+            </div>
+          </div>
+          <button
+            onClick={applyBulkPaceToAll}
+            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm font-black uppercase text-xs tracking-widest transition-colors"
+          >
+            Apply to All
+          </button>
+          {simulationActive && (
+            <button
+              onClick={resetAllPaces}
+              className="px-5 py-2.5 text-ink-500 hover:text-ink-900 hover:bg-paper-100 rounded-sm font-black uppercase text-xs tracking-widest transition-colors border border-paper-300"
+            >
+              Reset to Historical Pace
+            </button>
+          )}
+          <p className="text-xs text-ink-400 font-serif italic ml-2">
+            You can also override individual members directly in the table below.
+          </p>
+        </div>
+      </div>
+
       {/* Detailed Reports - overview */}
       <div>
         <div className="flex items-center gap-3 mb-6">
@@ -176,6 +265,7 @@ const DistributionReport: React.FC<DistributionReportProps> = ({
               <thead className="bg-paper-100 border-b border-paper-200 text-xs font-bold text-ink-500 uppercase">
                 <tr>
                   <th className="px-5 py-4">Member</th>
+                  <th className="px-5 py-4">Monthly Contribution</th>
                   <th className="px-5 py-4">Projected Equity</th>
                   <th className="px-5 py-4">Equity Share</th>
                   <th className="px-5 py-4">Interest Share</th>
@@ -198,6 +288,25 @@ const DistributionReport: React.FC<DistributionReportProps> = ({
                         {row.flags.length > 0 && <ShieldAlert size={14} className="text-wax-600 shrink-0" />}
                       </div>
                     </td>
+                    <td className="px-5 py-4" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-300 text-xs font-serif">₱</span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={paceOverrides[row.member.id] ?? Math.round(row.avgMonthlyContributionPace)}
+                            onChange={e => setMemberPace(row.member.id, e.target.value)}
+                            className={`pl-6 pr-2 py-1.5 w-28 border rounded-sm outline-none font-mono text-sm ${row.isPaceSimulated ? 'border-emerald-400 bg-emerald-50 text-emerald-800 font-bold' : 'border-paper-300 bg-white text-ink-600'}`}
+                          />
+                        </div>
+                        {row.isPaceSimulated && (
+                          <button onClick={() => resetMemberPace(row.member.id)} title="Reset to historical pace" className="text-[10px] text-ink-400 hover:text-ink-700 underline">
+                            reset
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-5 py-4 font-mono text-ink-700">{fmt(row.projectedEquity)}</td>
                     <td className="px-5 py-4 font-mono text-ink-500">{(row.equitySharePercent * 100).toFixed(1)}%</td>
                     <td className="px-5 py-4 font-mono text-emerald-700">{fmt(row.interestIncomeShare)}</td>
@@ -216,10 +325,9 @@ const DistributionReport: React.FC<DistributionReportProps> = ({
             {result.memberRows.map(row => (
               <div
                 key={row.member.id}
-                onClick={() => setSelectedMember(row)}
-                className={`p-4 cursor-pointer active:bg-paper-100 transition-colors ${row.flags.length > 0 ? 'bg-wax-50/40' : ''}`}
+                className={`p-4 ${row.flags.length > 0 ? 'bg-wax-50/40' : ''}`}
               >
-                <div className="flex justify-between items-start">
+                <div onClick={() => setSelectedMember(row)} className="flex justify-between items-start cursor-pointer active:opacity-70 transition-opacity">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-serif font-bold text-ink-900">{row.member.full_name}</span>
@@ -228,6 +336,22 @@ const DistributionReport: React.FC<DistributionReportProps> = ({
                     <div className="text-xs text-ink-400 mt-1">{(row.equitySharePercent * 100).toFixed(1)}% equity share</div>
                   </div>
                   <div className={`font-mono font-bold text-lg ${row.netPayout < 0 ? 'text-wax-700' : 'text-ink-900'}`}>{fmt(row.netPayout)}</div>
+                </div>
+                <div className="flex items-center gap-2 mt-3" onClick={e => e.stopPropagation()}>
+                  <span className="text-[10px] font-black uppercase text-ink-400 tracking-widest">Monthly:</span>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-300 text-xs font-serif">₱</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={paceOverrides[row.member.id] ?? Math.round(row.avgMonthlyContributionPace)}
+                      onChange={e => setMemberPace(row.member.id, e.target.value)}
+                      className={`pl-6 pr-2 py-1.5 w-28 border rounded-sm outline-none font-mono text-sm ${row.isPaceSimulated ? 'border-emerald-400 bg-emerald-50 text-emerald-800 font-bold' : 'border-paper-300 bg-white text-ink-600'}`}
+                    />
+                  </div>
+                  {row.isPaceSimulated && (
+                    <button onClick={() => resetMemberPace(row.member.id)} className="text-[10px] text-ink-400 hover:text-ink-700 underline">reset</button>
+                  )}
                 </div>
               </div>
             ))}

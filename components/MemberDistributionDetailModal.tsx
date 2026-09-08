@@ -59,7 +59,8 @@ const MemberDistributionDetailModal: React.FC<Props> = ({ row, onClose }) => {
               <div className="bg-white border-2 border-paper-200 rounded-sm divide-y divide-paper-100">
                 {[
                   ['Current Equity', fmt(row.currentEquity)],
-                  ['Avg. Monthly Contribution Pace', fmt(row.avgMonthlyContributionPace)],
+                  ['Historical Avg. Monthly Pace', fmt(row.avgMonthlyContributionPace)],
+                  ...(row.isPaceSimulated ? [['Simulated Monthly Pace (in use)', fmt(row.simulatedMonthlyContributionPace)]] : []),
                   ['Projected Additional Contributions', fmt(row.projectedAdditionalContributions)],
                   ['Projected Equity (at distribution)', fmt(row.projectedEquity)],
                   ['Equity Share %', `${(row.equitySharePercent * 100).toFixed(2)}%`],

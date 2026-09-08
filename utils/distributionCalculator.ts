@@ -4,6 +4,10 @@ export interface DistributionAssumptions {
   distributionDate: Date;
   coopSharePercent: number; // e.g. 5 for 5%
   treasuryBalance: number;
+  /** Optional per-member override for their projected monthly contribution pace,
+   *  keyed by member id. Falls back to their historical average when not set -
+   *  lets an admin test "what if everyone paid ₱1,000/month" scenarios. */
+  paceOverrides?: Record<string, number>;
 }
 
 export interface LoanProjection {
@@ -25,6 +29,8 @@ export interface MemberDistributionRow {
   member: User;
   currentEquity: number;
   avgMonthlyContributionPace: number;
+  simulatedMonthlyContributionPace: number;
+  isPaceSimulated: boolean;
   totalHistoricalContributed: number;
   firstContributionDate: Date | null;
   projectedAdditionalContributions: number;
@@ -151,7 +157,11 @@ export function computeDistribution(
       const monthsActive = monthsSinceInclusive(firstContributionDate, today);
       avgMonthlyContributionPace = totalHistoricalContributed / monthsActive;
     }
-    const projectedAdditionalContributions = avgMonthlyContributionPace * monthsRemaining;
+    const override = assumptions.paceOverrides?.[member.id];
+    const isPaceSimulated = override !== undefined && !Number.isNaN(override);
+    const simulatedMonthlyContributionPace = isPaceSimulated ? (override as number) : avgMonthlyContributionPace;
+
+    const projectedAdditionalContributions = simulatedMonthlyContributionPace * monthsRemaining;
     const projectedEquity = member.equity + projectedAdditionalContributions;
 
     const memberLoans = loans.filter(l => l.borrower_id === member.id);
@@ -174,6 +184,8 @@ export function computeDistribution(
       member,
       currentEquity: member.equity,
       avgMonthlyContributionPace,
+      simulatedMonthlyContributionPace,
+      isPaceSimulated,
       totalHistoricalContributed,
       firstContributionDate,
       projectedAdditionalContributions,
