@@ -11,6 +11,7 @@ import LoanApplicationForm from './components/LoanApplicationForm';
 import LoanDetailsModal from './components/LoanDetailsModal';
 import ContributionModal from './components/ContributionModal';
 import WithdrawalModal from './components/WithdrawalModal';
+import PaymentRequestModal from './components/PaymentRequestModal';
 import DistributionReport from './components/DistributionReport';
 import CreateAnnouncementModal from './components/CreateAnnouncementModal';
 import AnnouncementModal from './components/AnnouncementModal';
@@ -24,7 +25,7 @@ import { ScheduleView } from './components/ScheduleView';
 import { GalleryView } from './components/GalleryView';
 import { PersonalLedger } from './components/PersonalLedger';
 import { dataService } from './services/dataService';
-import { LoanWithBorrower, User, ContributionWithMember, WithdrawalWithMember, ContributionStatus, Announcement, AnnouncementPriority, LoanStatus, Payment, SavingGoal } from './types';
+import { LoanWithBorrower, User, ContributionWithMember, WithdrawalWithMember, PaymentRequestWithDetails, ContributionStatus, Announcement, AnnouncementPriority, LoanStatus, Payment, SavingGoal } from './types';
 import { 
   CreditCard, 
   Wallet, 
@@ -70,6 +71,7 @@ const App: React.FC = () => {
   const [members, setMembers] = useState<User[]>([]);
   const [contributions, setContributions] = useState<ContributionWithMember[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalWithMember[]>([]);
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequestWithDetails[]>([]);
   const [savingGoals, setSavingGoals] = useState<SavingGoal[]>([]);
   const [allPayments, setAllPayments] = useState<Payment[]>([]);
   
@@ -85,6 +87,8 @@ const App: React.FC = () => {
   const [isAgreementModalOpen, setIsAgreementModalOpen] = useState(false);
   const [isContributionModalOpen, setIsContributionModalOpen] = useState(false);
   const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
+  const [isPaymentRequestModalOpen, setIsPaymentRequestModalOpen] = useState(false);
+  const [loanForPaymentRequest, setLoanForPaymentRequest] = useState<LoanWithBorrower | null>(null);
   
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
@@ -147,7 +151,7 @@ const App: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [fetchedLoans, fetchedMetrics, fetchedVolume, fetchedInterest, fetchedUsers, fetchedContributions, fetchedWithdrawals, fetchedAnnouncements, fetchedSavingGoals, fetchedPayments] = await Promise.all([
+      const [fetchedLoans, fetchedMetrics, fetchedVolume, fetchedInterest, fetchedUsers, fetchedContributions, fetchedWithdrawals, fetchedPaymentRequests, fetchedAnnouncements, fetchedSavingGoals, fetchedPayments] = await Promise.all([
         dataService.getLoans(),
         dataService.getTreasuryMetrics(),
         dataService.getActiveLoanVolume(),
@@ -155,6 +159,7 @@ const App: React.FC = () => {
         dataService.getUsers(),
         dataService.getContributions(),
         dataService.getWithdrawals(),
+        dataService.getPaymentRequests(),
         dataService.getActiveAnnouncements(),
         dataService.getSavingGoals(currentUser.id),
         dataService.getAllPayments()
@@ -167,6 +172,7 @@ const App: React.FC = () => {
       setMembers(fetchedUsers);
       setContributions(fetchedContributions);
       setWithdrawals(fetchedWithdrawals);
+      setPaymentRequests(fetchedPaymentRequests);
       setSavingGoals(fetchedSavingGoals);
       setAllPayments(fetchedPayments);
       
@@ -256,6 +262,7 @@ const App: React.FC = () => {
       setMembers([]);
       setContributions([]);
       setWithdrawals([]);
+      setPaymentRequests([]);
       setSavingGoals([]);
       setHasShownAnnouncement(false);
       setSystemAnnouncements([]);
@@ -361,6 +368,34 @@ const App: React.FC = () => {
   const handleRejectWithdrawal = async (id: string) => {
     try {
       await dataService.updateWithdrawalStatus(id, 'rejected');
+      await refreshData();
+    } catch (e) {
+      setError(getErrorMessage(e));
+    }
+  };
+
+  const handleOpenPaymentRequest = (loan: LoanWithBorrower) => {
+    setLoanForPaymentRequest(loan);
+    setIsPaymentRequestModalOpen(true);
+  };
+
+  const handleSubmitPaymentRequest = async (data: { loan_id: string; member_id: string; amount: number; note?: string }) => {
+    await dataService.requestPayment(data);
+    await refreshData();
+  };
+
+  const handleApprovePaymentRequest = async (request: PaymentRequestWithDetails) => {
+    try {
+      await dataService.approvePaymentRequest(request);
+      await refreshData();
+    } catch (e) {
+      setError(getErrorMessage(e));
+    }
+  };
+
+  const handleRejectPaymentRequest = async (id: string) => {
+    try {
+      await dataService.rejectPaymentRequest(id);
       await refreshData();
     } catch (e) {
       setError(getErrorMessage(e));
@@ -852,6 +887,64 @@ const App: React.FC = () => {
           </div>
         </div>
 
+        {paymentRequests.filter(r => r.status === 'pending').length > 0 && (
+          <div className="bg-paper-50 rounded-sm border-2 border-emerald-200 shadow-card overflow-hidden">
+            <div className="bg-emerald-50 border-b border-emerald-200 px-6 py-4 flex items-center gap-3">
+              <div className="p-2 bg-emerald-600 text-white rounded-sm -rotate-3">
+                <Banknote size={18} />
+              </div>
+              <h2 className="text-lg font-serif font-bold text-ink-900">Repayment Requests Awaiting Confirmation</h2>
+            </div>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-paper-100 border-b border-paper-200 text-xs font-bold text-ink-500 uppercase">
+                  <tr>
+                    <th className="px-6 py-3">Member</th>
+                    <th className="px-6 py-3">Loan</th>
+                    <th className="px-6 py-3">Amount Claimed</th>
+                    <th className="px-6 py-3">Note</th>
+                    <th className="px-6 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-paper-200">
+                  {paymentRequests.filter(r => r.status === 'pending').map(r => (
+                    <tr key={r.id} className="hover:bg-paper-100/50 transition-colors">
+                      <td className="px-6 py-4 font-serif font-bold text-ink-900">{r.member.full_name}</td>
+                      <td className="px-6 py-4 text-ink-500 text-sm">{r.loan.purpose}</td>
+                      <td className="px-6 py-4 font-mono font-bold text-emerald-700">₱{r.amount.toLocaleString()}</td>
+                      <td className="px-6 py-4 text-ink-400 text-xs font-serif italic">{r.note || '—'}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => handleRejectPaymentRequest(r.id)} className="px-3 py-1.5 text-wax-600 hover:bg-wax-50 rounded-sm text-xs font-black uppercase transition-colors">Decline</button>
+                          <button onClick={() => handleApprovePaymentRequest(r)} className="px-4 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-sm text-xs font-black transition-all">Confirm & Record</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="md:hidden divide-y divide-paper-200">
+              {paymentRequests.filter(r => r.status === 'pending').map(r => (
+                <div key={r.id} className="p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-serif font-bold text-ink-900">{r.member.full_name}</div>
+                      <div className="text-xs text-ink-400">{r.loan.purpose}</div>
+                    </div>
+                    <div className="font-mono font-bold text-emerald-700">₱{r.amount.toLocaleString()}</div>
+                  </div>
+                  {r.note && <div className="text-xs text-ink-400 font-serif italic">"{r.note}"</div>}
+                  <div className="flex gap-2">
+                    <button onClick={() => handleRejectPaymentRequest(r.id)} className="flex-1 py-2 text-wax-600 bg-wax-50 rounded-sm text-xs font-black uppercase border border-wax-200">Decline</button>
+                    <button onClick={() => handleApprovePaymentRequest(r)} className="flex-1 py-2 bg-emerald-600 text-white rounded-sm text-xs font-black uppercase">Confirm</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredLoans.map(loan => {
             const loanPayments = allPayments.filter(p => p.loan_id === loan.id);
@@ -974,6 +1067,7 @@ const App: React.FC = () => {
                   onApplyLoan={() => setIsApplicationModalOpen(true)} 
                   onAddContribution={() => setIsContributionModalOpen(true)} 
                   onRequestWithdrawal={() => setIsWithdrawalModalOpen(true)}
+                  onRequestPayment={handleOpenPaymentRequest}
                   onViewAgreement={(loan) => {
                     setSelectedLoan(loan);
                     setIsAgreementModalOpen(true);
@@ -1020,6 +1114,13 @@ const App: React.FC = () => {
         onSubmit={handleRequestWithdrawal}
         currentUser={currentUser}
         hasActiveLoan={loans.some(l => l.borrower_id === currentUser.id && l.status === 'active')}
+      />
+      <PaymentRequestModal
+        isOpen={isPaymentRequestModalOpen}
+        onClose={() => { setIsPaymentRequestModalOpen(false); setLoanForPaymentRequest(null); }}
+        onSubmit={handleSubmitPaymentRequest}
+        loan={loanForPaymentRequest}
+        currentUser={currentUser}
       />
       <CreateAnnouncementModal isOpen={isAnnouncementModalOpen} onClose={() => { setIsAnnouncementModalOpen(false); setEditingAnnouncement(null); }} onSubmit={handleSaveAnnouncement} editingAnnouncement={editingAnnouncement} />
     </div>

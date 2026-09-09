@@ -15,6 +15,7 @@ interface MemberDashboardProps {
   onApplyLoan: () => void;
   onAddContribution: () => void;
   onRequestWithdrawal: () => void;
+  onRequestPayment?: (loan: LoanWithBorrower) => void;
   onViewAgreement?: (loan: LoanWithBorrower) => void;
 }
 
@@ -42,6 +43,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   onApplyLoan, 
   onAddContribution,
   onRequestWithdrawal,
+  onRequestPayment,
   onViewAgreement
 }) => {
   
@@ -295,17 +297,30 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
                           )}
                         </td>
                         <td className="px-8 py-6 text-right">
-                          {onViewAgreement && displayStatus !== 'pending' && (
-                            <motion.button 
-                              whileHover={{ scale: 1.1, backgroundColor: '#eff6ff' }}
-                              whileTap={{ scale: 0.9 }}
-                              onClick={() => onViewAgreement(loan)}
-                              className="p-3 text-ink-400 hover:text-blue-600 rounded-2xl transition-all border border-transparent hover:border-blue-100 shadow-sm"
-                              title="Download Agreement"
-                            >
-                              <Download size={20} />
-                            </motion.button>
-                          )}
+                          <div className="flex justify-end gap-2">
+                            {onRequestPayment && displayStatus === 'active' && debt.liveTotalDue > 0.01 && (
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => onRequestPayment(loan)}
+                                className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all shadow-sm text-xs font-black uppercase tracking-widest flex items-center gap-2"
+                                title="Tell us you've made a payment"
+                              >
+                                <Banknote size={16} /> Submit Payment
+                              </motion.button>
+                            )}
+                            {onViewAgreement && displayStatus !== 'pending' && (
+                              <motion.button 
+                                whileHover={{ scale: 1.1, backgroundColor: '#eff6ff' }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => onViewAgreement(loan)}
+                                className="p-3 text-ink-400 hover:text-blue-600 rounded-2xl transition-all border border-transparent hover:border-blue-100 shadow-sm"
+                                title="Download Agreement"
+                              >
+                                <Download size={20} />
+                              </motion.button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

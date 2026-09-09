@@ -2,11 +2,11 @@
 import { supabase } from '../lib/supabaseClient';
 import { 
   User, LoanWithBorrower, ContributionWithMember, WithdrawalWithMember,
-  Payment, Announcement, AnnouncementPriority, GalleryItem, PersonalLedgerEntry,
+  Payment, PaymentRequest, PaymentRequestWithDetails, Announcement, AnnouncementPriority, GalleryItem, PersonalLedgerEntry,
   LoanStatus, ContributionStatus, Role, CategoryBudget, PersonalAccount, SavingGoal
 } from '../types';
 import { 
-  MOCK_USERS, MOCK_LOANS, MOCK_CONTRIBUTIONS, MOCK_PAYMENTS, MOCK_WITHDRAWALS,
+  MOCK_USERS, MOCK_LOANS, MOCK_CONTRIBUTIONS, MOCK_PAYMENTS, MOCK_WITHDRAWALS, MOCK_PAYMENT_REQUESTS,
   MOCK_ANNOUNCEMENTS, MOCK_PERSONAL_LEDGER 
 } from '../constants';
 
@@ -567,6 +567,79 @@ class DataService {
        remaining_principal: newRemainingPrincipal,
        status: isFullySettled ? 'paid' : loan.status
      }).eq('id', loanId);
+  }
+
+  async getPaymentRequests(): Promise<PaymentRequestWithDetails[]> {
+    if (this.isMock()) {
+      return MOCK_PAYMENT_REQUESTS.map(r => ({
+        ...r,
+        loan: MOCK_LOANS.find(l => l.id === r.loan_id)!,
+        member: MOCK_USERS.find(u => u.id === r.member_id)!
+      }));
+    }
+    const { data, error } = await this.supabase!
+      .from('payment_requests')
+      .select('*, loan:loans(*), member:profiles(*)')
+      .order('date', { ascending: false });
+    if (error) throw error;
+    return data as PaymentRequestWithDetails[];
+  }
+
+  /**
+   * A member's claim that they've made a repayment (e.g. via bank transfer or
+   * GCash) - always lands as 'pending'. It does NOT touch payments or loans
+   * itself; only an admin approving it does.
+   */
+  async requestPayment(data: { loan_id: string; member_id: string; amount: number; note?: string }): Promise<void> {
+    if (this.isMock()) {
+      MOCK_PAYMENT_REQUESTS.push({
+        id: `pr${MOCK_PAYMENT_REQUESTS.length + 1}`,
+        ...data,
+        status: 'pending',
+        date: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      });
+      return;
+    }
+    const { error } = await this.supabase!.from('payment_requests').insert({
+      ...data,
+      status: 'pending',
+      date: new Date().toISOString(),
+    });
+    if (error) throw error;
+  }
+
+  /**
+   * Approving a request runs it through the EXACT SAME allocation logic as the
+   * admin's manual "Post Repayment" form (addPayment) - it doesn't skip the
+   * interest/principal/penalty split, it just pre-fills the amount from what
+   * the member claimed, so the admin reviews and confirms instead of re-typing
+   * everything from scratch.
+   */
+  async approvePaymentRequest(request: PaymentRequest): Promise<void> {
+    await this.addPayment(request.loan_id, request.amount);
+
+    if (this.isMock()) {
+      const r = MOCK_PAYMENT_REQUESTS.find(x => x.id === request.id);
+      if (r) { r.status = 'approved'; r.reviewed_at = new Date().toISOString(); }
+      return;
+    }
+    const { error } = await this.supabase!.from('payment_requests')
+      .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+      .eq('id', request.id);
+    if (error) throw error;
+  }
+
+  async rejectPaymentRequest(id: string): Promise<void> {
+    if (this.isMock()) {
+      const r = MOCK_PAYMENT_REQUESTS.find(x => x.id === id);
+      if (r) { r.status = 'rejected'; r.reviewed_at = new Date().toISOString(); }
+      return;
+    }
+    const { error } = await this.supabase!.from('payment_requests')
+      .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw error;
   }
 
   async inviteMember(email: string, fullName: string, role: Role): Promise<void> {

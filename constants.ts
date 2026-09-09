@@ -1,5 +1,5 @@
 
-import { User, Loan, Contribution, Payment, Announcement, PersonalLedgerEntry, Withdrawal } from './types';
+import { User, Loan, Contribution, Payment, Announcement, PersonalLedgerEntry, Withdrawal, PaymentRequest } from './types';
 
 // Default Interest Rate as per requirements
 export const DEFAULT_INTEREST_RATE = 10;
@@ -118,6 +118,13 @@ export const MOCK_PAYMENTS: Payment[] = [
     principal_paid: 1000,
     penalty_paid: 0
   }
+];
+
+// Members claiming a repayment they've already made (e.g. bank transfer/GCash),
+// pending admin review. Approving one runs through addPayment - same as if the
+// admin had typed it in manually.
+export const MOCK_PAYMENT_REQUESTS: PaymentRequest[] = [
+  { id: 'pr1', loan_id: 'l1', member_id: 'u2', amount: 1000, note: 'GCash ref 88213', status: 'pending', date: '2023-12-05', created_at: '2023-12-05T08:00:00Z' },
 ];
 
 export const MOCK_ANNOUNCEMENTS: Announcement[] = [

@@ -64,6 +64,27 @@ export interface Payment {
   penalty_paid: number;
 }
 
+// A member's claim that they've made a repayment on their loan (e.g. via bank
+// transfer or GCash), pending admin review. Approving one calls the same
+// addPayment logic the admin's manual "Post Repayment" form uses - it doesn't
+// skip the interest/principal/penalty allocation, it just pre-fills it.
+export interface PaymentRequest {
+  id: string;
+  loan_id: string;
+  member_id: string;
+  amount: number;
+  note?: string | null;
+  status: ContributionStatus;
+  date: string;
+  created_at: string;
+  reviewed_at?: string | null;
+}
+
+export interface PaymentRequestWithDetails extends PaymentRequest {
+  loan: Loan;
+  member: User;
+}
+
 export interface Announcement {
   id: string;
   title: string;
