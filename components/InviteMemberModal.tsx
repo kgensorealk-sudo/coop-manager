@@ -149,6 +149,7 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ isOpen, onClose, 
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
                 >
                   <option value="member">Member</option>
+                  <option value="associate">Associate (loans only, no equity)</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>

@@ -31,7 +31,7 @@ const ContributionModal: React.FC<ContributionModalProps> = ({
     if (isOpen) {
       const timer = setTimeout(() => {
         setIsClosing(false);
-        if (currentUser && currentUser.role === 'member') {
+        if (currentUser && currentUser.role !== 'admin') {
           setMemberId(currentUser.id);
         } else {
           setMemberId('');

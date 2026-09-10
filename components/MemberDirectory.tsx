@@ -17,7 +17,8 @@ import {
   TrendingUp, 
   Users, 
   ChevronDown,
-  CheckCircle2
+  CheckCircle2,
+  HandCoins
 } from 'lucide-react';
 import MemberModal from './MemberModal';
 import { StatCard } from './StatCard';
@@ -30,7 +31,7 @@ interface MemberDirectoryProps {
   loading?: boolean;
 }
 
-type MemberFilter = 'all' | 'active-loans' | 'admins' | 'external' | 'arrears';
+type MemberFilter = 'all' | 'active-loans' | 'admins' | 'associates' | 'external' | 'arrears';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -129,6 +130,8 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
           return loans.some(l => l.borrower_id === member.id && l.status === 'active');
         case 'admins':
           return member.role === 'admin';
+        case 'associates':
+          return member.role === 'associate';
         case 'external':
           return !member.is_coop_member;
         case 'arrears':
@@ -252,7 +255,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
             <div className="absolute right-0 mt-2 w-56 bg-white border border-paper-300 shadow-float z-30 rounded-xl overflow-hidden animate-zoom-in">
               <div className="p-2 border-b border-paper-100 bg-paper-50 flex justify-between items-center text-[10px] font-black uppercase text-ink-400 px-2 tracking-widest">Criteria</div>
               <div className="py-1">
-                {(['all', 'active-loans', 'admins', 'external', 'arrears'] as MemberFilter[]).map((f) => (
+                {(['all', 'active-loans', 'admins', 'associates', 'external', 'arrears'] as MemberFilter[]).map((f) => (
                   <button key={f} onClick={() => { setActiveFilter(f); setIsFilterOpen(false); }} className={`w-full text-left px-4 py-2.5 text-sm font-serif transition-colors flex items-center justify-between ${activeFilter === f ? 'bg-paper-100 text-ink-900 font-bold' : 'text-ink-600 hover:bg-paper-50'}`}>
                     <span className="capitalize">{f.replace('-', ' ')}</span>
                     {activeFilter === f && <CheckCircle2 size={12} className="text-gold-500" />}
@@ -282,6 +285,8 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
               <div className="absolute top-4 left-4">
                  {member.role === 'admin' ? (
                    <div className="bg-ink-900 text-gold-500 p-1.5 rounded-xl shadow-md rotate-3 border border-gold-500/20" title="System Administrator"><Shield size={14} /></div>
+                 ) : member.role === 'associate' ? (
+                   <div className="bg-wax-50 text-wax-600 p-1.5 rounded-xl shadow-sm border border-wax-200" title="Associate — loans only, no equity"><HandCoins size={14} /></div>
                  ) : (
                    <div className="bg-paper-200 text-ink-400 p-1.5 rounded-xl" title="Member"><UserIcon size={14} /></div>
                  )}

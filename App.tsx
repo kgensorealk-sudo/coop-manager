@@ -1077,10 +1077,10 @@ const App: React.FC = () => {
               {activeTab === 'members' && <MemberDirectory members={members} loans={loans} onRefresh={refreshData} currentUserRole={currentUser.role} loading={loading} />}
               {activeTab === 'treasury' && <TreasuryDashboard treasuryStats={treasuryStats} contributions={contributions} loans={loans} allPayments={allPayments} activeLoanVolume={activeVolume} totalInterestGained={totalInterestGained} onAddContribution={() => setIsContributionModalOpen(true)} onApproveContribution={handleApproveContribution} onRejectContribution={handleRejectContribution} loading={loading} />}
               {activeTab === 'distribution' && <DistributionReport members={members} contributions={contributions} loans={loans} allPayments={allPayments} treasuryBalance={treasuryStats.balance} />}
-              {activeTab === 'announcements' && <AnnouncementHistory onOpenCreate={handleOpenAnnouncementCreate} onEdit={handleOpenAnnouncementEdit} readOnly={currentUser.role === 'member'} />}
+              {activeTab === 'announcements' && <AnnouncementHistory onOpenCreate={handleOpenAnnouncementCreate} onEdit={handleOpenAnnouncementEdit} readOnly={currentUser.role !== 'admin'} />}
               {activeTab === 'gallery' && <GalleryView currentUser={currentUser} />}
               {activeTab === 'personal-ledger' && <PersonalLedger currentUser={currentUser} />}
-              {activeTab === 'schedules' && <ScheduleView filterByUserId={currentUser.role === 'member' ? currentUser.id : undefined} />}
+              {activeTab === 'schedules' && <ScheduleView filterByUserId={currentUser.role !== 'admin' ? currentUser.id : undefined} />}
               {activeTab === 'dev-guide' && <DeveloperGuide />}
             </motion.div>
           </AnimatePresence>

@@ -77,7 +77,7 @@ const LoanApplicationForm: React.FC<LoanApplicationFormProps> = ({
         setDurationMonths(2);
         setInterestRate(DEFAULT_INTEREST_RATE);
         setShowSchedule(false);
-        if (currentUser && currentUser.role === 'member') {
+        if (currentUser && currentUser.role !== 'admin') {
           setBorrowerId(currentUser.id);
         } else {
           setBorrowerId('');

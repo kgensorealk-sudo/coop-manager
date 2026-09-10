@@ -67,6 +67,10 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   const historyLoans = memberLoans.filter(l => l.status !== 'pending');
   
   const pendingContributions = memberContributions.filter(c => c.status === 'pending');
+
+  // Associates can borrow but never hold equity - contribution/withdrawal UI is
+  // fully hidden for them, not just disabled, per the role's definition.
+  const isAssociate = user.role === 'associate';
   
   // Get next payment date from the most recent active loan
   const latestActiveLoan = activeLoans[0];
@@ -104,33 +108,39 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
       <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-paper-200 pb-8">
         <div>
           <h1 className="text-4xl font-serif font-bold text-ink-900 tracking-tight">Personal Ledger</h1>
-          <p className="text-ink-500 mt-2 font-serif italic text-lg opacity-80">Overview of your equity and loan status.</p>
+          <p className="text-ink-500 mt-2 font-serif italic text-lg opacity-80">
+            {isAssociate ? 'Overview of your loan status.' : 'Overview of your equity and loan status.'}
+          </p>
         </div>
         <div className="flex gap-4">
-           <motion.button 
-             whileHover={(activeLoans.length > 0 || user.equity <= 0) ? {} : { scale: 1.02 }}
-             whileTap={(activeLoans.length > 0 || user.equity <= 0) ? {} : { scale: 0.98 }}
-             onClick={(activeLoans.length > 0 || user.equity <= 0) ? undefined : onRequestWithdrawal}
-             disabled={activeLoans.length > 0 || user.equity <= 0}
-             title={activeLoans.length > 0 ? "Settle your active loan before withdrawing equity" : user.equity <= 0 ? "No equity available to withdraw" : "Request a withdrawal of your equity"}
-             className={`px-8 py-4 rounded-xl font-black uppercase tracking-[0.2em] shadow-lg flex items-center justify-center space-x-3 border-b-4 transition-all text-xs ${
-               (activeLoans.length > 0 || user.equity <= 0)
-                ? 'bg-paper-200 text-paper-400 border-paper-300 cursor-not-allowed shadow-none'
-                : 'bg-wax-600 hover:bg-wax-700 text-white border-wax-800'
-             }`}
-           >
-              {activeLoans.length > 0 ? <Lock size={20} /> : <Banknote size={20} />}
-              <span>Withdraw Equity</span>
-           </motion.button>
-           <motion.button 
-             whileHover={{ scale: 1.02 }}
-             whileTap={{ scale: 0.98 }}
-             onClick={onAddContribution}
-             className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-xl font-black uppercase tracking-[0.2em] shadow-lg flex items-center justify-center space-x-3 border-b-4 border-emerald-800 transition-all text-xs group"
-           >
-              <Plus size={20} className="group-hover:rotate-90 transition-transform" />
-              <span>Deposit Funds</span>
-           </motion.button>
+           {!isAssociate && (
+             <>
+               <motion.button 
+                 whileHover={(activeLoans.length > 0 || user.equity <= 0) ? {} : { scale: 1.02 }}
+                 whileTap={(activeLoans.length > 0 || user.equity <= 0) ? {} : { scale: 0.98 }}
+                 onClick={(activeLoans.length > 0 || user.equity <= 0) ? undefined : onRequestWithdrawal}
+                 disabled={activeLoans.length > 0 || user.equity <= 0}
+                 title={activeLoans.length > 0 ? "Settle your active loan before withdrawing equity" : user.equity <= 0 ? "No equity available to withdraw" : "Request a withdrawal of your equity"}
+                 className={`px-8 py-4 rounded-xl font-black uppercase tracking-[0.2em] shadow-lg flex items-center justify-center space-x-3 border-b-4 transition-all text-xs ${
+                   (activeLoans.length > 0 || user.equity <= 0)
+                    ? 'bg-paper-200 text-paper-400 border-paper-300 cursor-not-allowed shadow-none'
+                    : 'bg-wax-600 hover:bg-wax-700 text-white border-wax-800'
+                 }`}
+               >
+                  {activeLoans.length > 0 ? <Lock size={20} /> : <Banknote size={20} />}
+                  <span>Withdraw Equity</span>
+               </motion.button>
+               <motion.button 
+                 whileHover={{ scale: 1.02 }}
+                 whileTap={{ scale: 0.98 }}
+                 onClick={onAddContribution}
+                 className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-xl font-black uppercase tracking-[0.2em] shadow-lg flex items-center justify-center space-x-3 border-b-4 border-emerald-800 transition-all text-xs group"
+               >
+                  <Plus size={20} className="group-hover:rotate-90 transition-transform" />
+                  <span>Deposit Funds</span>
+               </motion.button>
+             </>
+           )}
            <motion.button 
              whileHover={hasPendingLoan ? {} : { scale: 1.02 }}
              whileTap={hasPendingLoan ? {} : { scale: 0.98 }}
@@ -150,27 +160,29 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
       </motion.div>
 
       {/* Personal Stats */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <StatCard 
-          title="My Total Equity" 
-          value={`₱${user.equity.toLocaleString()}`} 
-          icon={Wallet} 
-          colorClass="bg-emerald-50 text-emerald-700 border-emerald-200"
-          index={0}
-        />
+      <motion.div variants={itemVariants} className={`grid grid-cols-1 gap-8 ${isAssociate ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
+        {!isAssociate && (
+          <StatCard 
+            title="My Total Equity" 
+            value={`₱${user.equity.toLocaleString()}`} 
+            icon={Wallet} 
+            colorClass="bg-emerald-50 text-emerald-700 border-emerald-200"
+            index={0}
+          />
+        )}
         <StatCard 
           title="Active Debt Volume" 
           value={`₱${totalLoanBalance.toLocaleString()}`} 
           icon={CreditCard} 
           colorClass="bg-blue-50 text-blue-700 border-blue-200"
-          index={1}
+          index={isAssociate ? 0 : 1}
         />
         <StatCard 
           title="Next Payment Due" 
           value={nextPaymentDate} 
           icon={Calendar} 
           colorClass="bg-purple-50 text-purple-700 border-purple-200"
-          index={2}
+          index={isAssociate ? 1 : 2}
         />
       </motion.div>
 
@@ -470,7 +482,8 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
         )}
       </motion.div>
 
-      {/* Contribution History Table */}
+      {/* Contribution History Table - equity concept doesn't apply to associates */}
+      {!isAssociate && (
       <motion.div variants={itemVariants} className="bg-white rounded-2xl border-2 border-paper-200 shadow-xl overflow-hidden mt-12 group">
         <div className="p-8 border-b border-paper-200 bg-paper-100/50 flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -564,6 +577,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
           </div>
         )}
       </motion.div>
+      )}
     </motion.div>
   );
 };

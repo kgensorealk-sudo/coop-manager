@@ -155,6 +155,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
                     className="w-full pl-10 pr-4 py-3 bg-white border border-paper-300 rounded-xl focus:border-ink-900 outline-none transition-all font-serif italic text-lg text-ink-900 appearance-none"
                   >
                     <option value="member">Member</option>
+                    <option value="associate">Associate (loans only, no equity)</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>

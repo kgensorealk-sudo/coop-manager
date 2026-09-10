@@ -1,5 +1,5 @@
 
-export type Role = 'admin' | 'member';
+export type Role = 'admin' | 'member' | 'associate';
 
 export type LoanStatus = 'pending' | 'active' | 'rejected' | 'paid';
 
