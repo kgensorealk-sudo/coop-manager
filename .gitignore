@@ -33,3 +33,7 @@ dist-ssr
 supabase/.temp
 
 !.env.example
+
+# Reference-only database snapshot - a full dump of live schema/policies for your
+# own records, not part of the app itself. Keep it locally, don't commit it.
+master_schema.sql
