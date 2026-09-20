@@ -21,6 +21,7 @@ import {
   HandCoins
 } from 'lucide-react';
 import MemberModal from './MemberModal';
+import InviteMemberModal from './InviteMemberModal';
 import { StatCard } from './StatCard';
 
 interface MemberDirectoryProps {
@@ -59,6 +60,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
   const [activeFilter, setActiveFilter] = useState<MemberFilter>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<User | null>(null);
 
   const checkArrears = useCallback((memberId: string) => {
@@ -168,8 +170,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
   };
 
   const openAddModal = () => {
-    setEditingMember(null);
-    setIsModalOpen(true);
+    setIsInviteModalOpen(true);
   };
 
   const openEditModal = (member: User) => {
@@ -341,6 +342,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
         })}
       </motion.div>
       <MemberModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={editingMember ? handleUpdateMember : handleAddMember} editingMember={editingMember} />
+      <InviteMemberModal isOpen={isInviteModalOpen} onClose={() => setIsInviteModalOpen(false)} onSuccess={onRefresh} />
     </motion.div>
   );
 };

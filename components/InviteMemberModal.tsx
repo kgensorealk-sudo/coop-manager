@@ -14,7 +14,7 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ isOpen, onClose, 
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
-    role: 'member' as Role
+    role: 'associate' as Role
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +32,7 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ isOpen, onClose, 
   const handleClose = () => {
     setIsClosing(true);
     setTimeout(() => {
-      setFormData({ full_name: '', email: '', role: 'member' });
+      setFormData({ full_name: '', email: '', role: 'associate' });
       setError(null);
       setSuccess(false);
       setIsClosing(false);
@@ -148,8 +148,8 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ isOpen, onClose, 
                   onChange={e => setFormData({...formData, role: e.target.value as Role})}
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
                 >
-                  <option value="member">Member</option>
                   <option value="associate">Associate (loans only, no equity)</option>
+                  <option value="member">Member</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
